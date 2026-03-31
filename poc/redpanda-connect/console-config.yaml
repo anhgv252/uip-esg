@@ -1,0 +1,13 @@
+# ─────────────────────────────────────────────────────────────────
+#  NOTE: Redpanda Console đã được thay thế bởi Kafka UI
+#
+#  Kafka UI (Provectus) chạy tại http://localhost:8080
+#  Cấu hình được truyền qua environment variables trong
+#  docker-compose.yml:
+#
+#    KAFKA_CLUSTERS_0_NAME: esg-poc
+#    KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+#
+#  File này không còn được mount vào container nào.
+#  Giữ lại để tham khảo lịch sử thay đổi.
+# ─────────────────────────────────────────────────────────────────

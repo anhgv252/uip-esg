@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>EnvironmentService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">uip-backend</a> &gt; <a href="index.source.html" class="el_package">com.uip.backend.environment.service</a> &gt; <span class="el_source">EnvironmentService.java</span></div><h1>EnvironmentService.java</h1><pre class="source lang-java linenums">package com.uip.backend.environment.service;
+
+import com.uip.backend.environment.api.dto.AqiResponseDto;
+import com.uip.backend.environment.api.dto.SensorDto;
+import com.uip.backend.environment.api.dto.SensorReadingDto;
+import com.uip.backend.environment.domain.Sensor;
+import com.uip.backend.environment.domain.SensorReading;
+import com.uip.backend.environment.repository.SensorReadingRepository;
+import com.uip.backend.environment.repository.SensorRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.List;
+import java.util.Optional;
+
+@Service
+<span class="fc" id="L21">@RequiredArgsConstructor</span>
+@Transactional(readOnly = true)
+public class EnvironmentService {
+
+    private final SensorRepository        sensorRepository;
+    private final SensorReadingRepository readingRepository;
+    private final AqiCalculator           aqiCalculator;
+
+    /** Sensor is considered online if last_seen within last 5 minutes. */
+    private static final long ONLINE_THRESHOLD_MINUTES = 5;
+
+    // ─── Sensors ─────────────────────────────────────────────────────────────
+
+    public List&lt;SensorDto&gt; listSensors() {
+<span class="fc" id="L35">        return sensorRepository.findByActiveTrueOrderBySensorNameAsc()</span>
+<span class="fc" id="L36">                .stream()</span>
+<span class="fc" id="L37">                .map(this::toSensorDto)</span>
+<span class="fc" id="L38">                .toList();</span>
+    }
+
+    // ─── Readings ─────────────────────────────────────────────────────────────
+
+    public List&lt;SensorReadingDto&gt; getReadings(String sensorId, Instant from, Instant to, int limit) {
+<span class="fc" id="L44">        var pageable = PageRequest.of(0, Math.min(limit, 1000));</span>
+<span class="fc" id="L45">        return readingRepository.findByRange(sensorId, from, to, pageable)</span>
+<span class="fc" id="L46">                .stream()</span>
+<span class="fc" id="L47">                .map(this::toReadingDto)</span>
+<span class="fc" id="L48">                .toList();</span>
+    }
+
+    // ─── AQI Current ─────────────────────────────────────────────────────────
+
+    public List&lt;AqiResponseDto&gt; getCurrentAqi() {
+<span class="fc" id="L54">        return readingRepository.findLatestPerSensor()</span>
+<span class="fc" id="L55">                .stream()</span>
+<span class="fc" id="L56">                .map(r -&gt; {</span>
+<span class="fc" id="L57">                    Optional&lt;Sensor&gt; sensor = sensorRepository.findBySensorId(r.getSensorId());</span>
+<span class="fc" id="L58">                    return toAqiDto(r, sensor.map(Sensor::getDistrictCode).orElse(null));</span>
+                })
+<span class="fc" id="L60">                .toList();</span>
+    }
+
+    public List&lt;AqiResponseDto&gt; getAqiHistory(String districtCode, String period) {
+<span class="fc bfc" id="L64" title="All 3 branches covered.">        int hours = switch (period) {</span>
+<span class="fc" id="L65">            case &quot;7d&quot;  -&gt; 24 * 7;</span>
+<span class="fc" id="L66">            case &quot;30d&quot; -&gt; 24 * 30;</span>
+<span class="fc" id="L67">            default    -&gt; 24;   // &quot;24h&quot;</span>
+        };
+<span class="fc" id="L69">        Instant from = Instant.now().minus(hours, ChronoUnit.HOURS);</span>
+<span class="fc" id="L70">        var pageable = PageRequest.of(0, 500);</span>
+<span class="fc" id="L71">        return readingRepository.findAllInRange(from, Instant.now(), pageable)</span>
+<span class="fc" id="L72">                .stream()</span>
+<span class="fc" id="L73">                .filter(r -&gt; {</span>
+<span class="fc bfc" id="L74" title="All 4 branches covered.">                    if (districtCode == null || districtCode.isBlank()) return true;</span>
+<span class="fc" id="L75">                    Optional&lt;Sensor&gt; s = sensorRepository.findBySensorId(r.getSensorId());</span>
+<span class="fc" id="L76">                    return s.map(sensor -&gt; districtCode.equals(sensor.getDistrictCode())).orElse(false);</span>
+                })
+<span class="fc" id="L78">                .map(r -&gt; toAqiDto(r, districtCode))</span>
+<span class="fc" id="L79">                .toList();</span>
+    }
+
+    // ─── Mappers ──────────────────────────────────────────────────────────────
+
+    private SensorDto toSensorDto(Sensor s) {
+<span class="fc" id="L85">        Instant threshold = Instant.now().minus(ONLINE_THRESHOLD_MINUTES, ChronoUnit.MINUTES);</span>
+<span class="fc bfc" id="L86" title="All 4 branches covered.">        String status = (s.getLastSeenAt() != null &amp;&amp; s.getLastSeenAt().isAfter(threshold))</span>
+<span class="fc" id="L87">                ? &quot;ONLINE&quot; : &quot;OFFLINE&quot;;</span>
+<span class="fc" id="L88">        return SensorDto.builder()</span>
+<span class="fc" id="L89">                .id(s.getId())</span>
+<span class="fc" id="L90">                .sensorId(s.getSensorId())</span>
+<span class="fc" id="L91">                .sensorName(s.getSensorName())</span>
+<span class="fc" id="L92">                .sensorType(s.getSensorType())</span>
+<span class="fc" id="L93">                .districtCode(s.getDistrictCode())</span>
+<span class="fc" id="L94">                .latitude(s.getLatitude())</span>
+<span class="fc" id="L95">                .longitude(s.getLongitude())</span>
+<span class="fc" id="L96">                .status(status)</span>
+<span class="fc" id="L97">                .lastSeenAt(s.getLastSeenAt())</span>
+<span class="fc" id="L98">                .installedAt(s.getInstalledAt())</span>
+<span class="fc" id="L99">                .build();</span>
+    }
+
+    private SensorReadingDto toReadingDto(SensorReading r) {
+<span class="fc" id="L103">        return SensorReadingDto.builder()</span>
+<span class="fc" id="L104">                .sensorId(r.getSensorId())</span>
+<span class="fc" id="L105">                .timestamp(r.getId().getTimestamp())</span>
+<span class="fc" id="L106">                .aqi(r.getAqi())</span>
+<span class="fc" id="L107">                .pm25(r.getPm25())</span>
+<span class="fc" id="L108">                .pm10(r.getPm10())</span>
+<span class="fc" id="L109">                .o3(r.getO3())</span>
+<span class="fc" id="L110">                .no2(r.getNo2())</span>
+<span class="fc" id="L111">                .so2(r.getSo2())</span>
+<span class="fc" id="L112">                .co(r.getCo())</span>
+<span class="fc" id="L113">                .temperature(r.getTemperature())</span>
+<span class="fc" id="L114">                .humidity(r.getHumidity())</span>
+<span class="fc" id="L115">                .build();</span>
+    }
+
+    private AqiResponseDto toAqiDto(SensorReading r, String districtCode) {
+<span class="fc" id="L119">        Integer aqi = aqiCalculator.calculateAqi(r.getPm25(), r.getPm10(), r.getO3(),</span>
+<span class="fc" id="L120">                r.getNo2(), r.getSo2(), r.getCo());</span>
+<span class="pc bpc" id="L121" title="3 of 4 branches missed.">        if (aqi == null &amp;&amp; r.getAqi() != null) {</span>
+<span class="nc" id="L122">            aqi = r.getAqi().intValue();</span>
+        }
+<span class="fc" id="L124">        return AqiResponseDto.builder()</span>
+<span class="fc" id="L125">                .sensorId(r.getSensorId())</span>
+<span class="fc" id="L126">                .timestamp(r.getId().getTimestamp())</span>
+<span class="fc" id="L127">                .aqiValue(aqi)</span>
+<span class="pc bpc" id="L128" title="1 of 2 branches missed.">                .category(aqi != null ? aqiCalculator.categoryLabel(aqi) : null)</span>
+<span class="pc bpc" id="L129" title="1 of 2 branches missed.">                .color(aqi != null ? aqiCalculator.categoryColor(aqi) : null)</span>
+<span class="fc" id="L130">                .pm25(r.getPm25())</span>
+<span class="fc" id="L131">                .pm10(r.getPm10())</span>
+<span class="fc" id="L132">                .o3(r.getO3())</span>
+<span class="fc" id="L133">                .no2(r.getNo2())</span>
+<span class="fc" id="L134">                .so2(r.getSo2())</span>
+<span class="fc" id="L135">                .co(r.getCo())</span>
+<span class="fc" id="L136">                .districtCode(districtCode)</span>
+<span class="fc" id="L137">                .build();</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

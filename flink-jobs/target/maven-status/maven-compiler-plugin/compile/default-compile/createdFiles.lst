@@ -1,0 +1,13 @@
+com/uip/flink/alert/AlertRule.class
+com/uip/flink/common/NgsiLdDeserializer.class
+com/uip/flink/alert/AlertEvent.class
+com/uip/flink/environment/EnvironmentReading.class
+com/uip/flink/environment/EnvironmentFlinkJob.class
+com/uip/flink/traffic/TrafficFlinkJob.class
+com/uip/flink/alert/AlertDetectionJob.class
+com/uip/flink/alert/AlertDetectionFunction.class
+com/uip/flink/traffic/TrafficCount.class
+com/uip/flink/common/NgsiLdMessage$Meta.class
+com/uip/flink/esg/EsgFlinkJob.class
+com/uip/flink/common/NgsiLdMessage.class
+com/uip/flink/common/NgsiLdMessage$NgsiLdProperty.class

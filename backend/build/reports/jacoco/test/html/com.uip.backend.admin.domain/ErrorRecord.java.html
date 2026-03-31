@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ErrorRecord.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">uip-backend</a> &gt; <a href="index.source.html" class="el_package">com.uip.backend.admin.domain</a> &gt; <span class="el_source">ErrorRecord.java</span></div><h1>ErrorRecord.java</h1><pre class="source lang-java linenums">package com.uip.backend.admin.domain;
+
+import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
+import java.time.Instant;
+import java.util.Map;
+import java.util.UUID;
+
+@Entity
+@Table(name = &quot;error_records&quot;, schema = &quot;error_mgmt&quot;)
+@Getter
+<span class="nc" id="L17">@Setter</span>
+<span class="fc" id="L18">@NoArgsConstructor</span>
+public class ErrorRecord {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+<span class="fc" id="L23">    private UUID id;</span>
+
+    @Column(name = &quot;source_module&quot;, nullable = false, length = 30)
+<span class="fc" id="L26">    private String sourceModule;</span>
+
+    @Column(name = &quot;kafka_topic&quot;, length = 200)
+<span class="fc" id="L29">    private String kafkaTopic;</span>
+
+    @Column(name = &quot;kafka_offset&quot;)
+<span class="fc" id="L32">    private Long kafkaOffset;</span>
+
+    @Column(name = &quot;error_type&quot;, nullable = false, length = 100)
+<span class="fc" id="L35">    private String errorType;</span>
+
+    @Column(name = &quot;error_message&quot;, columnDefinition = &quot;TEXT&quot;)
+<span class="fc" id="L38">    private String errorMessage;</span>
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = &quot;raw_payload&quot;, columnDefinition = &quot;jsonb&quot;)
+<span class="fc" id="L42">    private Map&lt;String, Object&gt; rawPayload;</span>
+
+<span class="fc" id="L44">    @Column(nullable = false, length = 20)</span>
+<span class="fc" id="L45">    private String status = &quot;UNRESOLVED&quot;;</span>
+
+    @Column(name = &quot;resolved_by&quot;)
+<span class="fc" id="L48">    private UUID resolvedBy;</span>
+
+    @Column(name = &quot;resolved_at&quot;)
+<span class="fc" id="L51">    private Instant resolvedAt;</span>
+
+<span class="fc" id="L53">    @Column(name = &quot;occurred_at&quot;, nullable = false, updatable = false)</span>
+<span class="fc" id="L54">    private Instant occurredAt = Instant.now();</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

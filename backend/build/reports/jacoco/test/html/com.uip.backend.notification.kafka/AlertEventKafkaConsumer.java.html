@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AlertEventKafkaConsumer.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">uip-backend</a> &gt; <a href="index.source.html" class="el_package">com.uip.backend.notification.kafka</a> &gt; <span class="el_source">AlertEventKafkaConsumer.java</span></div><h1>AlertEventKafkaConsumer.java</h1><pre class="source lang-java linenums">package com.uip.backend.notification.kafka;
+
+import com.uip.backend.alert.domain.AlertEvent;
+import com.uip.backend.alert.repository.AlertEventRepository;
+import com.uip.backend.notification.service.NotificationService;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.support.Acknowledgment;
+import org.springframework.stereotype.Component;
+
+import java.time.Instant;
+import java.util.Map;
+
+/**
+ * Consumes alert events from Flink (topic: alert_events) and:
+ * 1. Persists to alerts.alert_events table
+ * 2. Publishes to Redis → SSE push to clients
+ */
+@Component
+<span class="fc" id="L21">@RequiredArgsConstructor</span>
+<span class="fc" id="L22">@Slf4j</span>
+public class AlertEventKafkaConsumer {
+
+    private final AlertEventRepository alertEventRepository;
+    private final NotificationService  notificationService;
+
+    @KafkaListener(
+        topics        = &quot;alert_events&quot;,
+        groupId       = &quot;uip-backend-alerts&quot;,
+        containerFactory = &quot;kafkaListenerContainerFactory&quot;
+    )
+    public void consume(Map&lt;String, Object&gt; payload, Acknowledgment ack) {
+        try {
+<span class="fc" id="L35">            AlertEvent event = mapToAlertEvent(payload);</span>
+<span class="fc" id="L36">            AlertEvent saved = alertEventRepository.save(event);</span>
+<span class="fc" id="L37">            notificationService.publishAlert(saved);</span>
+<span class="fc" id="L38">            log.info(&quot;Alert persisted and pushed: sensor={} severity={}&quot;,</span>
+<span class="fc" id="L39">                    event.getSensorId(), event.getSeverity());</span>
+<span class="fc" id="L40">            ack.acknowledge();</span>
+<span class="fc" id="L41">        } catch (Exception e) {</span>
+<span class="fc" id="L42">            log.error(&quot;Failed to process alert event from Kafka: {}&quot;, e.getMessage(), e);</span>
+            // Do not ack — will be retried
+<span class="fc" id="L44">        }</span>
+<span class="fc" id="L45">    }</span>
+
+    private AlertEvent mapToAlertEvent(Map&lt;String, Object&gt; m) {
+<span class="fc" id="L48">        AlertEvent e = new AlertEvent();</span>
+<span class="fc" id="L49">        e.setSensorId(getString(m, &quot;sensorId&quot;));</span>
+<span class="fc" id="L50">        e.setModule(getString(m, &quot;module&quot;));</span>
+<span class="fc" id="L51">        e.setMeasureType(getString(m, &quot;measureType&quot;));</span>
+<span class="fc" id="L52">        e.setValue(getDouble(m, &quot;value&quot;));</span>
+<span class="fc" id="L53">        e.setThreshold(getDouble(m, &quot;threshold&quot;));</span>
+<span class="fc" id="L54">        e.setSeverity(getString(m, &quot;severity&quot;));</span>
+<span class="fc" id="L55">        String detectedAtStr = getString(m, &quot;detectedAt&quot;);</span>
+<span class="fc bfc" id="L56" title="All 2 branches covered.">        e.setDetectedAt(detectedAtStr != null ? Instant.parse(detectedAtStr) : Instant.now());</span>
+<span class="fc" id="L57">        return e;</span>
+    }
+
+    private String getString(Map&lt;String, Object&gt; m, String key) {
+<span class="fc" id="L61">        Object v = m.get(key);</span>
+<span class="fc bfc" id="L62" title="All 2 branches covered.">        return v != null ? v.toString() : null;</span>
+    }
+
+    private Double getDouble(Map&lt;String, Object&gt; m, String key) {
+<span class="fc" id="L66">        Object v = m.get(key);</span>
+<span class="fc bfc" id="L67" title="All 2 branches covered.">        if (v == null) return null;</span>
+<span class="fc bfc" id="L68" title="All 2 branches covered.">        if (v instanceof Number n) return n.doubleValue();</span>
+<span class="fc" id="L69">        try { return Double.parseDouble(v.toString()); } catch (NumberFormatException e) { return null; }</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

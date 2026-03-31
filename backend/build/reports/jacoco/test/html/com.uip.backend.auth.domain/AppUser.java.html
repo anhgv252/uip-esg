@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AppUser.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">uip-backend</a> &gt; <a href="index.source.html" class="el_package">com.uip.backend.auth.domain</a> &gt; <span class="el_source">AppUser.java</span></div><h1>AppUser.java</h1><pre class="source lang-java linenums">package com.uip.backend.auth.domain;
+
+import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
+
+import java.time.Instant;
+import java.util.UUID;
+
+@Entity
+@Table(name = &quot;app_users&quot;, schema = &quot;public&quot;)
+@Getter
+<span class="nc" id="L16">@Setter</span>
+<span class="fc" id="L17">@NoArgsConstructor</span>
+public class AppUser {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+<span class="nc" id="L22">    private UUID id;</span>
+
+    @Column(nullable = false, unique = true, length = 50)
+<span class="fc" id="L25">    private String username;</span>
+
+    @Column(nullable = false, unique = true)
+<span class="nc" id="L28">    private String email;</span>
+
+    @Column(name = &quot;password_hash&quot;, nullable = false)
+<span class="fc" id="L31">    private String passwordHash;</span>
+
+<span class="fc" id="L33">    @Column(nullable = false, length = 30)</span>
+    @Enumerated(EnumType.STRING)
+<span class="fc" id="L35">    private UserRole role = UserRole.ROLE_CITIZEN;</span>
+
+<span class="fc" id="L37">    @Column(name = &quot;is_active&quot;, nullable = false)</span>
+<span class="fc" id="L38">    private boolean active = true;</span>
+
+    @CreationTimestamp
+    @Column(name = &quot;created_at&quot;, nullable = false, updatable = false)
+<span class="nc" id="L42">    private Instant createdAt;</span>
+
+    @UpdateTimestamp
+    @Column(name = &quot;updated_at&quot;, nullable = false)
+<span class="nc" id="L46">    private Instant updatedAt;</span>
+
+<span class="fc" id="L48">    public AppUser(String username, String email, String passwordHash, UserRole role) {</span>
+<span class="fc" id="L49">        this.username = username;</span>
+<span class="fc" id="L50">        this.email = email;</span>
+<span class="fc" id="L51">        this.passwordHash = passwordHash;</span>
+<span class="fc" id="L52">        this.role = role;</span>
+<span class="fc" id="L53">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

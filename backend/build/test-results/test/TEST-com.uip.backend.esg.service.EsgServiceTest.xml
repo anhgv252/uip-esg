@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="EsgService" tests="7" skipped="0" failures="0" errors="0" timestamp="2026-03-31T16:47:43" hostname="Macbook-anhgv.local" time="0.034">
+  <properties/>
+  <testcase name="getReportStatus returns DTO when report exists" classname="com.uip.backend.esg.service.EsgServiceTest" time="0.023"/>
+  <testcase name="getReportStatus throws EntityNotFoundException when not found" classname="com.uip.backend.esg.service.EsgServiceTest" time="0.002"/>
+  <testcase name="getReportForDownload returns report when status is DONE" classname="com.uip.backend.esg.service.EsgServiceTest" time="0.001"/>
+  <testcase name="getSummary: null metric values are handled gracefully (not NPE)" classname="com.uip.backend.esg.service.EsgServiceTest" time="0.003"/>
+  <testcase name="triggerReportGeneration saves report and invokes async generator" classname="com.uip.backend.esg.service.EsgServiceTest" time="0.002"/>
+  <testcase name="getSummary(QUARTERLY) sums all four metric types" classname="com.uip.backend.esg.service.EsgServiceTest" time="0.001"/>
+  <testcase name="getReportForDownload throws when report status is GENERATING" classname="com.uip.backend.esg.service.EsgServiceTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

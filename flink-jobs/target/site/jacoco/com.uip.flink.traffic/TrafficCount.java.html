@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>TrafficCount.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">uip-flink-jobs</a> &gt; <a href="index.source.html" class="el_package">com.uip.flink.traffic</a> &gt; <span class="el_source">TrafficCount.java</span></div><h1>TrafficCount.java</h1><pre class="source lang-java linenums">package com.uip.flink.traffic;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.io.Serializable;
+import java.time.Instant;
+
+/**
+ * Mapped POJO for traffic.traffic_counts
+ */
+<span class="nc bnc" id="L13" title="All 54 branches missed.">@Data</span>
+<span class="nc" id="L14">@NoArgsConstructor</span>
+<span class="nc" id="L15">@AllArgsConstructor</span>
+public class TrafficCount implements Serializable {
+<span class="nc" id="L17">    private String intersectionId;</span>
+<span class="nc" id="L18">    private Instant timestamp;</span>
+<span class="nc" id="L19">    private Integer vehicleCount;</span>
+<span class="nc" id="L20">    private Double avgSpeedKmh;</span>
+<span class="nc" id="L21">    private String congestionLevel;</span>
+<span class="nc" id="L22">    private String rawPayload;</span>
+
+    public static TrafficCount from(com.uip.flink.common.NgsiLdMessage msg, String rawJson) {
+<span class="nc" id="L25">        var measurements = msg.getMeasurementValues();</span>
+<span class="nc" id="L26">        Double count = measurements.getOrDefault(&quot;vehicle_count&quot;, null);</span>
+<span class="nc" id="L27">        Double speed = measurements.getOrDefault(&quot;avg_speed_kmh&quot;, null);</span>
+<span class="nc" id="L28">        String congestion = deriveCongestionLevel(count, speed);</span>
+<span class="nc" id="L29">        return new TrafficCount(</span>
+<span class="nc" id="L30">                msg.getDeviceIdValue(),</span>
+<span class="nc" id="L31">                Instant.ofEpochMilli(msg.getObservedAtMillis()),</span>
+<span class="nc bnc" id="L32" title="All 2 branches missed.">                count != null ? count.intValue() : 0,</span>
+                speed,
+                congestion,
+                rawJson
+        );
+    }
+
+    private static String deriveCongestionLevel(Double count, Double speed) {
+<span class="nc bnc" id="L40" title="All 2 branches missed.">        if (count == null) return &quot;UNKNOWN&quot;;</span>
+<span class="nc bnc" id="L41" title="All 6 branches missed.">        if (count &gt; 300 || (speed != null &amp;&amp; speed &lt; 10)) return &quot;CRITICAL&quot;;</span>
+<span class="nc bnc" id="L42" title="All 6 branches missed.">        if (count &gt; 200 || (speed != null &amp;&amp; speed &lt; 20)) return &quot;HIGH&quot;;</span>
+<span class="nc bnc" id="L43" title="All 6 branches missed.">        if (count &gt; 100 || (speed != null &amp;&amp; speed &lt; 40)) return &quot;MEDIUM&quot;;</span>
+<span class="nc" id="L44">        return &quot;LOW&quot;;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

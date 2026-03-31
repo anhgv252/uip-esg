@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="SseEmitterRegistry" tests="7" skipped="0" failures="0" errors="0" timestamp="2026-03-31T16:47:58" hostname="Macbook-anhgv.local" time="0.004">
+  <properties/>
+  <testcase name="broadcast: sends to active emitters without error" classname="com.uip.backend.notification.service.SseEmitterRegistryTest" time="0.002"/>
+  <testcase name="activeCount: returns 0 on empty registry" classname="com.uip.backend.notification.service.SseEmitterRegistryTest" time="0.0"/>
+  <testcase name="broadcast: does not throw when registry is empty" classname="com.uip.backend.notification.service.SseEmitterRegistryTest" time="0.0"/>
+  <testcase name="register: multiple clients all tracked" classname="com.uip.backend.notification.service.SseEmitterRegistryTest" time="0.0"/>
+  <testcase name="onCompletion: removes emitter from registry when client disconnects" classname="com.uip.backend.notification.service.SseEmitterRegistryTest" time="0.001"/>
+  <testcase name="register: returns a non-null SseEmitter and increments count" classname="com.uip.backend.notification.service.SseEmitterRegistryTest" time="0.0"/>
+  <testcase name="broadcast with 0 open emitters after all complete" classname="com.uip.backend.notification.service.SseEmitterRegistryTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -1,0 +1,47 @@
+# Traffic HTTP Adapter — polls fake traffic endpoint every 30s
+# Pushes normalised NGSI-LD traffic events to ngsi_ld_traffic
+
+input:
+  http_client:
+    url: http://backend:8080/api/v1/internal/fake-traffic
+    verb: GET
+    rate_limit: ""
+    timeout: 10s
+    # Poll every 30 seconds
+    auto_replay_nacks: true
+
+pipeline:
+  processors:
+    - bloblang: |
+        # Wrap each item in the array as a separate NGSI-LD message
+        root = this.map_each(item -> {
+          "@context": ["https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld"],
+          "id": "urn:ngsi-ld:TrafficSensor:" + item.intersection_id,
+          "type": "TrafficSensor",
+          "deviceId": { "type": "Property", "value": item.intersection_id },
+          "observedAt": { "type": "Property", "value": now().ts_unix_milli() },
+          "sensorType": { "type": "Property", "value": "traffic" },
+          "measurements": {
+            "type": "Property",
+            "value": {
+              "vehicle_count": item.vehicle_count,
+              "speed_kmh": item.avg_speed_kmh,
+              "congestion_level": item.congestion_level
+            }
+          },
+          "_meta": {
+            "source": "http-traffic-adapter",
+            "intersection": item.intersection_id
+          }
+        })
+
+    - unarchive:
+        format: json_array
+
+output:
+  kafka:
+    addresses:
+      - kafka:9092
+    topic: ngsi_ld_traffic
+    key: ${! json("id") }
+    max_in_flight: 10

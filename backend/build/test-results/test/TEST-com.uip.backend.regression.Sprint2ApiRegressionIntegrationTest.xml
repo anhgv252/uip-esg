@@ -1,0 +1,257 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.uip.backend.regression.Sprint2ApiRegressionIntegrationTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-03-31T16:48:02" hostname="Macbook-anhgv.local" time="1.354">
+  <properties/>
+  <testcase name="Regression: GET /api/v1/alerts?status=NEW returns 200" classname="com.uip.backend.regression.Sprint2ApiRegressionIntegrationTest" time="0.663"/>
+  <testcase name="Regression: GET /api/v1/admin/errors returns 200" classname="com.uip.backend.regression.Sprint2ApiRegressionIntegrationTest" time="0.353"/>
+  <testcase name="Regression: PUT /api/v1/alerts/{id}/acknowledge with invalid UUID returns 400" classname="com.uip.backend.regression.Sprint2ApiRegressionIntegrationTest" time="0.338"/>
+  <system-out><![CDATA[2026-03-31T23:47:58.167+07:00  INFO 30107 --- [uip-backend] [    Test worker] t.c.s.AnnotationConfigContextLoaderUtils : Could not detect default configuration classes for test class [com.uip.backend.regression.Sprint2ApiRegressionIntegrationTest]: Sprint2ApiRegressionIntegrationTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2026-03-31T23:47:58.174+07:00  INFO 30107 --- [uip-backend] [    Test worker] .b.t.c.SpringBootTestContextBootstrapper : Found @SpringBootConfiguration com.uip.backend.UipBackendApplication for test class com.uip.backend.regression.Sprint2ApiRegressionIntegrationTest
+2026-03-31T23:47:58.409+07:00  INFO 30107 --- [uip-backend] [ntainer#0-0-C-1] org.apache.kafka.clients.NetworkClient   : [Consumer clientId=consumer-uip-backend-alerts-1, groupId=uip-backend-alerts] Node -1 disconnected.
+2026-03-31T23:47:58.409+07:00  WARN 30107 --- [uip-backend] [ntainer#0-0-C-1] org.apache.kafka.clients.NetworkClient   : [Consumer clientId=consumer-uip-backend-alerts-1, groupId=uip-backend-alerts] Connection to node -1 (localhost/127.0.0.1:9999) could not be established. Broker may not be available.
+2026-03-31T23:47:58.409+07:00  WARN 30107 --- [uip-backend] [ntainer#0-0-C-1] org.apache.kafka.clients.NetworkClient   : [Consumer clientId=consumer-uip-backend-alerts-1, groupId=uip-backend-alerts] Bootstrap broker localhost:9999 (id: -1 rack: null) disconnected
+2026-03-31T23:47:59.283+07:00  INFO 30107 --- [uip-backend] [ntainer#0-0-C-1] org.apache.kafka.clients.NetworkClient   : [Consumer clientId=consumer-uip-backend-alerts-1, groupId=uip-backend-alerts] Node -1 disconnected.
+2026-03-31T23:47:59.283+07:00  WARN 30107 --- [uip-backend] [ntainer#0-0-C-1] org.apache.kafka.clients.NetworkClient   : [Consumer clientId=consumer-uip-backend-alerts-1, groupId=uip-backend-alerts] Connection to node -1 (localhost/127.0.0.1:9999) could not be established. Broker may not be available.
+2026-03-31T23:47:59.283+07:00  WARN 30107 --- [uip-backend] [ntainer#0-0-C-1] org.apache.kafka.clients.NetworkClient   : [Consumer clientId=consumer-uip-backend-alerts-1, groupId=uip-backend-alerts] Bootstrap broker localhost:9999 (id: -1 rack: null) disconnected
+2026-03-31T23:48:00.169+07:00  INFO 30107 --- [uip-backend] [ntainer#0-0-C-1] org.apache.kafka.clients.NetworkClient   : [Consumer clientId=consumer-uip-backend-alerts-1, groupId=uip-backend-alerts] Node -1 disconnected.
+2026-03-31T23:48:00.169+07:00  WARN 30107 --- [uip-backend] [ntainer#0-0-C-1] org.apache.kafka.clients.NetworkClient   : [Consumer clientId=consumer-uip-backend-alerts-1, groupId=uip-backend-alerts] Connection to node -1 (localhost/127.0.0.1:9999) could not be established. Broker may not be available.
+2026-03-31T23:48:00.170+07:00  WARN 30107 --- [uip-backend] [ntainer#0-0-C-1] org.apache.kafka.clients.NetworkClient   : [Consumer clientId=consumer-uip-backend-alerts-1, groupId=uip-backend-alerts] Bootstrap broker localhost:9999 (id: -1 rack: null) disconnected
+2026-03-31T23:48:00.677+07:00  INFO 30107 --- [uip-backend] [ioEventLoop-4-5] i.l.core.protocol.ReconnectionHandler    : Reconnected to localhost/<unresolved>:55005
+2026-03-31T23:48:00.677+07:00  INFO 30107 --- [uip-backend] [ioEventLoop-4-6] i.l.core.protocol.ReconnectionHandler    : Reconnected to localhost/<unresolved>:55005
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+ :: Spring Boot ::                (v3.2.4)
+
+2026-03-31T23:48:00.908+07:00  INFO 30107 --- [uip-backend] [    Test worker] .b.r.Sprint2ApiRegressionIntegrationTest : Starting Sprint2ApiRegressionIntegrationTest using Java 17.0.14 with PID 30107 (started by MAC in /Users/anhgv/working/my-project/smartcity/uip-esg-poc/backend)
+2026-03-31T23:48:00.908+07:00  INFO 30107 --- [uip-backend] [    Test worker] .b.r.Sprint2ApiRegressionIntegrationTest : No active profile set, falling back to 1 default profile: "default"
+2026-03-31T23:48:01.084+07:00  INFO 30107 --- [uip-backend] [    Test worker] .s.d.r.c.RepositoryConfigurationDelegate : Multiple Spring Data modules found, entering strict repository configuration mode
+2026-03-31T23:48:01.085+07:00  INFO 30107 --- [uip-backend] [    Test worker] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2026-03-31T23:48:01.097+07:00  INFO 30107 --- [uip-backend] [    Test worker] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 12 ms. Found 8 JPA repository interfaces.
+2026-03-31T23:48:01.098+07:00  INFO 30107 --- [uip-backend] [    Test worker] .s.d.r.c.RepositoryConfigurationDelegate : Multiple Spring Data modules found, entering strict repository configuration mode
+2026-03-31T23:48:01.099+07:00  INFO 30107 --- [uip-backend] [    Test worker] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data Redis repositories in DEFAULT mode.
+2026-03-31T23:48:01.102+07:00  INFO 30107 --- [uip-backend] [    Test worker] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.uip.backend.admin.repository.ErrorRecordRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-03-31T23:48:01.102+07:00  INFO 30107 --- [uip-backend] [    Test worker] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.uip.backend.alert.repository.AlertEventRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-03-31T23:48:01.102+07:00  INFO 30107 --- [uip-backend] [    Test worker] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.uip.backend.alert.repository.AlertRuleRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-03-31T23:48:01.102+07:00  INFO 30107 --- [uip-backend] [    Test worker] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.uip.backend.auth.repository.AppUserRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-03-31T23:48:01.102+07:00  INFO 30107 --- [uip-backend] [    Test worker] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.uip.backend.environment.repository.SensorReadingRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-03-31T23:48:01.102+07:00  INFO 30107 --- [uip-backend] [    Test worker] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.uip.backend.environment.repository.SensorRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-03-31T23:48:01.102+07:00  INFO 30107 --- [uip-backend] [    Test worker] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.uip.backend.esg.repository.EsgMetricRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-03-31T23:48:01.102+07:00  INFO 30107 --- [uip-backend] [    Test worker] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface com.uip.backend.esg.repository.EsgReportRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-03-31T23:48:01.102+07:00  INFO 30107 --- [uip-backend] [    Test worker] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 3 ms. Found 0 Redis repository interfaces.
+2026-03-31T23:48:01.189+07:00  INFO 30107 --- [uip-backend] [    Test worker] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port 0 (http)
+2026-03-31T23:48:01.190+07:00  INFO 30107 --- [uip-backend] [    Test worker] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-03-31T23:48:01.190+07:00  INFO 30107 --- [uip-backend] [    Test worker] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/10.1.19]
+2026-03-31T23:48:01.223+07:00  INFO 30107 --- [uip-backend] [    Test worker] o.a.c.c.C.[Tomcat-1].[localhost].[/]     : Initializing Spring embedded WebApplicationContext
+2026-03-31T23:48:01.223+07:00  INFO 30107 --- [uip-backend] [    Test worker] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 314 ms
+2026-03-31T23:48:01.244+07:00  INFO 30107 --- [uip-backend] [ntainer#0-0-C-1] org.apache.kafka.clients.NetworkClient   : [Consumer clientId=consumer-uip-backend-alerts-1, groupId=uip-backend-alerts] Node -1 disconnected.
+2026-03-31T23:48:01.244+07:00  WARN 30107 --- [uip-backend] [ntainer#0-0-C-1] org.apache.kafka.clients.NetworkClient   : [Consumer clientId=consumer-uip-backend-alerts-1, groupId=uip-backend-alerts] Connection to node -1 (localhost/127.0.0.1:9999) could not be established. Broker may not be available.
+2026-03-31T23:48:01.244+07:00  WARN 30107 --- [uip-backend] [ntainer#0-0-C-1] org.apache.kafka.clients.NetworkClient   : [Consumer clientId=consumer-uip-backend-alerts-1, groupId=uip-backend-alerts] Bootstrap broker localhost:9999 (id: -1 rack: null) disconnected
+2026-03-31T23:48:01.290+07:00  INFO 30107 --- [uip-backend] [    Test worker] com.zaxxer.hikari.HikariDataSource       : UIP-HikariPool - Starting...
+2026-03-31T23:48:01.307+07:00  INFO 30107 --- [uip-backend] [    Test worker] com.zaxxer.hikari.pool.HikariPool        : UIP-HikariPool - Added connection org.postgresql.jdbc.PgConnection@7b27db89
+2026-03-31T23:48:01.308+07:00  INFO 30107 --- [uip-backend] [    Test worker] com.zaxxer.hikari.HikariDataSource       : UIP-HikariPool - Start completed.
+2026-03-31T23:48:01.315+07:00  INFO 30107 --- [uip-backend] [    Test worker] org.flywaydb.core.FlywayExecutor         : Database: jdbc:postgresql://localhost:55006/uip_test (PostgreSQL 15.5)
+2026-03-31T23:48:01.326+07:00  INFO 30107 --- [uip-backend] [    Test worker] o.f.c.i.s.JdbcTableSchemaHistory         : Schema history table "public"."flyway_schema_history" does not exist yet
+2026-03-31T23:48:01.326+07:00  INFO 30107 --- [uip-backend] [    Test worker] o.f.core.internal.command.DbValidate     : Successfully validated 4 migrations (execution time 00:00.004s)
+2026-03-31T23:48:01.336+07:00  INFO 30107 --- [uip-backend] [    Test worker] o.f.c.i.s.JdbcTableSchemaHistory         : Creating Schema History table "public"."flyway_schema_history" ...
+2026-03-31T23:48:01.369+07:00  INFO 30107 --- [uip-backend] [    Test worker] o.f.core.internal.command.DbMigrate      : Current version of schema "public": << Empty Schema >>
+2026-03-31T23:48:01.372+07:00  INFO 30107 --- [uip-backend] [    Test worker] o.f.core.internal.command.DbMigrate      : Migrating schema "public" to version "1 - create app users"
+2026-03-31T23:48:01.400+07:00  INFO 30107 --- [uip-backend] [    Test worker] o.f.core.internal.command.DbMigrate      : Migrating schema "public" to version "2 - create domain schemas"
+2026-03-31T23:48:01.472+07:00  INFO 30107 --- [uip-backend] [    Test worker] o.f.core.internal.command.DbMigrate      : Migrating schema "public" to version "3 - seed domain data"
+2026-03-31T23:48:01.490+07:00  INFO 30107 --- [uip-backend] [    Test worker] o.f.core.internal.command.DbMigrate      : Migrating schema "public" to version "4 - fix alert events rule id"
+2026-03-31T23:48:01.491+07:00  WARN 30107 --- [uip-backend] [    Test worker] o.f.c.i.s.DefaultSqlScriptExecutor       : DB: column "rule_id" of relation "alert_events" already exists, skipping (SQL State: 42701 - Error Code: 0)
+2026-03-31T23:48:01.494+07:00  WARN 30107 --- [uip-backend] [    Test worker] o.f.c.i.s.DefaultSqlScriptExecutor       : DB: column "updated_at" of relation "reports" already exists, skipping (SQL State: 42701 - Error Code: 0)
+2026-03-31T23:48:01.500+07:00  INFO 30107 --- [uip-backend] [    Test worker] o.f.core.internal.command.DbMigrate      : Successfully applied 4 migrations to schema "public", now at version v4 (execution time 00:00.088s)
+2026-03-31T23:48:01.522+07:00  INFO 30107 --- [uip-backend] [    Test worker] o.hibernate.jpa.internal.util.LogHelper  : HHH000204: Processing PersistenceUnitInfo [name: default]
+2026-03-31T23:48:01.523+07:00  INFO 30107 --- [uip-backend] [    Test worker] o.h.c.internal.RegionFactoryInitiator    : HHH000026: Second-level cache disabled
+2026-03-31T23:48:01.526+07:00  INFO 30107 --- [uip-backend] [    Test worker] o.s.o.j.p.SpringPersistenceUnitInfo      : No LoadTimeWeaver setup: ignoring JPA class transformer
+2026-03-31T23:48:01.529+07:00  WARN 30107 --- [uip-backend] [    Test worker] org.hibernate.orm.deprecation            : HHH90000025: PostgreSQLDialect does not need to be specified explicitly using 'hibernate.dialect' (remove the property setting and it will be selected by default)
+2026-03-31T23:48:01.622+07:00  INFO 30107 --- [uip-backend] [    Test worker] o.h.e.t.j.p.i.JtaPlatformInitiator       : HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+2026-03-31T23:48:01.656+07:00  INFO 30107 --- [uip-backend] [    Test worker] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
+2026-03-31T23:48:01.889+07:00  INFO 30107 --- [uip-backend] [    Test worker] c.u.b.n.service.NotificationService      : Subscribed to Redis channel: uip:alerts
+2026-03-31T23:48:01.940+07:00  WARN 30107 --- [uip-backend] [    Test worker] JpaBaseConfiguration$JpaWebConfiguration : spring.jpa.open-in-view is enabled by default. Therefore, database queries may be performed during view rendering. Explicitly configure spring.jpa.open-in-view to disable this warning
+2026-03-31T23:48:02.028+07:00  INFO 30107 --- [uip-backend] [    Test worker] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 3 endpoint(s) beneath base path '/actuator'
+2026-03-31T23:48:02.109+07:00  INFO 30107 --- [uip-backend] [ntainer#0-0-C-1] org.apache.kafka.clients.NetworkClient   : [Consumer clientId=consumer-uip-backend-alerts-1, groupId=uip-backend-alerts] Node -1 disconnected.
+2026-03-31T23:48:02.109+07:00  WARN 30107 --- [uip-backend] [ntainer#0-0-C-1] org.apache.kafka.clients.NetworkClient   : [Consumer clientId=consumer-uip-backend-alerts-1, groupId=uip-backend-alerts] Connection to node -1 (localhost/127.0.0.1:9999) could not be established. Broker may not be available.
+2026-03-31T23:48:02.110+07:00  WARN 30107 --- [uip-backend] [ntainer#0-0-C-1] org.apache.kafka.clients.NetworkClient   : [Consumer clientId=consumer-uip-backend-alerts-1, groupId=uip-backend-alerts] Bootstrap broker localhost:9999 (id: -1 rack: null) disconnected
+2026-03-31T23:48:02.243+07:00  INFO 30107 --- [uip-backend] [    Test worker] o.a.c.c.C.[Tomcat-1].[localhost].[/]     : Initializing Spring TestDispatcherServlet ''
+2026-03-31T23:48:02.244+07:00  INFO 30107 --- [uip-backend] [    Test worker] o.s.t.web.servlet.TestDispatcherServlet  : Initializing Servlet ''
+2026-03-31T23:48:02.244+07:00  INFO 30107 --- [uip-backend] [    Test worker] o.s.t.web.servlet.TestDispatcherServlet  : Completed initialization in 0 ms
+2026-03-31T23:48:02.262+07:00  INFO 30107 --- [uip-backend] [    Test worker] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port 53283 (http) with context path ''
+2026-03-31T23:48:02.263+07:00  INFO 30107 --- [uip-backend] [    Test worker] o.a.k.clients.consumer.ConsumerConfig    : ConsumerConfig values: 
+	allow.auto.create.topics = true
+	auto.commit.interval.ms = 5000
+	auto.include.jmx.reporter = true
+	auto.offset.reset = latest
+	bootstrap.servers = [localhost:9999]
+	check.crcs = true
+	client.dns.lookup = use_all_dns_ips
+	client.id = consumer-uip-backend-alerts-2
+	client.rack = 
+	connections.max.idle.ms = 540000
+	default.api.timeout.ms = 60000
+	enable.auto.commit = false
+	exclude.internal.topics = true
+	fetch.max.bytes = 52428800
+	fetch.max.wait.ms = 500
+	fetch.min.bytes = 1
+	group.id = uip-backend-alerts
+	group.instance.id = null
+	heartbeat.interval.ms = 3000
+	interceptor.classes = []
+	internal.leave.group.on.close = true
+	internal.throw.on.fetch.stable.offset.unsupported = false
+	isolation.level = read_uncommitted
+	key.deserializer = class org.apache.kafka.common.serialization.StringDeserializer
+	max.partition.fetch.bytes = 1048576
+	max.poll.interval.ms = 300000
+	max.poll.records = 500
+	metadata.max.age.ms = 300000
+	metric.reporters = []
+	metrics.num.samples = 2
+	metrics.recording.level = INFO
+	metrics.sample.window.ms = 30000
+	partition.assignment.strategy = [class org.apache.kafka.clients.consumer.RangeAssignor, class org.apache.kafka.clients.consumer.CooperativeStickyAssignor]
+	receive.buffer.bytes = 65536
+	reconnect.backoff.max.ms = 1000
+	reconnect.backoff.ms = 50
+	request.timeout.ms = 30000
+	retry.backoff.ms = 100
+	sasl.client.callback.handler.class = null
+	sasl.jaas.config = null
+	sasl.kerberos.kinit.cmd = /usr/bin/kinit
+	sasl.kerberos.min.time.before.relogin = 60000
+	sasl.kerberos.service.name = null
+	sasl.kerberos.ticket.renew.jitter = 0.05
+	sasl.kerberos.ticket.renew.window.factor = 0.8
+	sasl.login.callback.handler.class = null
+	sasl.login.class = null
+	sasl.login.connect.timeout.ms = null
+	sasl.login.read.timeout.ms = null
+	sasl.login.refresh.buffer.seconds = 300
+	sasl.login.refresh.min.period.seconds = 60
+	sasl.login.refresh.window.factor = 0.8
+	sasl.login.refresh.window.jitter = 0.05
+	sasl.login.retry.backoff.max.ms = 10000
+	sasl.login.retry.backoff.ms = 100
+	sasl.mechanism = GSSAPI
+	sasl.oauthbearer.clock.skew.seconds = 30
+	sasl.oauthbearer.expected.audience = null
+	sasl.oauthbearer.expected.issuer = null
+	sasl.oauthbearer.jwks.endpoint.refresh.ms = 3600000
+	sasl.oauthbearer.jwks.endpoint.retry.backoff.max.ms = 10000
+	sasl.oauthbearer.jwks.endpoint.retry.backoff.ms = 100
+	sasl.oauthbearer.jwks.endpoint.url = null
+	sasl.oauthbearer.scope.claim.name = scope
+	sasl.oauthbearer.sub.claim.name = sub
+	sasl.oauthbearer.token.endpoint.url = null
+	security.protocol = PLAINTEXT
+	security.providers = null
+	send.buffer.bytes = 131072
+	session.timeout.ms = 45000
+	socket.connection.setup.timeout.max.ms = 30000
+	socket.connection.setup.timeout.ms = 10000
+	ssl.cipher.suites = null
+	ssl.enabled.protocols = [TLSv1.2, TLSv1.3]
+	ssl.endpoint.identification.algorithm = https
+	ssl.engine.factory.class = null
+	ssl.key.password = null
+	ssl.keymanager.algorithm = SunX509
+	ssl.keystore.certificate.chain = null
+	ssl.keystore.key = null
+	ssl.keystore.location = null
+	ssl.keystore.password = null
+	ssl.keystore.type = JKS
+	ssl.protocol = TLSv1.3
+	ssl.provider = null
+	ssl.secure.random.implementation = null
+	ssl.trustmanager.algorithm = PKIX
+	ssl.truststore.certificates = null
+	ssl.truststore.location = null
+	ssl.truststore.password = null
+	ssl.truststore.type = JKS
+	value.deserializer = class org.springframework.kafka.support.serializer.JsonDeserializer
+
+2026-03-31T23:48:02.267+07:00  INFO 30107 --- [uip-backend] [    Test worker] o.a.kafka.common.utils.AppInfoParser     : Kafka version: 3.6.1
+2026-03-31T23:48:02.267+07:00  INFO 30107 --- [uip-backend] [    Test worker] o.a.kafka.common.utils.AppInfoParser     : Kafka commitId: 5e3c2b738d253ff5
+2026-03-31T23:48:02.267+07:00  INFO 30107 --- [uip-backend] [    Test worker] o.a.kafka.common.utils.AppInfoParser     : Kafka startTimeMs: 1774975682267
+2026-03-31T23:48:02.269+07:00  INFO 30107 --- [uip-backend] [    Test worker] fkaConsumerFactory$ExtendedKafkaConsumer : [Consumer clientId=consumer-uip-backend-alerts-2, groupId=uip-backend-alerts] Subscribed to topic(s): alert_events
+2026-03-31T23:48:02.271+07:00  INFO 30107 --- [uip-backend] [ntainer#0-0-C-1] org.apache.kafka.clients.NetworkClient   : [Consumer clientId=consumer-uip-backend-alerts-2, groupId=uip-backend-alerts] Node -1 disconnected.
+2026-03-31T23:48:02.271+07:00  WARN 30107 --- [uip-backend] [ntainer#0-0-C-1] org.apache.kafka.clients.NetworkClient   : [Consumer clientId=consumer-uip-backend-alerts-2, groupId=uip-backend-alerts] Connection to node -1 (localhost/127.0.0.1:9999) could not be established. Broker may not be available.
+2026-03-31T23:48:02.271+07:00  WARN 30107 --- [uip-backend] [ntainer#0-0-C-1] org.apache.kafka.clients.NetworkClient   : [Consumer clientId=consumer-uip-backend-alerts-2, groupId=uip-backend-alerts] Bootstrap broker localhost:9999 (id: -1 rack: null) disconnected
+2026-03-31T23:48:02.290+07:00  INFO 30107 --- [uip-backend] [    Test worker] .b.r.Sprint2ApiRegressionIntegrationTest : Started Sprint2ApiRegressionIntegrationTest in 1.409 seconds (process running for 23.1)
+2026-03-31T23:48:02.301+07:00  WARN 30107 --- [uip-backend] [    Test worker] c.u.b.auth.config.UserSeedInitializer    : Env var CITIZEN_PASSWORD not set — using insecure default for dev only
+2026-03-31T23:48:02.372+07:00  INFO 30107 --- [uip-backend] [ntainer#0-0-C-1] org.apache.kafka.clients.NetworkClient   : [Consumer clientId=consumer-uip-backend-alerts-2, groupId=uip-backend-alerts] Node -1 disconnected.
+2026-03-31T23:48:02.373+07:00  WARN 30107 --- [uip-backend] [ntainer#0-0-C-1] org.apache.kafka.clients.NetworkClient   : [Consumer clientId=consumer-uip-backend-alerts-2, groupId=uip-backend-alerts] Connection to node -1 (localhost/127.0.0.1:9999) could not be established. Broker may not be available.
+2026-03-31T23:48:02.373+07:00  WARN 30107 --- [uip-backend] [ntainer#0-0-C-1] org.apache.kafka.clients.NetworkClient   : [Consumer clientId=consumer-uip-backend-alerts-2, groupId=uip-backend-alerts] Bootstrap broker localhost:9999 (id: -1 rack: null) disconnected
+2026-03-31T23:48:02.524+07:00  INFO 30107 --- [uip-backend] [ntainer#0-0-C-1] org.apache.kafka.clients.NetworkClient   : [Consumer clientId=consumer-uip-backend-alerts-2, groupId=uip-backend-alerts] Node -1 disconnected.
+2026-03-31T23:48:02.524+07:00  WARN 30107 --- [uip-backend] [ntainer#0-0-C-1] org.apache.kafka.clients.NetworkClient   : [Consumer clientId=consumer-uip-backend-alerts-2, groupId=uip-backend-alerts] Connection to node -1 (localhost/127.0.0.1:9999) could not be established. Broker may not be available.
+2026-03-31T23:48:02.524+07:00  WARN 30107 --- [uip-backend] [ntainer#0-0-C-1] org.apache.kafka.clients.NetworkClient   : [Consumer clientId=consumer-uip-backend-alerts-2, groupId=uip-backend-alerts] Bootstrap broker localhost:9999 (id: -1 rack: null) disconnected
+2026-03-31T23:48:02.604+07:00  INFO 30107 --- [uip-backend] [    Test worker] c.u.b.auth.config.UserSeedInitializer    : Seeded user username=citizen1 role=ROLE_CITIZEN
+2026-03-31T23:48:02.605+07:00  INFO 30107 --- [uip-backend] [    Test worker] c.u.b.auth.config.UserSeedInitializer    : User seed check complete
+2026-03-31T23:48:02.778+07:00  INFO 30107 --- [uip-backend] [ntainer#0-0-C-1] org.apache.kafka.clients.NetworkClient   : [Consumer clientId=consumer-uip-backend-alerts-2, groupId=uip-backend-alerts] Node -1 disconnected.
+2026-03-31T23:48:02.778+07:00  WARN 30107 --- [uip-backend] [ntainer#0-0-C-1] org.apache.kafka.clients.NetworkClient   : [Consumer clientId=consumer-uip-backend-alerts-2, groupId=uip-backend-alerts] Connection to node -1 (localhost/127.0.0.1:9999) could not be established. Broker may not be available.
+2026-03-31T23:48:02.778+07:00  WARN 30107 --- [uip-backend] [ntainer#0-0-C-1] org.apache.kafka.clients.NetworkClient   : [Consumer clientId=consumer-uip-backend-alerts-2, groupId=uip-backend-alerts] Bootstrap broker localhost:9999 (id: -1 rack: null) disconnected
+2026-03-31T23:48:03.127+07:00  INFO 30107 --- [uip-backend] [ntainer#0-0-C-1] org.apache.kafka.clients.NetworkClient   : [Consumer clientId=consumer-uip-backend-alerts-1, groupId=uip-backend-alerts] Node -1 disconnected.
+2026-03-31T23:48:03.128+07:00  WARN 30107 --- [uip-backend] [ntainer#0-0-C-1] org.apache.kafka.clients.NetworkClient   : [Consumer clientId=consumer-uip-backend-alerts-1, groupId=uip-backend-alerts] Connection to node -1 (localhost/127.0.0.1:9999) could not be established. Broker may not be available.
+2026-03-31T23:48:03.128+07:00  WARN 30107 --- [uip-backend] [ntainer#0-0-C-1] org.apache.kafka.clients.NetworkClient   : [Consumer clientId=consumer-uip-backend-alerts-1, groupId=uip-backend-alerts] Bootstrap broker localhost:9999 (id: -1 rack: null) disconnected
+2026-03-31T23:48:03.134+07:00  INFO 30107 --- [uip-backend] [ntainer#0-0-C-1] org.apache.kafka.clients.NetworkClient   : [Consumer clientId=consumer-uip-backend-alerts-2, groupId=uip-backend-alerts] Node -1 disconnected.
+2026-03-31T23:48:03.135+07:00  WARN 30107 --- [uip-backend] [ntainer#0-0-C-1] org.apache.kafka.clients.NetworkClient   : [Consumer clientId=consumer-uip-backend-alerts-2, groupId=uip-backend-alerts] Connection to node -1 (localhost/127.0.0.1:9999) could not be established. Broker may not be available.
+2026-03-31T23:48:03.135+07:00  WARN 30107 --- [uip-backend] [ntainer#0-0-C-1] org.apache.kafka.clients.NetworkClient   : [Consumer clientId=consumer-uip-backend-alerts-2, groupId=uip-backend-alerts] Bootstrap broker localhost:9999 (id: -1 rack: null) disconnected
+2026-03-31T23:48:03.227+07:00  INFO 30107 --- [uip-backend] [    Test worker] c.uip.backend.auth.service.AuthService   : Successful login for username=admin
+2026-03-31T23:48:03.583+07:00  INFO 30107 --- [uip-backend] [    Test worker] c.uip.backend.auth.service.AuthService   : Successful login for username=admin
+2026-03-31T23:48:03.847+07:00  INFO 30107 --- [uip-backend] [ntainer#0-0-C-1] org.apache.kafka.clients.NetworkClient   : [Consumer clientId=consumer-uip-backend-alerts-2, groupId=uip-backend-alerts] Node -1 disconnected.
+2026-03-31T23:48:03.847+07:00  WARN 30107 --- [uip-backend] [ntainer#0-0-C-1] org.apache.kafka.clients.NetworkClient   : [Consumer clientId=consumer-uip-backend-alerts-2, groupId=uip-backend-alerts] Connection to node -1 (localhost/127.0.0.1:9999) could not be established. Broker may not be available.
+2026-03-31T23:48:03.847+07:00  WARN 30107 --- [uip-backend] [ntainer#0-0-C-1] org.apache.kafka.clients.NetworkClient   : [Consumer clientId=consumer-uip-backend-alerts-2, groupId=uip-backend-alerts] Bootstrap broker localhost:9999 (id: -1 rack: null) disconnected
+2026-03-31T23:48:03.936+07:00  INFO 30107 --- [uip-backend] [    Test worker] c.uip.backend.auth.service.AuthService   : Successful login for username=admin
+2026-03-31T23:48:04.248+07:00  INFO 30107 --- [uip-backend] [ntainer#0-0-C-1] org.apache.kafka.clients.NetworkClient   : [Consumer clientId=consumer-uip-backend-alerts-1, groupId=uip-backend-alerts] Node -1 disconnected.
+2026-03-31T23:48:04.248+07:00  WARN 30107 --- [uip-backend] [ntainer#0-0-C-1] org.apache.kafka.clients.NetworkClient   : [Consumer clientId=consumer-uip-backend-alerts-1, groupId=uip-backend-alerts] Connection to node -1 (localhost/127.0.0.1:9999) could not be established. Broker may not be available.
+2026-03-31T23:48:04.249+07:00  WARN 30107 --- [uip-backend] [ntainer#0-0-C-1] org.apache.kafka.clients.NetworkClient   : [Consumer clientId=consumer-uip-backend-alerts-1, groupId=uip-backend-alerts] Bootstrap broker localhost:9999 (id: -1 rack: null) disconnected
+2026-03-31T23:48:04.368+07:00  INFO 30107 --- [uip-backend] [xecutorLoop-1-7] i.l.core.protocol.ConnectionWatchdog     : Reconnecting, last destination was localhost/127.0.0.1:55005
+2026-03-31T23:48:04.368+07:00  INFO 30107 --- [uip-backend] [xecutorLoop-1-8] i.l.core.protocol.ConnectionWatchdog     : Reconnecting, last destination was localhost/127.0.0.1:55005
+2026-03-31T23:48:04.372+07:00  WARN 30107 --- [uip-backend] [ioEventLoop-4-7] i.l.core.protocol.ConnectionWatchdog     : Cannot reconnect to [localhost/<unresolved>:55005]: Connection refused: localhost/127.0.0.1:55005
+2026-03-31T23:48:04.373+07:00  WARN 30107 --- [uip-backend] [ioEventLoop-4-8] i.l.core.protocol.ConnectionWatchdog     : Cannot reconnect to [localhost/<unresolved>:55005]: Connection refused: localhost/127.0.0.1:55005
+2026-03-31T23:48:04.378+07:00  INFO 30107 --- [uip-backend] [xecutorLoop-5-2] i.l.core.protocol.ConnectionWatchdog     : Reconnecting, last destination was localhost/127.0.0.1:55007
+2026-03-31T23:48:04.378+07:00  INFO 30107 --- [uip-backend] [xecutorLoop-5-1] i.l.core.protocol.ConnectionWatchdog     : Reconnecting, last destination was localhost/127.0.0.1:55007
+2026-03-31T23:48:04.382+07:00  WARN 30107 --- [uip-backend] [ioEventLoop-7-3] i.l.core.protocol.ConnectionWatchdog     : Cannot reconnect to [localhost/<unresolved>:55007]: Connection reset
+
+java.net.SocketException: Connection reset
+	at java.base/sun.nio.ch.SocketChannelImpl.throwConnectionReset(SocketChannelImpl.java:394) ~[na:na]
+	at java.base/sun.nio.ch.SocketChannelImpl.read(SocketChannelImpl.java:426) ~[na:na]
+	at io.netty.buffer.PooledByteBuf.setBytes(PooledByteBuf.java:255) ~[netty-buffer-4.1.107.Final.jar:4.1.107.Final]
+	at io.netty.buffer.AbstractByteBuf.writeBytes(AbstractByteBuf.java:1132) ~[netty-buffer-4.1.107.Final.jar:4.1.107.Final]
+	at io.netty.channel.socket.nio.NioSocketChannel.doReadBytes(NioSocketChannel.java:357) ~[netty-transport-4.1.107.Final.jar:4.1.107.Final]
+	at io.netty.channel.nio.AbstractNioByteChannel$NioByteUnsafe.read(AbstractNioByteChannel.java:151) ~[netty-transport-4.1.107.Final.jar:4.1.107.Final]
+	at io.netty.channel.nio.NioEventLoop.processSelectedKey(NioEventLoop.java:788) ~[netty-transport-4.1.107.Final.jar:4.1.107.Final]
+	at io.netty.channel.nio.NioEventLoop.processSelectedKeysOptimized(NioEventLoop.java:724) ~[netty-transport-4.1.107.Final.jar:4.1.107.Final]
+	at io.netty.channel.nio.NioEventLoop.processSelectedKeys(NioEventLoop.java:650) ~[netty-transport-4.1.107.Final.jar:4.1.107.Final]
+	at io.netty.channel.nio.NioEventLoop.run(NioEventLoop.java:562) ~[netty-transport-4.1.107.Final.jar:4.1.107.Final]
+	at io.netty.util.concurrent.SingleThreadEventExecutor$4.run(SingleThreadEventExecutor.java:997) ~[netty-common-4.1.107.Final.jar:4.1.107.Final]
+	at io.netty.util.internal.ThreadExecutorMap$2.run(ThreadExecutorMap.java:74) ~[netty-common-4.1.107.Final.jar:4.1.107.Final]
+	at io.netty.util.concurrent.FastThreadLocalRunnable.run(FastThreadLocalRunnable.java:30) ~[netty-common-4.1.107.Final.jar:4.1.107.Final]
+	at java.base/java.lang.Thread.run(Thread.java:840) ~[na:na]
+
+2026-03-31T23:48:04.382+07:00  WARN 30107 --- [uip-backend] [ioEventLoop-7-4] i.l.core.protocol.ConnectionWatchdog     : Cannot reconnect to [localhost/<unresolved>:55007]: Connection reset
+
+java.net.SocketException: Connection reset
+	at java.base/sun.nio.ch.SocketChannelImpl.throwConnectionReset(SocketChannelImpl.java:394) ~[na:na]
+	at java.base/sun.nio.ch.SocketChannelImpl.read(SocketChannelImpl.java:426) ~[na:na]
+	at io.netty.buffer.PooledByteBuf.setBytes(PooledByteBuf.java:255) ~[netty-buffer-4.1.107.Final.jar:4.1.107.Final]
+	at io.netty.buffer.AbstractByteBuf.writeBytes(AbstractByteBuf.java:1132) ~[netty-buffer-4.1.107.Final.jar:4.1.107.Final]
+	at io.netty.channel.socket.nio.NioSocketChannel.doReadBytes(NioSocketChannel.java:357) ~[netty-transport-4.1.107.Final.jar:4.1.107.Final]
+	at io.netty.channel.nio.AbstractNioByteChannel$NioByteUnsafe.read(AbstractNioByteChannel.java:151) ~[netty-transport-4.1.107.Final.jar:4.1.107.Final]
+	at io.netty.channel.nio.NioEventLoop.processSelectedKey(NioEventLoop.java:788) ~[netty-transport-4.1.107.Final.jar:4.1.107.Final]
+	at io.netty.channel.nio.NioEventLoop.processSelectedKeysOptimized(NioEventLoop.java:724) ~[netty-transport-4.1.107.Final.jar:4.1.107.Final]
+	at io.netty.channel.nio.NioEventLoop.processSelectedKeys(NioEventLoop.java:650) ~[netty-transport-4.1.107.Final.jar:4.1.107.Final]
+	at io.netty.channel.nio.NioEventLoop.run(NioEventLoop.java:562) ~[netty-transport-4.1.107.Final.jar:4.1.107.Final]
+	at io.netty.util.concurrent.SingleThreadEventExecutor$4.run(SingleThreadEventExecutor.java:997) ~[netty-common-4.1.107.Final.jar:4.1.107.Final]
+	at io.netty.util.internal.ThreadExecutorMap$2.run(ThreadExecutorMap.java:74) ~[netty-common-4.1.107.Final.jar:4.1.107.Final]
+	at io.netty.util.concurrent.FastThreadLocalRunnable.run(FastThreadLocalRunnable.java:30) ~[netty-common-4.1.107.Final.jar:4.1.107.Final]
+	at java.base/java.lang.Thread.run(Thread.java:840) ~[na:na]
+
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

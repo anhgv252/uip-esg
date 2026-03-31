@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AuthService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">uip-backend</a> &gt; <a href="index.source.html" class="el_package">com.uip.backend.auth.service</a> &gt; <span class="el_source">AuthService.java</span></div><h1>AuthService.java</h1><pre class="source lang-java linenums">package com.uip.backend.auth.service;
+
+import com.uip.backend.auth.api.dto.AuthResponse;
+import com.uip.backend.auth.api.dto.LoginRequest;
+import com.uip.backend.auth.exception.InvalidCredentialsException;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.stereotype.Service;
+
+@Service
+<span class="fc" id="L15">@RequiredArgsConstructor</span>
+<span class="fc" id="L16">@Slf4j</span>
+public class AuthService {
+
+    private final AuthenticationManager authenticationManager;
+    private final UipUserDetailsService userDetailsService;
+    private final JwtTokenProvider tokenProvider;
+
+    public AuthResponse login(LoginRequest request) {
+        try {
+<span class="fc" id="L25">            authenticationManager.authenticate(</span>
+<span class="fc" id="L26">                    new UsernamePasswordAuthenticationToken(request.username(), request.password())</span>
+            );
+<span class="nc" id="L28">        } catch (BadCredentialsException e) {</span>
+<span class="nc" id="L29">            log.warn(&quot;Failed login attempt for username={}&quot;, request.username());</span>
+<span class="nc" id="L30">            throw new InvalidCredentialsException(&quot;Invalid username or password&quot;);</span>
+<span class="fc" id="L31">        }</span>
+
+<span class="fc" id="L33">        UserDetails userDetails = userDetailsService.loadUserByUsername(request.username());</span>
+<span class="fc" id="L34">        String accessToken = tokenProvider.generateAccessToken(userDetails);</span>
+<span class="fc" id="L35">        String refreshToken = tokenProvider.generateRefreshToken(userDetails);</span>
+<span class="fc" id="L36">        long expiresIn = tokenProvider.getJwtProperties().getExpirationMs() / 1000;</span>
+
+<span class="fc" id="L38">        log.info(&quot;Successful login for username={}&quot;, request.username());</span>
+<span class="fc" id="L39">        return new AuthResponse(accessToken, refreshToken, &quot;Bearer&quot;, expiresIn);</span>
+    }
+
+    public AuthResponse refresh(String refreshToken) {
+<span class="nc" id="L43">        String username = tokenProvider.extractUsername(refreshToken);</span>
+<span class="nc" id="L44">        UserDetails userDetails = userDetailsService.loadUserByUsername(username);</span>
+
+<span class="nc bnc" id="L46" title="All 2 branches missed.">        if (!tokenProvider.isRefreshTokenValid(refreshToken, userDetails)) {</span>
+<span class="nc" id="L47">            throw new InvalidCredentialsException(&quot;Invalid or expired refresh token&quot;);</span>
+        }
+
+<span class="nc" id="L50">        String newAccessToken = tokenProvider.generateAccessToken(userDetails);</span>
+<span class="nc" id="L51">        long expiresIn = tokenProvider.getJwtProperties().getExpirationMs() / 1000;</span>
+<span class="nc" id="L52">        log.info(&quot;Token refreshed for username={}&quot;, username);</span>
+<span class="nc" id="L53">        return new AuthResponse(newAccessToken, refreshToken, &quot;Bearer&quot;, expiresIn);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

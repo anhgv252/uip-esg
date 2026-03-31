@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AqiCalculator.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">uip-backend</a> &gt; <a href="index.source.html" class="el_package">com.uip.backend.environment.service</a> &gt; <span class="el_source">AqiCalculator.java</span></div><h1>AqiCalculator.java</h1><pre class="source lang-java linenums">package com.uip.backend.environment.service;
+
+import org.springframework.stereotype.Component;
+
+/**
+ * AQI calculator using US EPA formula.
+ * I_p = ((I_Hi - I_Lo) / (BP_Hi - BP_Lo)) * (C_p - BP_Lo) + I_Lo
+ *
+ * Reference: https://www.airnow.gov/sites/default/files/2020-05/aqi-technical-assistance-document-sept2018.pdf
+ */
+@Component
+<span class="fc" id="L12">public class AqiCalculator {</span>
+
+    // ─── PM2.5 breakpoints (µg/m³, 24-h average) ─────────────────────────────
+<span class="fc" id="L15">    private static final double[][] PM25_BP = {</span>
+        {0.0,   12.0,   0,   50},
+        {12.1,  35.4,   51,  100},
+        {35.5,  55.4,   101, 150},
+        {55.5,  150.4,  151, 200},
+        {150.5, 250.4,  201, 300},
+        {250.5, 350.4,  301, 400},
+        {350.5, 500.4,  401, 500}
+    };
+
+    // ─── PM10 breakpoints (µg/m³, 24-h average) ──────────────────────────────
+<span class="fc" id="L26">    private static final double[][] PM10_BP = {</span>
+        {0,    54,    0,   50},
+        {55,   154,   51,  100},
+        {155,  254,   101, 150},
+        {255,  354,   151, 200},
+        {355,  424,   201, 300},
+        {425,  504,   301, 400},
+        {505,  604,   401, 500}
+    };
+
+    // ─── O3 breakpoints (ppb, 8-h average) ───────────────────────────────────
+<span class="fc" id="L37">    private static final double[][] O3_BP = {</span>
+        {0,    54,    0,   50},
+        {55,   70,    51,  100},
+        {71,   85,    101, 150},
+        {86,   105,   151, 200},
+        {106,  200,   201, 300}
+    };
+
+    // ─── NO2 breakpoints (ppb, 1-h average) ──────────────────────────────────
+<span class="fc" id="L46">    private static final double[][] NO2_BP = {</span>
+        {0,    53,    0,   50},
+        {54,   100,   51,  100},
+        {101,  360,   101, 150},
+        {361,  649,   151, 200},
+        {650,  1249,  201, 300},
+        {1250, 1649,  301, 400},
+        {1650, 2049,  401, 500}
+    };
+
+    // ─── SO2 breakpoints (ppb, 1-h average) ──────────────────────────────────
+<span class="fc" id="L57">    private static final double[][] SO2_BP = {</span>
+        {0,    35,    0,   50},
+        {36,   75,    51,  100},
+        {76,   185,   101, 150},
+        {186,  304,   151, 200},
+        {305,  604,   201, 300},
+        {605,  804,   301, 400},
+        {805,  1004,  401, 500}
+    };
+
+    // ─── CO breakpoints (ppm, 8-h average) ───────────────────────────────────
+<span class="fc" id="L68">    private static final double[][] CO_BP = {</span>
+        {0.0,  4.4,   0,   50},
+        {4.5,  9.4,   51,  100},
+        {9.5,  12.4,  101, 150},
+        {12.5, 15.4,  151, 200},
+        {15.5, 30.4,  201, 300},
+        {30.5, 40.4,  301, 400},
+        {40.5, 50.4,  401, 500}
+    };
+
+    /**
+     * Calculate overall AQI as max of individual pollutant AQIs.
+     *
+     * @return overall AQI (0-500+), or null if all pollutants are null
+     */
+    public Integer calculateAqi(Double pm25, Double pm10, Double o3, Double no2, Double so2, Double co) {
+<span class="fc" id="L84">        Integer max = null;</span>
+<span class="fc bfc" id="L85" title="All 2 branches covered.">        if (pm25  != null) max = maxOrSet(max, subIndex(pm25, PM25_BP));</span>
+<span class="fc bfc" id="L86" title="All 2 branches covered.">        if (pm10  != null) max = maxOrSet(max, subIndex(pm10, PM10_BP));</span>
+<span class="pc bpc" id="L87" title="1 of 2 branches missed.">        if (o3    != null) max = maxOrSet(max, subIndex(o3,   O3_BP));</span>
+<span class="pc bpc" id="L88" title="1 of 2 branches missed.">        if (no2   != null) max = maxOrSet(max, subIndex(no2,  NO2_BP));</span>
+<span class="pc bpc" id="L89" title="1 of 2 branches missed.">        if (so2   != null) max = maxOrSet(max, subIndex(so2,  SO2_BP));</span>
+<span class="pc bpc" id="L90" title="1 of 2 branches missed.">        if (co    != null) max = maxOrSet(max, subIndex(co,   CO_BP));</span>
+<span class="fc" id="L91">        return max;</span>
+    }
+
+    /**
+     * Return AQI category label for a given AQI value.
+     */
+    public String categoryLabel(int aqi) {
+<span class="fc bfc" id="L98" title="All 2 branches covered.">        if (aqi &lt;= 50)  return &quot;Good&quot;;</span>
+<span class="fc bfc" id="L99" title="All 2 branches covered.">        if (aqi &lt;= 100) return &quot;Moderate&quot;;</span>
+<span class="fc bfc" id="L100" title="All 2 branches covered.">        if (aqi &lt;= 150) return &quot;Unhealthy for Sensitive Groups&quot;;</span>
+<span class="fc bfc" id="L101" title="All 2 branches covered.">        if (aqi &lt;= 200) return &quot;Unhealthy&quot;;</span>
+<span class="fc bfc" id="L102" title="All 2 branches covered.">        if (aqi &lt;= 300) return &quot;Very Unhealthy&quot;;</span>
+<span class="fc" id="L103">        return &quot;Hazardous&quot;;</span>
+    }
+
+    /**
+     * Return hex color for AQI category.
+     */
+    public String categoryColor(int aqi) {
+<span class="fc bfc" id="L110" title="All 2 branches covered.">        if (aqi &lt;= 50)  return &quot;#00E400&quot;;  // Green</span>
+<span class="pc bpc" id="L111" title="1 of 2 branches missed.">        if (aqi &lt;= 100) return &quot;#FFFF00&quot;;  // Yellow</span>
+<span class="pc bpc" id="L112" title="1 of 2 branches missed.">        if (aqi &lt;= 150) return &quot;#FF7E00&quot;;  // Orange</span>
+<span class="pc bpc" id="L113" title="1 of 2 branches missed.">        if (aqi &lt;= 200) return &quot;#FF0000&quot;;  // Red</span>
+<span class="pc bpc" id="L114" title="1 of 2 branches missed.">        if (aqi &lt;= 300) return &quot;#8F3F97&quot;;  // Purple</span>
+<span class="fc" id="L115">        return &quot;#7E0023&quot;;                  // Maroon</span>
+    }
+
+    /**
+     * Compute sub-index for a single pollutant using linear interpolation.
+     */
+    private int subIndex(double concentration, double[][] breakpoints) {
+<span class="fc bfc" id="L122" title="All 2 branches covered.">        for (double[] bp : breakpoints) {</span>
+<span class="fc" id="L123">            double bpLo = bp[0], bpHi = bp[1];</span>
+<span class="fc" id="L124">            double iLo  = bp[2], iHi  = bp[3];</span>
+<span class="fc bfc" id="L125" title="All 2 branches covered.">            if (concentration &lt;= bpHi) {</span>
+<span class="fc" id="L126">                double index = ((iHi - iLo) / (bpHi - bpLo)) * (concentration - bpLo) + iLo;</span>
+<span class="fc" id="L127">                return (int) Math.round(index);</span>
+            }
+        }
+        // Concentration above top breakpoint — return max index
+<span class="fc" id="L131">        return 500;</span>
+    }
+
+    private Integer maxOrSet(Integer current, int candidate) {
+<span class="fc bfc" id="L135" title="All 2 branches covered.">        return current == null ? candidate : Math.max(current, candidate);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>TrafficController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">uip-backend</a> &gt; <a href="index.source.html" class="el_package">com.uip.backend.traffic.api</a> &gt; <span class="el_source">TrafficController.java</span></div><h1>TrafficController.java</h1><pre class="source lang-java linenums">package com.uip.backend.traffic.api;
+
+import com.uip.backend.traffic.api.dto.TrafficCountDto;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+
+import java.time.Instant;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * S2-08 — Traffic API skeleton.
+ * Returns mock data; full implementation in Sprint 3.
+ */
+@RestController
+@RequestMapping(&quot;/api/v1/traffic&quot;)
+@Tag(name = &quot;Traffic&quot;, description = &quot;Traffic counts and intersection data (Sprint 2 skeleton)&quot;)
+<span class="fc" id="L21">public class TrafficController {</span>
+
+    @GetMapping(&quot;/counts&quot;)
+    @Operation(summary = &quot;Vehicle counts by intersection and time window (mock data)&quot;)
+    @PreAuthorize(&quot;isAuthenticated()&quot;)
+    public ResponseEntity&lt;List&lt;TrafficCountDto&gt;&gt; getCounts(
+            @RequestParam(required = false) String intersection,
+            @RequestParam(required = false) Instant from,
+            @RequestParam(required = false) Instant to) {
+
+        // Sprint 2 skeleton: return mock data
+<span class="nc" id="L32">        List&lt;TrafficCountDto&gt; mock = List.of(</span>
+<span class="nc" id="L33">                TrafficCountDto.builder()</span>
+<span class="nc bnc" id="L34" title="All 2 branches missed.">                        .intersectionId(intersection != null ? intersection : &quot;INT-001&quot;)</span>
+<span class="nc" id="L35">                        .timestamp(Instant.now().minusSeconds(60))</span>
+<span class="nc" id="L36">                        .vehicleCount(120)</span>
+<span class="nc" id="L37">                        .avgSpeedKmh(35.4)</span>
+<span class="nc" id="L38">                        .congestionLevel(&quot;MEDIUM&quot;)</span>
+<span class="nc" id="L39">                        .build(),</span>
+<span class="nc" id="L40">                TrafficCountDto.builder()</span>
+<span class="nc bnc" id="L41" title="All 2 branches missed.">                        .intersectionId(intersection != null ? intersection : &quot;INT-002&quot;)</span>
+<span class="nc" id="L42">                        .timestamp(Instant.now().minusSeconds(120))</span>
+<span class="nc" id="L43">                        .vehicleCount(45)</span>
+<span class="nc" id="L44">                        .avgSpeedKmh(52.1)</span>
+<span class="nc" id="L45">                        .congestionLevel(&quot;LOW&quot;)</span>
+<span class="nc" id="L46">                        .build()</span>
+        );
+<span class="nc" id="L48">        return ResponseEntity.ok(mock);</span>
+    }
+
+    @GetMapping(&quot;/incidents&quot;)
+    @Operation(summary = &quot;Traffic incidents list (mock data)&quot;)
+    @PreAuthorize(&quot;isAuthenticated()&quot;)
+    public ResponseEntity&lt;List&lt;Map&lt;String, Object&gt;&gt;&gt; getIncidents() {
+<span class="nc" id="L55">        return ResponseEntity.ok(List.of(</span>
+<span class="nc" id="L56">                Map.of(</span>
+                        &quot;id&quot;, &quot;INC-001&quot;,
+                        &quot;type&quot;, &quot;ACCIDENT&quot;,
+                        &quot;intersectionId&quot;, &quot;INT-005&quot;,
+                        &quot;severity&quot;, &quot;MEDIUM&quot;,
+                        &quot;status&quot;, &quot;OPEN&quot;,
+<span class="nc" id="L62">                        &quot;occurredAt&quot;, Instant.now().minusSeconds(1800).toString()</span>
+                )
+        ));
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

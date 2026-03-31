@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>EsgFlinkJob.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">uip-flink-jobs</a> &gt; <a href="index.source.html" class="el_package">com.uip.flink.esg</a> &gt; <span class="el_source">EsgFlinkJob.java</span></div><h1>EsgFlinkJob.java</h1><pre class="source lang-java linenums">package com.uip.flink.esg;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.uip.flink.common.NgsiLdDeserializer;
+import com.uip.flink.common.NgsiLdMessage;
+import org.apache.flink.api.common.eventtime.WatermarkStrategy;
+import org.apache.flink.connector.jdbc.JdbcConnectionOptions;
+import org.apache.flink.connector.jdbc.JdbcExecutionOptions;
+import org.apache.flink.connector.jdbc.JdbcSink;
+import org.apache.flink.connector.kafka.source.KafkaSource;
+import org.apache.flink.connector.kafka.source.enumerator.initializer.OffsetsInitializer;
+import org.apache.flink.contrib.streaming.state.EmbeddedRocksDBStateBackend;
+import org.apache.flink.streaming.api.CheckpointingMode;
+import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.apache.flink.streaming.api.functions.sink.SinkFunction;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.time.Duration;
+import java.time.Instant;
+import java.util.Map;
+
+/**
+ * S1-08 — EsgFlinkJob
+ * Consumes NGSI-LD messages from ngsi_ld_esg → writes to esg.clean_metrics
+ */
+<span class="nc" id="L28">public class EsgFlinkJob {</span>
+
+<span class="nc" id="L30">    private static final Logger LOG = LoggerFactory.getLogger(EsgFlinkJob.class);</span>
+
+<span class="nc" id="L32">    private static final String KAFKA_BOOTSTRAP = System.getenv().getOrDefault(&quot;KAFKA_BOOTSTRAP&quot;, &quot;kafka:9092&quot;);</span>
+<span class="nc" id="L33">    private static final String DB_URL = System.getenv().getOrDefault(&quot;DB_URL&quot;,</span>
+            &quot;jdbc:postgresql://timescaledb:5432/uip_smartcity&quot;);
+<span class="nc" id="L35">    private static final String DB_USER = System.getenv().getOrDefault(&quot;DB_USER&quot;, &quot;uip&quot;);</span>
+<span class="nc" id="L36">    private static final String DB_PASSWORD = System.getenv(&quot;DB_PASSWORD&quot;);</span>
+
+<span class="nc" id="L38">    private static final ObjectMapper MAPPER = new ObjectMapper().registerModule(new JavaTimeModule());</span>
+
+    // Known metric types mapped from measurement keys
+<span class="nc" id="L41">    private static final Map&lt;String, String&gt; METRIC_TYPE_MAP = Map.of(</span>
+            &quot;energy_kwh&quot;, &quot;ENERGY&quot;,
+            &quot;water_m3&quot;,   &quot;WATER&quot;,
+            &quot;carbon_kg&quot;,  &quot;CARBON&quot;,
+            &quot;waste_kg&quot;,   &quot;WASTE&quot;
+    );
+
+    public static void main(String[] args) throws Exception {
+<span class="nc" id="L49">        StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();</span>
+
+<span class="nc" id="L51">        env.enableCheckpointing(30_000, CheckpointingMode.EXACTLY_ONCE);</span>
+<span class="nc" id="L52">        env.setStateBackend(new EmbeddedRocksDBStateBackend(true));</span>
+<span class="nc" id="L53">        env.getCheckpointConfig().setCheckpointStorage(&quot;file:///flink/checkpoints&quot;);</span>
+
+<span class="nc" id="L55">        KafkaSource&lt;NgsiLdMessage&gt; source = KafkaSource.&lt;NgsiLdMessage&gt;builder()</span>
+<span class="nc" id="L56">                .setBootstrapServers(KAFKA_BOOTSTRAP)</span>
+<span class="nc" id="L57">                .setTopics(&quot;ngsi_ld_esg&quot;)</span>
+<span class="nc" id="L58">                .setGroupId(&quot;flink-esg-job&quot;)</span>
+<span class="nc" id="L59">                .setStartingOffsets(OffsetsInitializer.latest())</span>
+<span class="nc" id="L60">                .setValueOnlyDeserializer(new NgsiLdDeserializer())</span>
+<span class="nc" id="L61">                .build();</span>
+
+<span class="nc" id="L63">        SinkFunction&lt;Object[]&gt; jdbcSink = JdbcSink.&lt;Object[]&gt;sink(</span>
+                &quot;&quot;&quot;
+                INSERT INTO esg.clean_metrics
+                    (source_id, metric_type, timestamp, value, unit, raw_payload)
+                VALUES (?, ?, ?, ?, ?, ?::jsonb)
+                &quot;&quot;&quot;,
+                (stmt, row) -&gt; {
+<span class="nc" id="L70">                    stmt.setString(1, row[0].toString());</span>
+<span class="nc" id="L71">                    stmt.setString(2, row[1].toString());</span>
+<span class="nc" id="L72">                    stmt.setObject(3, java.sql.Timestamp.from((Instant) row[2]));</span>
+<span class="nc" id="L73">                    stmt.setDouble(4, (Double) row[3]);</span>
+<span class="nc" id="L74">                    stmt.setString(5, row[4].toString());</span>
+<span class="nc" id="L75">                    stmt.setString(6, row[5].toString());</span>
+<span class="nc" id="L76">                },</span>
+<span class="nc" id="L77">                JdbcExecutionOptions.builder()</span>
+<span class="nc" id="L78">                        .withBatchSize(500)</span>
+<span class="nc" id="L79">                        .withBatchIntervalMs(1000)</span>
+<span class="nc" id="L80">                        .withMaxRetries(3)</span>
+<span class="nc" id="L81">                        .build(),</span>
+                new JdbcConnectionOptions.JdbcConnectionOptionsBuilder()
+<span class="nc" id="L83">                        .withUrl(DB_URL)</span>
+<span class="nc" id="L84">                        .withDriverName(&quot;org.postgresql.Driver&quot;)</span>
+<span class="nc" id="L85">                        .withUsername(DB_USER)</span>
+<span class="nc" id="L86">                        .withPassword(DB_PASSWORD)</span>
+<span class="nc" id="L87">                        .build()</span>
+        );
+
+<span class="nc" id="L90">        env.fromSource(</span>
+                source,
+<span class="nc" id="L92">                WatermarkStrategy.&lt;NgsiLdMessage&gt;forBoundedOutOfOrderness(Duration.ofSeconds(10))</span>
+<span class="nc" id="L93">                        .withTimestampAssigner((event, ts) -&gt; event.getObservedAtMillis()),</span>
+                &quot;ngsi_ld_esg Source&quot;
+        )
+<span class="nc bnc" id="L96" title="All 4 branches missed.">        .filter(msg -&gt; msg != null &amp;&amp; msg.getDeviceIdValue() != null)</span>
+<span class="nc" id="L97">        .flatMap((NgsiLdMessage msg, org.apache.flink.util.Collector&lt;Object[]&gt; out) -&gt; {</span>
+            // Emit one row per measurement key
+<span class="nc" id="L99">            String rawJson = MAPPER.writeValueAsString(msg);</span>
+<span class="nc" id="L100">            Instant ts = Instant.ofEpochMilli(msg.getObservedAtMillis());</span>
+<span class="nc" id="L101">            msg.getMeasurementValues().forEach((key, value) -&gt; {</span>
+<span class="nc" id="L102">                String metricType = METRIC_TYPE_MAP.getOrDefault(key, key.toUpperCase());</span>
+<span class="nc" id="L103">                String unit = getUnit(key);</span>
+<span class="nc" id="L104">                out.collect(new Object[]{msg.getDeviceIdValue(), metricType, ts, value, unit, rawJson});</span>
+<span class="nc" id="L105">            });</span>
+<span class="nc" id="L106">        })</span>
+<span class="nc" id="L107">        .returns(Object[].class)</span>
+<span class="nc" id="L108">        .addSink(jdbcSink)</span>
+<span class="nc" id="L109">        .name(&quot;TimescaleDB esg.clean_metrics Sink&quot;);</span>
+
+<span class="nc" id="L111">        LOG.info(&quot;Starting EsgFlinkJob — Kafka={}&quot;, KAFKA_BOOTSTRAP);</span>
+<span class="nc" id="L112">        env.execute(&quot;EsgFlinkJob&quot;);</span>
+<span class="nc" id="L113">    }</span>
+
+    private static String getUnit(String key) {
+<span class="nc bnc" id="L116" title="All 5 branches missed.">        return switch (key) {</span>
+<span class="nc" id="L117">            case &quot;energy_kwh&quot; -&gt; &quot;kWh&quot;;</span>
+<span class="nc" id="L118">            case &quot;water_m3&quot;   -&gt; &quot;m3&quot;;</span>
+<span class="nc" id="L119">            case &quot;carbon_kg&quot;  -&gt; &quot;kg&quot;;</span>
+<span class="nc" id="L120">            case &quot;waste_kg&quot;   -&gt; &quot;kg&quot;;</span>
+<span class="nc" id="L121">            default           -&gt; &quot;&quot;;</span>
+        };
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>

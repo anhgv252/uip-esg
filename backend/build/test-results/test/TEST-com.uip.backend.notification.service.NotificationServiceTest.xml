@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="NotificationService" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-03-31T16:47:57" hostname="Macbook-anhgv.local" time="0.334">
+  <properties/>
+  <testcase name="onMessage: valid JSON is parsed and broadcast" classname="com.uip.backend.notification.service.NotificationServiceTest" time="0.311"/>
+  <testcase name="publishAlert: serializes payload and sends to Redis channel" classname="com.uip.backend.notification.service.NotificationServiceTest" time="0.004"/>
+  <testcase name="publishAlert: string payload is also published" classname="com.uip.backend.notification.service.NotificationServiceTest" time="0.003"/>
+  <testcase name="onMessage: malformed JSON is broadcast as raw string" classname="com.uip.backend.notification.service.NotificationServiceTest" time="0.005"/>
+  <testcase name="subscribe: registers NotificationService as listener on ALERT_CHANNEL" classname="com.uip.backend.notification.service.NotificationServiceTest" time="0.002"/>
+  <system-out><![CDATA[2026-03-31T23:47:58.160+07:00  INFO 30107 --- [uip-backend] [    Test worker] c.u.b.n.service.NotificationService      : Subscribed to Redis channel: uip:alerts
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

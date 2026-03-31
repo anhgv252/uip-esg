@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>EnvironmentController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">uip-backend</a> &gt; <a href="index.source.html" class="el_package">com.uip.backend.environment.api</a> &gt; <span class="el_source">EnvironmentController.java</span></div><h1>EnvironmentController.java</h1><pre class="source lang-java linenums">package com.uip.backend.environment.api;
+
+import com.uip.backend.environment.api.dto.AqiResponseDto;
+import com.uip.backend.environment.api.dto.SensorDto;
+import com.uip.backend.environment.api.dto.SensorReadingDto;
+import com.uip.backend.environment.service.EnvironmentService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.List;
+
+@RestController
+@RequestMapping(&quot;/api/v1/environment&quot;)
+<span class="fc" id="L21">@RequiredArgsConstructor</span>
+@Tag(name = &quot;Environment&quot;, description = &quot;Sensor readings, AQI data and environmental metrics&quot;)
+public class EnvironmentController {
+
+    private final EnvironmentService environmentService;
+
+    @GetMapping(&quot;/sensors&quot;)
+    @Operation(summary = &quot;List all active sensors with online/offline status&quot;)
+    @PreAuthorize(&quot;isAuthenticated()&quot;)
+    public ResponseEntity&lt;List&lt;SensorDto&gt;&gt; listSensors() {
+<span class="nc" id="L31">        return ResponseEntity.ok(environmentService.listSensors());</span>
+    }
+
+    @GetMapping(&quot;/sensors/{sensorId}/readings&quot;)
+    @Operation(summary = &quot;Time-series readings for a sensor&quot;)
+    @PreAuthorize(&quot;isAuthenticated()&quot;)
+    public ResponseEntity&lt;List&lt;SensorReadingDto&gt;&gt; getReadings(
+            @PathVariable String sensorId,
+            @RequestParam(required = false) Instant from,
+            @RequestParam(required = false) Instant to,
+            @RequestParam(defaultValue = &quot;100&quot;) int limit) {
+
+<span class="nc bnc" id="L43" title="All 2 branches missed.">        Instant effectiveTo   = to   != null ? to   : Instant.now();</span>
+<span class="nc bnc" id="L44" title="All 2 branches missed.">        Instant effectiveFrom = from != null ? from : effectiveTo.minus(24, ChronoUnit.HOURS);</span>
+<span class="nc" id="L45">        return ResponseEntity.ok(environmentService.getReadings(sensorId, effectiveFrom, effectiveTo, limit));</span>
+    }
+
+    @GetMapping(&quot;/aqi/current&quot;)
+    @Operation(summary = &quot;Current AQI per sensor (latest reading)&quot;)
+    @PreAuthorize(&quot;isAuthenticated()&quot;)
+    public ResponseEntity&lt;List&lt;AqiResponseDto&gt;&gt; getCurrentAqi() {
+<span class="nc" id="L52">        return ResponseEntity.ok(environmentService.getCurrentAqi());</span>
+    }
+
+    @GetMapping(&quot;/aqi/history&quot;)
+    @Operation(summary = &quot;AQI history — optionally filtered by district and period (24h/7d/30d)&quot;)
+    @PreAuthorize(&quot;isAuthenticated()&quot;)
+    public ResponseEntity&lt;List&lt;AqiResponseDto&gt;&gt; getAqiHistory(
+            @RequestParam(required = false) String district,
+            @RequestParam(defaultValue = &quot;24h&quot;) String period) {
+<span class="nc" id="L61">        return ResponseEntity.ok(environmentService.getAqiHistory(district, period));</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

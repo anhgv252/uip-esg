@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AlertEngine.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">uip-backend</a> &gt; <a href="index.source.html" class="el_package">com.uip.backend.alert.service</a> &gt; <span class="el_source">AlertEngine.java</span></div><h1>AlertEngine.java</h1><pre class="source lang-java linenums">package com.uip.backend.alert.service;
+
+import com.uip.backend.alert.domain.AlertEvent;
+import com.uip.backend.alert.domain.AlertRule;
+import com.uip.backend.alert.repository.AlertEventRepository;
+import com.uip.backend.alert.repository.AlertRuleRepository;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.Duration;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.List;
+
+/**
+ * Evaluates sensor readings against alert rules.
+ * Deduplicates via Redis key with TTL = rule.cooldownMinutes.
+ */
+@Service
+<span class="fc" id="L23">@RequiredArgsConstructor</span>
+<span class="fc" id="L24">@Slf4j</span>
+public class AlertEngine {
+
+    private final AlertRuleRepository  alertRuleRepository;
+    private final AlertEventRepository alertEventRepository;
+    private final StringRedisTemplate  redisTemplate;
+
+    @Transactional
+    public void evaluate(String module, String sensorId, String measureType, double value) {
+<span class="fc" id="L33">        List&lt;AlertRule&gt; rules = alertRuleRepository.findByModuleAndActiveTrue(module);</span>
+
+<span class="fc bfc" id="L35" title="All 2 branches covered.">        for (AlertRule rule : rules) {</span>
+<span class="fc bfc" id="L36" title="All 2 branches covered.">            if (!rule.getMeasureType().equalsIgnoreCase(measureType)) continue;</span>
+<span class="fc bfc" id="L37" title="All 2 branches covered.">            if (!matches(rule.getOperator(), value, rule.getThreshold())) continue;</span>
+
+<span class="fc" id="L39">            String dedupKey = &quot;alert:dedup:%s:%s:%s&quot;.formatted(sensorId, measureType, rule.getId());</span>
+<span class="fc" id="L40">            Boolean isNew = redisTemplate.opsForValue()</span>
+<span class="fc" id="L41">                    .setIfAbsent(dedupKey, &quot;1&quot;, Duration.ofMinutes(rule.getCooldownMinutes()));</span>
+
+<span class="fc bfc" id="L43" title="All 2 branches covered.">            if (Boolean.TRUE.equals(isNew)) {</span>
+<span class="fc" id="L44">                AlertEvent event = new AlertEvent();</span>
+<span class="fc" id="L45">                event.setRuleId(rule.getId());</span>
+<span class="fc" id="L46">                event.setSensorId(sensorId);</span>
+<span class="fc" id="L47">                event.setModule(module);</span>
+<span class="fc" id="L48">                event.setMeasureType(measureType);</span>
+<span class="fc" id="L49">                event.setValue(value);</span>
+<span class="fc" id="L50">                event.setThreshold(rule.getThreshold());</span>
+<span class="fc" id="L51">                event.setSeverity(rule.getSeverity());</span>
+<span class="fc" id="L52">                event.setDetectedAt(Instant.now());</span>
+<span class="fc" id="L53">                alertEventRepository.save(event);</span>
+<span class="fc" id="L54">                log.info(&quot;Alert created: sensor={} measure={} value={} severity={}&quot;,</span>
+<span class="fc" id="L55">                        sensorId, measureType, value, rule.getSeverity());</span>
+            }
+<span class="fc" id="L57">        }</span>
+<span class="fc" id="L58">    }</span>
+
+    private boolean matches(String operator, double value, double threshold) {
+<span class="pc bpc" id="L61" title="4 of 6 branches missed.">        return switch (operator) {</span>
+<span class="fc bfc" id="L62" title="All 2 branches covered.">            case &quot;&gt;&quot;  -&gt; value &gt; threshold;</span>
+<span class="pc bpc" id="L63" title="1 of 2 branches missed.">            case &quot;&gt;=&quot; -&gt; value &gt;= threshold;</span>
+<span class="nc bnc" id="L64" title="All 2 branches missed.">            case &quot;&lt;&quot;  -&gt; value &lt; threshold;</span>
+<span class="nc bnc" id="L65" title="All 2 branches missed.">            case &quot;&lt;=&quot; -&gt; value &lt;= threshold;</span>
+<span class="nc bnc" id="L66" title="All 2 branches missed.">            case &quot;==&quot; -&gt; Double.compare(value, threshold) == 0;</span>
+<span class="nc" id="L67">            default   -&gt; false;</span>
+        };
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

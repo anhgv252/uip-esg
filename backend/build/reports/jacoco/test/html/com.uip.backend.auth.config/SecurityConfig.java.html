@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>SecurityConfig.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">uip-backend</a> &gt; <a href="index.source.html" class="el_package">com.uip.backend.auth.config</a> &gt; <span class="el_source">SecurityConfig.java</span></div><h1>SecurityConfig.java</h1><pre class="source lang-java linenums">package com.uip.backend.auth.config;
+
+import com.uip.backend.auth.service.UipUserDetailsService;
+import io.github.bucket4j.Bandwidth;
+import io.github.bucket4j.Bucket;
+import io.github.bucket4j.Refill;
+import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.web.AuthenticationEntryPoint;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.HttpStatusEntryPoint;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
+import java.time.Duration;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
+@Configuration
+@EnableWebSecurity
+@EnableMethodSecurity
+<span class="fc" id="L38">@RequiredArgsConstructor</span>
+public class SecurityConfig {
+
+    private final JwtAuthenticationFilter jwtAuthFilter;
+    private final UipUserDetailsService userDetailsService;
+
+    // Per-IP rate limit bucket for login: 5 attempts per minute
+<span class="fc" id="L45">    private final Map&lt;String, Bucket&gt; loginBuckets = new ConcurrentHashMap&lt;&gt;();</span>
+
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+<span class="fc" id="L49">        http</span>
+<span class="fc" id="L50">            .csrf(AbstractHttpConfigurer::disable)</span>
+<span class="fc" id="L51">            .cors(cors -&gt; cors.configurationSource(corsConfigurationSource()))</span>
+<span class="fc" id="L52">            .sessionManagement(session -&gt; session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))</span>
+<span class="fc" id="L53">            .headers(headers -&gt; headers</span>
+<span class="fc" id="L54">                .frameOptions(frame -&gt; frame.deny())</span>
+<span class="fc" id="L55">                .contentTypeOptions(content -&gt; {})</span>
+<span class="fc" id="L56">                .httpStrictTransportSecurity(hsts -&gt; hsts.includeSubDomains(true).maxAgeInSeconds(31536000))</span>
+            )
+<span class="fc" id="L58">            .authorizeHttpRequests(auth -&gt; auth</span>
+<span class="fc" id="L59">                .requestMatchers(&quot;/api/v1/health&quot;, &quot;/api/v1/auth/**&quot;).permitAll()</span>
+<span class="fc" id="L60">                .requestMatchers(&quot;/api-docs/**&quot;, &quot;/swagger-ui/**&quot;, &quot;/swagger-ui.html&quot;).permitAll()</span>
+<span class="fc" id="L61">                .requestMatchers(&quot;/actuator/health&quot;).permitAll()</span>
+<span class="fc" id="L62">                .requestMatchers(&quot;/api/v1/admin/**&quot;).hasRole(&quot;ADMIN&quot;)</span>
+<span class="fc" id="L63">                .requestMatchers(HttpMethod.GET, &quot;/api/v1/notifications/stream&quot;).authenticated()</span>
+<span class="fc" id="L64">                .anyRequest().authenticated()</span>
+            )
+<span class="fc" id="L66">            .exceptionHandling(ex -&gt; ex</span>
+<span class="fc" id="L67">                .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED))</span>
+            )
+<span class="fc" id="L69">            .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);</span>
+
+<span class="fc" id="L71">        return http.build();</span>
+    }
+
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+<span class="fc" id="L76">        CorsConfiguration config = new CorsConfiguration();</span>
+        // Allow only the frontend origin — set via env-var in production
+<span class="fc" id="L78">        String allowedOrigin = System.getenv().getOrDefault(&quot;CORS_ALLOWED_ORIGIN&quot;, &quot;&quot;);</span>
+<span class="pc bpc" id="L79" title="1 of 2 branches missed.">        List&lt;String&gt; origins = allowedOrigin.isBlank()</span>
+<span class="fc" id="L80">            ? List.of(&quot;http://localhost:3000&quot;, &quot;http://localhost:5173&quot;)</span>
+<span class="pc" id="L81">            : List.of(allowedOrigin);</span>
+<span class="fc" id="L82">        config.setAllowedOrigins(origins);</span>
+<span class="fc" id="L83">        config.setAllowedMethods(List.of(&quot;GET&quot;, &quot;POST&quot;, &quot;PUT&quot;, &quot;PATCH&quot;, &quot;DELETE&quot;, &quot;OPTIONS&quot;));</span>
+<span class="fc" id="L84">        config.setAllowedHeaders(List.of(&quot;Authorization&quot;, &quot;Content-Type&quot;, &quot;X-Requested-With&quot;));</span>
+<span class="fc" id="L85">        config.setAllowCredentials(true);</span>
+<span class="fc" id="L86">        config.setMaxAge(3600L);</span>
+<span class="fc" id="L87">        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();</span>
+<span class="fc" id="L88">        source.registerCorsConfiguration(&quot;/api/**&quot;, config);</span>
+<span class="fc" id="L89">        return source;</span>
+    }
+
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+<span class="fc" id="L94">        return new BCryptPasswordEncoder(12);</span>
+    }
+
+    @Bean
+    public DaoAuthenticationProvider authenticationProvider() {
+<span class="fc" id="L99">        DaoAuthenticationProvider provider = new DaoAuthenticationProvider();</span>
+<span class="fc" id="L100">        provider.setUserDetailsService(userDetailsService);</span>
+<span class="fc" id="L101">        provider.setPasswordEncoder(passwordEncoder());</span>
+<span class="fc" id="L102">        return provider;</span>
+    }
+
+    @Bean
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
+<span class="fc" id="L107">        return config.getAuthenticationManager();</span>
+    }
+
+    /**
+     * Returns a rate-limit bucket for login attempts per IP (5 / minute).
+     */
+    public Bucket loginBucketFor(String ip) {
+<span class="nc" id="L114">        return loginBuckets.computeIfAbsent(ip, key -&gt;</span>
+<span class="nc" id="L115">            Bucket.builder()</span>
+<span class="nc" id="L116">                .addLimit(Bandwidth.classic(5, Refill.intervally(5, Duration.ofMinutes(1))))</span>
+<span class="nc" id="L117">                .build()</span>
+        );
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

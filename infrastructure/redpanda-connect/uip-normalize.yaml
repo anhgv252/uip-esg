@@ -1,0 +1,112 @@
+# UIP Smart City — Redpanda Connect Pipeline
+# Routes raw_telemetry → per-module NGSI-LD topics
+# Handles: NGSI-LD normalisation, module routing, DLQ on failure
+
+input:
+  kafka:
+    addresses:
+      - kafka:9092
+    topics:
+      - raw_telemetry
+    consumer_group: redpanda-connect-normalize
+    client_id: uip-redpanda-connect
+    start_from_oldest: false
+    batching:
+      count: 100
+      period: 500ms
+
+pipeline:
+  processors:
+    # ── 1. Parse JSON payload ──────────────────────────────────────────────
+    - bloblang: |
+        root = this
+        root._raw_key = @kafka_key
+        root._received_at = now()
+
+    # ── 2. Detect sensor type from payload fields ──────────────────────────
+    - bloblang: |
+        root = this
+        # Heuristic: presence of aqi/pm25 → environment
+        # presence of energy_kwh/water_m3 → esg
+        # presence of vehicle_count/speed → traffic
+        root._sensor_type = if this.values.exists("aqi") || this.values.exists("pm25") {
+          "environment"
+        } else if this.values.exists("energy_kwh") || this.values.exists("water_m3") || this.values.exists("carbon_kg") {
+          "esg"
+        } else if this.values.exists("vehicle_count") || this.values.exists("speed_kmh") {
+          "traffic"
+        } else {
+          "unknown"
+        }
+
+    # ── 3. Normalise to NGSI-LD envelope ──────────────────────────────────
+    - bloblang: |
+        let device_id = _raw_key.string()
+        let ts_ms = if this.ts != null { this.ts } else { (_received_at.ts_unix_milli()) }
+
+        root = {
+          "@context": ["https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld"],
+          "id": "urn:ngsi-ld:Device:" + $device_id,
+          "type": "Device",
+          "deviceId": { "type": "Property", "value": $device_id },
+          "observedAt": { "type": "Property", "value": $ts_ms },
+          "sensorType": { "type": "Property", "value": this._sensor_type },
+          "measurements": { "type": "Property", "value": this.values },
+          "_meta": {
+            "source": "emqx-mqtt",
+            "receivedAt": this._received_at,
+            "sensorType": this._sensor_type
+          }
+        }
+
+# ── 4. Route to per-module topic (switch output) ──────────────────────────
+output:
+  switch:
+    cases:
+      - check: this._meta.sensorType == "environment"
+        output:
+          kafka:
+            addresses:
+              - kafka:9092
+            topic: ngsi_ld_environment
+            key: ${! json("id") }
+            max_in_flight: 20
+            batching:
+              count: 100
+              period: 500ms
+
+      - check: this._meta.sensorType == "esg"
+        output:
+          kafka:
+            addresses:
+              - kafka:9092
+            topic: ngsi_ld_esg
+            key: ${! json("id") }
+            max_in_flight: 20
+            batching:
+              count: 100
+              period: 500ms
+
+      - check: this._meta.sensorType == "traffic"
+        output:
+          kafka:
+            addresses:
+              - kafka:9092
+            topic: ngsi_ld_traffic
+            key: ${! json("id") }
+            max_in_flight: 20
+            batching:
+              count: 100
+              period: 500ms
+
+      # DLQ — unknown or processing error
+      - output:
+          kafka:
+            addresses:
+              - kafka:9092
+            topic: esg_dlq
+            key: ${! json("id") }
+
+logger:
+  level: INFO
+  format: json

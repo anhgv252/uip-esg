@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AuthController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">uip-backend</a> &gt; <a href="index.source.html" class="el_package">com.uip.backend.auth.api</a> &gt; <span class="el_source">AuthController.java</span></div><h1>AuthController.java</h1><pre class="source lang-java linenums">package com.uip.backend.auth.api;
+
+import com.uip.backend.auth.api.dto.AuthResponse;
+import com.uip.backend.auth.api.dto.LoginRequest;
+import com.uip.backend.auth.api.dto.RefreshRequest;
+import com.uip.backend.auth.service.AuthService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping(&quot;/api/v1/auth&quot;)
+<span class="fc" id="L18">@RequiredArgsConstructor</span>
+@Tag(name = &quot;Authentication&quot;, description = &quot;JWT auth endpoints&quot;)
+public class AuthController {
+
+    private final AuthService authService;
+
+    @PostMapping(&quot;/login&quot;)
+    @Operation(summary = &quot;Login and receive JWT tokens&quot;)
+    public ResponseEntity&lt;AuthResponse&gt; login(
+            @Valid @RequestBody LoginRequest request,
+            HttpServletResponse response
+    ) {
+<span class="fc" id="L30">        AuthResponse authResponse = authService.login(request);</span>
+        
+        // Set access token as httpOnly cookie for SSE authentication
+<span class="fc" id="L33">        Cookie accessTokenCookie = new Cookie(&quot;access_token&quot;, authResponse.accessToken());</span>
+<span class="fc" id="L34">        accessTokenCookie.setHttpOnly(true);</span>
+<span class="fc" id="L35">        accessTokenCookie.setSecure(false); // Set to true in production with HTTPS</span>
+<span class="fc" id="L36">        accessTokenCookie.setPath(&quot;/&quot;);</span>
+<span class="fc" id="L37">        accessTokenCookie.setMaxAge((int) authResponse.expiresIn());</span>
+<span class="fc" id="L38">        response.addCookie(accessTokenCookie);</span>
+        
+<span class="fc" id="L40">        return ResponseEntity.ok(authResponse);</span>
+    }
+
+    @PostMapping(&quot;/refresh&quot;)
+    @Operation(summary = &quot;Refresh access token using refresh token&quot;)
+    public ResponseEntity&lt;AuthResponse&gt; refresh(
+            @Valid @RequestBody RefreshRequest request,
+            HttpServletResponse response
+    ) {
+<span class="nc" id="L49">        AuthResponse authResponse = authService.refresh(request.refreshToken());</span>
+        
+        // Update access token cookie on refresh
+<span class="nc" id="L52">        Cookie accessTokenCookie = new Cookie(&quot;access_token&quot;, authResponse.accessToken());</span>
+<span class="nc" id="L53">        accessTokenCookie.setHttpOnly(true);</span>
+<span class="nc" id="L54">        accessTokenCookie.setSecure(false); // Set to true in production with HTTPS</span>
+<span class="nc" id="L55">        accessTokenCookie.setPath(&quot;/&quot;);</span>
+<span class="nc" id="L56">        accessTokenCookie.setMaxAge((int) authResponse.expiresIn());</span>
+<span class="nc" id="L57">        response.addCookie(accessTokenCookie);</span>
+        
+<span class="nc" id="L59">        return ResponseEntity.ok(authResponse);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

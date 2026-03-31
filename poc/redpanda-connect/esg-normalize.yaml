@@ -1,0 +1,95 @@
+# ─────────────────────────────────────────────────────────────────
+#  Redpanda Connect  •  ESG Normalisation Pipeline
+#
+#  Redpanda Connect (fork of Benthos) là một ETL engine thuần tuý,
+#  hoàn toàn độc lập với Redpanda broker.
+#  Ở đây nó kết nối với Apache Kafka (bitnami/kafka:3.7) tại kafka:9092
+#  thông qua giao thức Kafka tiêu chuẩn.
+#
+#  Flow:
+#   raw_telemetry (Kafka)
+#     → parse vendor-specific JSON payload
+#     → map fields to NGSI-LD-inspired canonical schema
+#     → ngsi_ld_telemetry (Kafka)
+#
+#  Supports two raw payload formats:
+#   Format A (IoT Gateway): deviceId, siteCode, buildingCode,
+#             floorCode, zoneCode, ts, type, v, u
+#   Format B (BMS/legacy):  device_id, site, building,
+#             floor, zone, timestamp, measurement, value, unit
+# ─────────────────────────────────────────────────────────────────
+
+input:
+  kafka:
+    addresses: ["kafka:9092"]
+    topics: ["raw_telemetry"]
+    consumer_group: redpanda-connect-esg-normalizer
+    start_from_oldest: true
+    auto_replay_nacks: true
+
+pipeline:
+  threads: 4
+  processors:
+    # ── Step 1+2: Parse JSON and map vendor fields → NGSI-LD schema ──
+    - bloblang: |
+        let vendor_id   = this.deviceId     | this.device_id  | null
+        let vendor_site = this.siteCode      | this.site       | null
+        let vendor_bldg = this.buildingCode  | this.building   | null
+        let vendor_flr  = this.floorCode     | this.floor      | null
+        let vendor_zone = this.zoneCode      | this.zone       | null
+        let vendor_ts   = this.ts            | this.timestamp  | null
+        let vendor_type = this.type          | this.measurement| null
+        let vendor_val  = this.v             | this.value      | null
+        let vendor_unit = this.u             | this.unit       | null
+
+        root = {
+          "meter_id":        $vendor_id,
+          "site_id":         $vendor_site,
+          "building_id":     $vendor_bldg,
+          "floor_id":        $vendor_flr,
+          "zone_id":         $vendor_zone,
+          "event_timestamp": $vendor_ts,
+          "measure_type":    $vendor_type,
+          "raw_value":       if $vendor_val != null { $vendor_val.string() } else { null },
+          "unit":            $vendor_unit,
+          "source_id":       metadata("kafka_topic") + "::" + metadata("kafka_partition").string(),
+          "normalized_at":   now()
+        }
+
+    # ── Step 3: Route completely broken messages to error stream ──
+    - bloblang: |
+        meta set_error_routing = if (
+            (this.meter_id        == null || this.meter_id        == "") &&
+            (this.raw_value       == null) &&
+            (this.event_timestamp == null || this.event_timestamp == "")
+        ) { "true" } else { "false" }
+
+# ── Output routing ───────────────────────────────────────────────
+output:
+  fallback:
+    - switch:
+        cases:
+          - check: 'meta("set_error_routing") == "true"'
+            output:
+              kafka:
+                addresses: ["kafka:9092"]
+                topic: esg_error_stream
+                compression: none
+                max_in_flight: 64
+
+          - output:
+              kafka:
+                addresses: ["kafka:9092"]
+                topic: ngsi_ld_telemetry
+                key: '${! json("meter_id") }'
+                compression: none
+                max_in_flight: 64
+
+    - kafka:
+        addresses: ["kafka:9092"]
+        topic: esg_error_stream
+        compression: none
+
+logger:
+  level: INFO
+  add_timestamp: true

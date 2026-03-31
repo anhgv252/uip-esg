@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AlertRule.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">uip-flink-jobs</a> &gt; <a href="index.source.html" class="el_package">com.uip.flink.alert</a> &gt; <span class="el_source">AlertRule.java</span></div><h1>AlertRule.java</h1><pre class="source lang-java linenums">package com.uip.flink.alert;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.io.Serializable;
+
+<span class="nc bnc" id="L9" title="All 32 branches missed.">@Data</span>
+<span class="nc" id="L10">@NoArgsConstructor</span>
+<span class="fc" id="L11">@AllArgsConstructor</span>
+public class AlertRule implements Serializable {
+<span class="nc" id="L13">    private String measureType;</span>
+<span class="nc" id="L14">    private String operator;    // &gt;, &gt;=, &lt;, &lt;=, ==</span>
+<span class="fc" id="L15">    private double threshold;</span>
+<span class="fc" id="L16">    private String severity;</span>
+
+    public boolean matches(String measureType, double value) {
+<span class="fc bfc" id="L19" title="All 2 branches covered.">        if (!this.measureType.equalsIgnoreCase(measureType)) return false;</span>
+<span class="pc bpc" id="L20" title="1 of 6 branches missed.">        return switch (operator) {</span>
+<span class="fc bfc" id="L21" title="All 2 branches covered.">            case &quot;&gt;&quot;  -&gt; value &gt; threshold;</span>
+<span class="fc bfc" id="L22" title="All 2 branches covered.">            case &quot;&gt;=&quot; -&gt; value &gt;= threshold;</span>
+<span class="pc bpc" id="L23" title="1 of 2 branches missed.">            case &quot;&lt;&quot;  -&gt; value &lt; threshold;</span>
+<span class="pc bpc" id="L24" title="1 of 2 branches missed.">            case &quot;&lt;=&quot; -&gt; value &lt;= threshold;</span>
+<span class="fc bfc" id="L25" title="All 2 branches covered.">            case &quot;==&quot; -&gt; Double.compare(value, threshold) == 0;</span>
+<span class="nc" id="L26">            default   -&gt; false;</span>
+        };
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.11.202310140853</span></div></body></html>
