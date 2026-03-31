@@ -1,0 +1,43 @@
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Env files
+.env
+.env.*
+!.env.example
+
+# Backend (Gradle / Java)
+backend/.gradle/
+backend/build/
+backend/out/
+backend/*.iml
+*.jar
+*.war
+
+# Flink jobs (Maven)
+flink-jobs/target/
+flink-jobs/.mvn/wrapper/maven-wrapper.jar
+
+# Frontend (Node / Vite)
+frontend/node_modules/
+frontend/dist/
+frontend/coverage/
+frontend/.vite/
+frontend/.cache/
+frontend/targeted-jest-report.json
+
+# Python caches (poc scripts)
+__pycache__/
+*.pyc
+
+# Temporary files
+*.tmp
+*.swp
