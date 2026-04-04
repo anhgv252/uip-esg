@@ -107,8 +107,12 @@ Kết quả POC (100K messages, 23 integration tests pass) được lưu trữ t
 │  └─────────────┘                               │                      │
 │                                                ▼                      │
 │  ┌─────────────────────────────────────────────────────────────────┐  │
-│  │  Apache Kafka 3.7 KRaft (4 topics × 8 partitions)              │  │
-│  │  raw_telemetry | ngsi_ld_{module} | alert_events | esg_dlq     │  │
+│  │  Apache Kafka 3.7 KRaft                                        │  │
+│  │  UIP.iot.sensor.reading.v1          (raw → Redpanda Connect)   │  │
+│  │  UIP.environment.aqi.threshold-exceeded.v1  (Flink → alert)   │  │
+│  │  UIP.flink.alert.detected.v1        (Flink → backend)          │  │
+│  │  UIP.esg.report.generated.v1        (async report done)        │  │
+│  │  uip.dlq.v1                         (dead letter queue)        │  │
 │  └──────────────────────────┬──────────────────────────────────────┘  │
 │                             │                                          │
 │  ┌──────────────────────────▼──────────────────────────────────────┐  │
@@ -164,24 +168,45 @@ Kết quả POC (100K messages, 23 integration tests pass) được lưu trữ t
 └────────────────────────────────────────────────────────────────────────┘
 ```
 
-### 3.1 Backend Structure (Spring Boot Modular Monolith)
+### 3.1 Module Boundary Rules (Phase 1 — enforced)
+
+Mỗi package = 1 bounded context. Quy tắc bắt buộc:
+
+1. **No cross-module imports** — module `alert` không được import class từ `auth`, `citizen`, v.v.
+2. **Giao tiếp sync** — chỉ qua Port Interface (Java interface trong `common`) hoặc REST API contract
+3. **Giao tiếp async** — chỉ qua Kafka topic theo naming convention `UIP.{module}.{entity}.{event-type}.v{n}`
+4. **No cross-module DB query** — module không được query schema của module khác; dùng event hoặc API
+5. **acknowledgedBy, assignedTo, v.v.** — lưu username String, không lưu User entity UUID (tránh coupling với auth)
+
+> Danh sách topics và biến môi trường được quản lý tập trung tại:
+> - `docs/deployment/kafka-topic-registry.xlsx` — topic registry (producer/consumer/class/groupId)
+> - `docs/deployment/environment-variables.xlsx` — env vars per module (Backend/Frontend/Flink)
+
+### 3.2 Backend Structure (Spring Boot Modular Monolith)
 
 ```
 backend/
-├── build.gradle (hoặc pom.xml)
-├── src/main/java/com/uip/
+├── build.gradle
+├── src/main/java/com/uip/backend/
 │   ├── UipApplication.java
-│   ├── common/          # shared: auth, pagination, error handling
-│   ├── environment/     # Environment module
-│   ├── esg/             # ESG module
-│   ├── traffic/         # Traffic module
-│   ├── alert/           # Alert engine
-│   ├── citizen/         # Citizen portal
-│   ├── workflow/        # AI workflow engine
-│   └── admin/           # Admin panel
+│   ├── common/          # shared: exception, pagination, response wrapper
+│   ├── auth/            # JWT auth, RBAC, user management
+│   ├── environment/     # Environment module (sensors, AQI)
+│   ├── esg/             # ESG module (energy/water/carbon, reports)
+│   ├── traffic/         # Traffic module (counts, incidents)
+│   ├── alert/           # Alert engine + rules + Kafka consumer
+│   │   ├── domain/      # AlertEvent, AlertRule entities
+│   │   ├── api/         # REST controllers + DTOs
+│   │   ├── service/     # AlertService, AlertEngine
+│   │   ├── repository/  # AlertEventRepository, AlertRuleRepository
+│   │   └── kafka/       # AlertEventKafkaConsumer
+│   ├── notification/    # SSE emitter, Redis pub/sub subscriber
+│   ├── citizen/         # Citizen portal accounts, households, invoices
+│   ├── workflow/        # Camunda 7 + AI workflow engine
+│   └── admin/           # Admin panel APIs
 ```
 
-### 3.2 Tech Stack
+### 3.3 Tech Stack
 
 | Layer | Technology | Version |
 |---|---|---|

@@ -98,6 +98,34 @@ public class EnvironmentService {
 
 ## Kafka Patterns for Sensor Streams
 
+### Topic Naming Convention — BẮT BUỘC từ Phase 1
+
+```
+UIP.{source-module}.{entity}.{event-type}.v{n}
+
+Ví dụ:
+  UIP.iot.sensor.reading.v1                    ← sensor gửi reading
+  UIP.environment.aqi.threshold-exceeded.v1   ← environment module phát hiện ngưỡng
+  UIP.flink.alert.detected.v1                 ← Flink job output alert
+  UIP.esg.report.generated.v1                 ← ESG report hoàn thành
+```
+
+**Quy tắc cứng:**
+- KHÔNG dùng tên ngắn kiểu `alert_events`, `sensor_data` — phải theo convention
+- Topic name là constant trong code (`public static final String TOPIC = "UIP...."`)
+- Không hardcode string literal trực tiếp trong `@KafkaListener` — dùng constant
+- Sau khi thêm topic: **cập nhật `docs/deployment/kafka-topic-registry.xlsx`**
+
+```java
+// ✅ ĐÚNG — topic là constant, không hardcode string
+public static final String TOPIC = "UIP.flink.alert.detected.v1";
+
+@KafkaListener(topics = AlertEventKafkaConsumer.TOPIC, groupId = "uip-backend-alerts", ...)
+
+// ❌ SAI — string literal trực tiếp
+@KafkaListener(topics = "alert_events", ...)
+```
+
 ### Producer
 ```java
 @Component
@@ -339,12 +367,273 @@ public class EsgMetricAggregationService {
 }
 ```
 
+## Module Boundary Rules (Anti-Coupling)
+
+**Nguyên tắc cứng: Mỗi module là một bounded context độc lập.**
+
+### Coupling ngầm bị cấm — NEVER DO
+
+```java
+// ❌ FORBIDDEN: ESG module inject trực tiếp service của Environment module
+@Service
+public class EsgReportService {
+    private final EnvironmentService environmentService;  // COUPLING NGẦM!
+    // → ESG phụ thuộc hard vào internal của Environment module
+}
+
+// ❌ FORBIDDEN: Import entity từ module khác
+import com.uip.environment.domain.SensorReading;  // ESG không được dùng
+public class EsgReportService {
+    private final SensorReadingRepository sensorRepo;  // COUPLING NGẦM!
+}
+
+// ❌ FORBIDDEN: Shared mutable state qua static/singleton cross-module
+EnvironmentCache.INSTANCE.getLatestAqi(zone);  // global state = coupling
+
+// ❌ FORBIDDEN: Package scan cross-module
+@ComponentScan({"com.uip.environment", "com.uip.esg"})  // trộn lẫn
+```
+
+### Ranh giới tầng giao tiếp — hiểu đúng để chọn đúng
+
+```
+Frontend (React) ──── REST API ────► Controller (@RestController)
+                                          │
+                                    Service Layer
+                                          │
+                          ┌───────────────┴───────────────┐
+                          │  Module nội bộ (same package)  │  Module khác (cross-module)
+                          │  → gọi service trực tiếp OK    │  → Kafka hoặc gRPC hoặc Port
+                          └────────────────────────────────┘
+```
+
+**REST chỉ dùng cho external** — frontend, mobile app, external partner. KHÔNG dùng REST để gọi giữa modules nội bộ.
+
+### Cách đúng — Cross-module access chỉ qua contract API
+
+```java
+// ✅ CORRECT: ESG module dùng API contract, không dùng internal
+
+// Option A — Port Interface (Phase 1, same JVM — đơn giản nhất)
+@Service
+public class EsgReportService {
+    private final EnvironmentMetricsPort environmentMetrics;  // interface, không biết impl
+}
+
+// Option B — gRPC (Phase 2, separate service — khi tách microservice)
+@Service
+public class EsgReportService {
+    private final EnvironmentMetricsGrpcClient environmentClient;  // gRPC stub
+}
+
+// Option C — Kafka event (async notification, không cần response)
+@KafkaListener(topics = "UIP.environment.aqi.threshold-exceeded.v1")
+public void onAqiThresholdExceeded(AqiThresholdExceededEvent event) {
+    // ESG lắng nghe event, không gọi Environment trực tiếp
+}
+```
+
+### Dấu hiệu code đang bị coupling ngầm
+
+- Import path `com.uip.{moduleA}.*` trong code của `{moduleB}`
+- JPA `@OneToMany` / `@ManyToOne` cross-module entity
+- `ApplicationContext.getBean()` lấy bean từ module khác
+- SQL JOIN cross-schema (xem section dưới)
+
+---
+
+## Cross-Schema Query Rules
+
+**Quy tắc cứng: Mỗi module chỉ query schema của chính nó.**
+
+Phase 1 có tất cả schemas trong cùng TimescaleDB instance — JOIN vẫn hoạt động về mặt kỹ thuật, nhưng **KHÔNG ĐƯỢC PHÉP** vì sẽ bị coupling DB khi tách ra Phase 2.
+
+### Cross-schema JOIN — FORBIDDEN
+
+```sql
+-- ❌ FORBIDDEN: ESG JOIN với bảng của Environment
+SELECT e.report_id, s.aqi_value
+FROM esg.reports e
+JOIN environment.sensor_readings s       -- cross-schema JOIN!
+    ON e.district_code = s.district_code
+WHERE e.quarter = '2026-Q1';
+
+-- ❌ FORBIDDEN: Native query từ ESG repo dùng bảng Environment
+@Query(value = """
+    SELECT * FROM environment.sensor_readings   -- WRONG: ESG query environment schema
+    WHERE timestamp >= :start
+    """, nativeQuery = true)
+```
+
+### Đúng — Fetch tách biệt, join trong service layer
+
+```java
+// ✅ CORRECT: ESG service fetch từ 2 nguồn tách biệt
+@Service
+public class EsgReportService {
+    private final EsgReportRepository esgRepo;             // ESG schema only
+    private final EnvironmentMetricsGrpcClient envClient;  // gRPC to Environment module
+
+    public EsgReport generateReport(YearQuarter quarter) {
+        // Bước 1: Fetch ESG data từ schema riêng
+        EsgBaseData baseData = esgRepo.findBaseDataForQuarter(quarter);
+
+        // Bước 2: Fetch environment data qua gRPC (không query thẳng DB)
+        AqiAggregateResponse aqiData = envClient.getAqiAggregate(
+            quarter.startDate(), quarter.endDate()
+        );
+
+        // Bước 3: Combine trong service layer (không trong SQL)
+        return EsgReport.combine(baseData, aqiData);
+    }
+}
+```
+
+### Kiểm tra query scope trước khi viết
+
+Trước khi viết bất kỳ SQL/JPQL nào, kiểm tra:
+- Tất cả bảng trong query có thuộc schema của module hiện tại không?
+- Nếu cần data từ module khác → dùng gRPC hoặc Kafka, không JOIN
+
+---
+
+## Inter-Module Communication — Kafka vs gRPC
+
+Hai cơ chế chính, chọn theo pattern phù hợp:
+
+| Tiêu chí | **Kafka (async event)** | **gRPC (sync query)** |
+|----------|------------------------|----------------------|
+| **Response cần ngay** | Không | Có |
+| **Caller chờ kết quả** | Không (fire-and-forget) | Có (request-response) |
+| **Nhiều consumer cùng nghe** | Có (fan-out) | Không (1-1) |
+| **Data thay đổi theo thời gian** | Có (stream events) | Không (snapshot query) |
+| **Retry khi consumer down** | Tự động (Kafka retention) | Manual (caller retry) |
+| **Use case điển hình** | Alert, notification, audit log | Query aggregate, fetch reference data |
+
+### Khi nào dùng Kafka
+
+```
+Environment → Kafka → ESG (async)
+  AqiThresholdExceededEvent → ESG lưu vào alert history
+  SensorDataGapDetectedEvent → ESG đánh dấu data gap trong report
+
+Traffic → Kafka → Notification (async)
+  TrafficIncidentDetectedEvent → Notification gửi alert đến operator
+```
+
+```java
+// Kafka: publish event, không quan tâm ai consume
+@TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+public void publishAqiExceeded(AqiThresholdExceededEvent event) {
+    kafkaTemplate.send("UIP.environment.aqi.threshold-exceeded.v1",
+        event.sensorId(), event);
+}
+```
+
+### Khi nào dùng gRPC
+
+```
+ESG cần AQI aggregate cho quarterly report → gRPC → Environment
+  Request: GetAqiAggregateRequest { districtCode, startDate, endDate }
+  Response: AqiAggregateResponse { avgAqi, maxAqi, unhealthyHours }
+
+ESG cần citizen complaint data → gRPC → CitizenPortal
+  Request: GetComplaintStatsRequest { quarter }
+  Response: ComplaintStatsResponse { totalComplaints, resolvedRate }
+```
+
+```java
+// gRPC client stub (generated từ .proto file)
+@Component
+@RequiredArgsConstructor
+@Slf4j
+public class EnvironmentMetricsGrpcClient {
+    private final EnvironmentServiceGrpc.EnvironmentServiceBlockingStub stub;
+
+    public AqiAggregateResponse getAqiAggregate(
+            String districtCode, LocalDate start, LocalDate end) {
+        try {
+            return stub.withDeadlineAfter(3, TimeUnit.SECONDS)
+                .getAqiAggregate(GetAqiAggregateRequest.newBuilder()
+                    .setDistrictCode(districtCode)
+                    .setStartDate(start.toString())
+                    .setEndDate(end.toString())
+                    .build());
+        } catch (StatusRuntimeException e) {
+            log.error("gRPC call failed districtCode={} status={}", districtCode, e.getStatus());
+            throw new ExternalModuleException("Environment module unavailable", e);
+        }
+    }
+}
+```
+
+### Proto file convention
+
+```protobuf
+// environment/src/main/proto/environment_metrics.proto
+syntax = "proto3";
+package com.uip.environment.grpc;
+option java_package = "com.uip.environment.grpc";
+
+service EnvironmentService {
+    rpc GetAqiAggregate (GetAqiAggregateRequest) returns (AqiAggregateResponse);
+    rpc GetSensorStatus (GetSensorStatusRequest) returns (SensorStatusResponse);
+}
+
+message GetAqiAggregateRequest {
+    string district_code = 1;
+    string start_date = 2;  // ISO-8601: "2026-01-01"
+    string end_date = 3;
+}
+
+message AqiAggregateResponse {
+    double avg_aqi = 1;
+    double max_aqi = 2;
+    int32 unhealthy_hours = 3;
+    string data_quality = 4;  // "COMPLETE" | "PARTIAL" | "GAP_DETECTED"
+}
+```
+
+### Phase 1 — gRPC chưa cần nếu cùng Spring context
+
+Nếu Phase 1 chạy monolith (tất cả modules trong cùng Spring application), internal module communication có thể dùng **Spring ApplicationEvent** thay gRPC để giảm complexity:
+
+```java
+// Phase 1 OK: Spring ApplicationEvent (same JVM)
+// Nhưng phải dùng interface contract, không inject service trực tiếp
+public interface EnvironmentMetricsPort {  // Port interface — không expose internal
+    AqiAggregateDto getAqiAggregate(String districtCode, LocalDate start, LocalDate end);
+}
+
+// Environment module implement port này
+@Service
+public class EnvironmentMetricsAdapter implements EnvironmentMetricsPort { ... }
+
+// ESG module dùng port, không biết implementation
+@Service
+public class EsgReportService {
+    private final EnvironmentMetricsPort environmentMetrics;  // interface only
+}
+```
+
+Khi tách microservice → thay `EnvironmentMetricsAdapter` bằng `EnvironmentMetricsGrpcClient`, không sửa ESG code.
+
+---
+
 ## Development Workflow
 
 1. Đọc module README trước khi thêm code mới
-2. Run `./mvnw verify -pl {module}` để xác nhận tests pass
-3. Check SonarQube: coverage >= 80%, no critical issues
-4. Review SQL/Hibernate logs khi có query performance issues
-5. Dùng `@Slf4j` với MDC: `MDC.put("sensorId", sensorId)`, `MDC.put("zone", zone)`
+2. **Check module boundary**: Import nào từ module khác? Có thể thay bằng Port interface không?
+3. **Check query scope**: SQL/JPQL có touch schema ngoài module không?
+4. Run `./mvnw verify -pl {module}` để xác nhận tests pass
+5. Check SonarQube: coverage >= 80%, no critical issues
+6. Review SQL/Hibernate logs khi có query performance issues
+7. Dùng `@Slf4j` với MDC: `MDC.put("sensorId", sensorId)`, `MDC.put("zone", zone)`
 
-Docs reference: `docs/implementation/`, `docs/modules/`, `docs/api/`
+## Khi Thêm Topic hoặc Biến Môi Trường Mới
+
+**Bắt buộc update trước khi merge PR:**
+- Kafka topic mới → cập nhật `docs/deployment/kafka-topic-registry.xlsx`
+- Env var mới → cập nhật `docs/deployment/environment-variables.xlsx`
+
+Docs reference: `docs/implementation/`, `docs/modules/`, `docs/api/`, `docs/architecture/modular-architecture-evaluation.md`, `docs/deployment/kafka-topic-registry.xlsx`, `docs/deployment/environment-variables.xlsx`

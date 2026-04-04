@@ -51,5 +51,9 @@ BE-DONE:
 - `@Slf4j` structured logging with sensor ID and location context, never `System.out.println`
 - Testcontainers for integration tests (never mock DB/Kafka in integration tests)
 - Time-series data: always include timestamp partitioning
+- **Module boundary**: NEVER import entity/service từ module khác — chỉ dùng Port interface hoặc gRPC stub
+- **Cross-schema query**: NEVER JOIN cross-schema trong SQL/JPQL — fetch tách biệt, join trong service layer
+- **Inter-module sync**: dùng gRPC (hoặc Port interface nếu monolith) — KHÔNG inject service cross-module trực tiếp
+- **Inter-module async**: dùng Kafka event cho notification/alert/audit — KHÔNG poll DB module khác
 
 Full patterns in `.claude/skills/uip-backend-engineer/SKILL.md`
