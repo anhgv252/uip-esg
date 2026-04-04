@@ -36,10 +36,10 @@ export default function EnvironmentPage() {
   });
 
   const { data: aqiHistory = [] } = useQuery({
-    queryKey: ['aqi-history', selectedSensor?.id],
+    queryKey: ['aqi-history', selectedSensor?.district],
     queryFn: () =>
       selectedSensor
-        ? getAqiHistory(selectedSensor.id)
+        ? getAqiHistory(selectedSensor.district)
         : Promise.resolve([]),
     enabled: !!selectedSensor,
   });
@@ -98,15 +98,18 @@ export default function EnvironmentPage() {
               ))
             : currentAqi.map((item) => (
                 <Grid item xs={6} sm={4} md={3} key={item.sensorId}>
+                  {(() => {
+                    const sensor = sensors.find((x) => x.sensorCode === item.sensorId);
+                    return (
                   <Card
                     variant="outlined"
                     sx={{
                       cursor: 'pointer',
-                      border: selectedSensor?.id === item.sensorId ? '2px solid' : undefined,
-                      borderColor: selectedSensor?.id === item.sensorId ? 'primary.main' : undefined,
+                      border: selectedSensor?.sensorCode === item.sensorId ? '2px solid' : undefined,
+                      borderColor: selectedSensor?.sensorCode === item.sensorId ? 'primary.main' : undefined,
                     }}
                     onClick={() => {
-                      const s = sensors.find((x) => x.id === item.sensorId);
+                      const s = sensors.find((x) => x.sensorCode === item.sensorId);
                       setSelectedSensor(s ?? null);
                     }}
                   >
@@ -115,12 +118,14 @@ export default function EnvironmentPage() {
                         aqi={item.aqi}
                         category={item.category}
                         color={item.color}
-                        sensorName={item.sensorName}
-                        district={item.district}
+                        sensorName={sensor?.name ?? item.sensorName}
+                        district={sensor?.district ?? item.district}
                         dominantPollutant={item.dominantPollutant}
                       />
                     </CardContent>
                   </Card>
+                    );
+                  })()}
                 </Grid>
               ))}
         </Grid>

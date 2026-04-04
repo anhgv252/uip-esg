@@ -18,7 +18,7 @@ interface SensorStatusTableProps {
   sensors: Sensor[];
   loading?: boolean;
   onSensorSelect?: (sensor: Sensor) => void;
-  selectedSensorId?: number;
+  selectedSensorId?: string;
 }
 
 const STATUS_COLORS: Record<string, 'success' | 'error' | 'warning'> = {
@@ -34,7 +34,15 @@ export function SensorStatusTable({
   selectedSensorId,
 }: SensorStatusTableProps) {
   const sorted = useMemo(
-    () => [...sensors].sort((a, b) => a.district.localeCompare(b.district)),
+    () =>
+      [...sensors].sort((a, b) => {
+        const leftDistrict = a.district ?? '';
+        const rightDistrict = b.district ?? '';
+        const districtComparison = leftDistrict.localeCompare(rightDistrict);
+        return districtComparison !== 0
+          ? districtComparison
+          : (a.name ?? '').localeCompare(b.name ?? '');
+      }),
     [sensors]
   );
 

@@ -1,5 +1,8 @@
 import { useEffect, useRef, useCallback } from 'react';
 
+const SSE_BASE_URL = (import.meta.env.VITE_SSE_BASE_URL ?? 'http://localhost:8080').replace(/\/$/, '');
+const SSE_STREAM_URL = `${SSE_BASE_URL}/api/v1/notifications/stream`;
+
 export interface AlertNotification {
   id: number;
   ruleName: string;
@@ -11,7 +14,7 @@ export interface AlertNotification {
 type OnAlertCallback = (alert: AlertNotification) => void;
 
 /**
- * Hook that opens an SSE connection to /api/v1/notifications/stream
+ * Hook that opens an SSE connection to the backend notifications stream
  * and calls `onAlert` whenever an "alert" event arrives.
  * Reconnects automatically after 5s on connection drop.
  */
@@ -33,9 +36,7 @@ export function useNotificationSSE(onAlert: OnAlertCallback) {
 
     // SSE endpoint - auth via httpOnly cookie (set by backend on login)
     // EventSource automatically includes cookies with withCredentials behavior
-    const url = '/api/v1/notifications/stream';
-
-    const es = new EventSource(url, { withCredentials: true });
+    const es = new EventSource(SSE_STREAM_URL, { withCredentials: true });
     esRef.current = es;
 
     es.addEventListener('alert', (e: MessageEvent) => {

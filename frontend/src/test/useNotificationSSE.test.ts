@@ -45,6 +45,8 @@ class MockEventSource {
 }
 
 describe('useNotificationSSE', () => {
+  const expectedSseUrl = 'http://localhost:8080/api/v1/notifications/stream'
+
   beforeEach(() => {
     vi.useFakeTimers()
     ; (globalThis as any).EventSource = MockEventSource
@@ -63,7 +65,7 @@ describe('useNotificationSSE', () => {
 
     const es = (globalThis as any).__lastEventSource as MockEventSource
     expect(es).toBeDefined()
-    expect(es.url).toBe('/api/v1/notifications/stream')
+    expect(es.url).toBe(expectedSseUrl)
     expect(es.url).not.toContain('token=')
   })
 
@@ -124,7 +126,7 @@ describe('useNotificationSSE', () => {
     // Check new EventSource was created
     const newEs = (globalThis as any).__lastEventSource as MockEventSource
     expect(newEs).not.toBe(firstEs)
-    expect(newEs.url).toBe('/api/v1/notifications/stream')
+    expect(newEs.url).toBe(expectedSseUrl)
     expect(newEs.readyState).toBe(1) // OPEN again
   })
 
