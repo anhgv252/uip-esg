@@ -8,6 +8,9 @@ import lombok.Setter;
 import java.time.Instant;
 import java.util.UUID;
 
+// acknowledged_by lưu username (String) thay vì UUID để alert-module không phụ thuộc auth-module.
+// Xem: docs/architecture/modular-architecture-evaluation.md — Module Boundary Rules
+
 @Entity
 @Table(name = "alert_events", schema = "alerts")
 @Getter
@@ -46,8 +49,9 @@ public class AlertEvent {
     @Column(name = "detected_at", nullable = false)
     private Instant detectedAt;
 
-    @Column(name = "acknowledged_by")
-    private UUID acknowledgedBy;
+    /** Username của operator đã acknowledge — lưu String để tránh coupling với auth-module. */
+    @Column(name = "acknowledged_by", length = 100)
+    private String acknowledgedBy;
 
     @Column(name = "acknowledged_at")
     private Instant acknowledgedAt;

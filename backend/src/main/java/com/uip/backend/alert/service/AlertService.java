@@ -7,8 +7,6 @@ import com.uip.backend.alert.domain.AlertEvent;
 import com.uip.backend.alert.domain.AlertRule;
 import com.uip.backend.alert.repository.AlertEventRepository;
 import com.uip.backend.alert.repository.AlertRuleRepository;
-import com.uip.backend.auth.domain.AppUser;
-import com.uip.backend.auth.repository.AppUserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -29,7 +27,6 @@ public class AlertService {
 
     private final AlertEventRepository alertEventRepository;
     private final AlertRuleRepository  alertRuleRepository;
-    private final AppUserRepository    appUserRepository;
 
     // ─── Alert Events ─────────────────────────────────────────────────────────
 
@@ -62,11 +59,8 @@ public class AlertService {
         AlertEvent event = alertEventRepository.findById(alertId)
                 .orElseThrow(() -> new EntityNotFoundException("Alert not found: " + alertId));
 
-        AppUser user = appUserRepository.findByUsername(username)
-                .orElseThrow(() -> new EntityNotFoundException("User not found: " + username));
-
         event.setStatus("ACKNOWLEDGED");
-        event.setAcknowledgedBy(user.getId());
+        event.setAcknowledgedBy(username);
         event.setAcknowledgedAt(Instant.now());
         if (req.getNote() != null) {
             event.setNote(req.getNote());

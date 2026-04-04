@@ -12,6 +12,7 @@ import org.mockito.*;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 
@@ -32,6 +33,7 @@ class AlertEngineTest {
     @Mock private AlertEventRepository alertEventRepository;
     @Mock private StringRedisTemplate  redisTemplate;
     @Mock private ValueOperations<String, String> valueOps;
+    @Mock private ObjectMapper         objectMapper;
 
     @InjectMocks private AlertEngine alertEngine;
 

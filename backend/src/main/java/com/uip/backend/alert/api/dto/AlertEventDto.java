@@ -23,7 +23,7 @@ public class AlertEventDto {
     private String  severity;
     private String  status;
     private Instant detectedAt;
-    private UUID    acknowledgedBy;
+    private String  acknowledgedBy;   // username string — không phải UUID
     private Instant acknowledgedAt;
     private String  note;
 }

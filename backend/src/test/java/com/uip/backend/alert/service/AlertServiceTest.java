@@ -6,8 +6,6 @@ import com.uip.backend.alert.domain.AlertEvent;
 import com.uip.backend.alert.domain.AlertRule;
 import com.uip.backend.alert.repository.AlertEventRepository;
 import com.uip.backend.alert.repository.AlertRuleRepository;
-import com.uip.backend.auth.domain.AppUser;
-import com.uip.backend.auth.repository.AppUserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -34,18 +32,15 @@ class AlertServiceTest {
 
     @Mock private AlertEventRepository alertEventRepository;
     @Mock private AlertRuleRepository  alertRuleRepository;
-    @Mock private AppUserRepository    appUserRepository;
 
     @InjectMocks private AlertService alertService;
 
     private AlertEvent openAlert;
     private UUID       alertId;
-    private UUID       userId;
 
     @BeforeEach
     void setUp() {
         alertId = UUID.randomUUID();
-        userId  = UUID.randomUUID();
 
         openAlert = new AlertEvent();
         openAlert.setId(alertId);
@@ -103,13 +98,9 @@ class AlertServiceTest {
     // ─── acknowledgeAlert ───────────────────────────────────────────────────
 
     @Test
-    @DisplayName("acknowledgeAlert: sets ACKNOWLEDGED status and records user")
+    @DisplayName("acknowledgeAlert: sets ACKNOWLEDGED status and records username directly")
     void acknowledgeAlert_found_setsAcknowledged() {
-        AppUser mockUser = mock(AppUser.class);
-        when(mockUser.getId()).thenReturn(userId);
-
         when(alertEventRepository.findById(alertId)).thenReturn(Optional.of(openAlert));
-        when(appUserRepository.findByUsername("operator")).thenReturn(Optional.of(mockUser));
         when(alertEventRepository.save(any(AlertEvent.class))).thenAnswer(inv -> inv.getArgument(0));
 
         AcknowledgeRequest req = new AcknowledgeRequest();
@@ -118,7 +109,7 @@ class AlertServiceTest {
         var result = alertService.acknowledgeAlert(alertId, "operator", req);
 
         assertThat(result.getStatus()).isEqualTo("ACKNOWLEDGED");
-        assertThat(result.getAcknowledgedBy()).isEqualTo(userId);
+        assertThat(result.getAcknowledgedBy()).isEqualTo("operator");  // username string, no User lookup
         assertThat(result.getNote()).isEqualTo("Investigated and resolved");
         verify(alertEventRepository).save(argThat(e ->
                 "ACKNOWLEDGED".equals(e.getStatus()) && e.getAcknowledgedAt() != null));
@@ -136,25 +127,10 @@ class AlertServiceTest {
     }
 
     @Test
-    @DisplayName("acknowledgeAlert: user not found throws EntityNotFoundException")
-    void acknowledgeAlert_userNotFound_throwsException() {
-        when(alertEventRepository.findById(alertId)).thenReturn(Optional.of(openAlert));
-        when(appUserRepository.findByUsername("unknown")).thenReturn(Optional.empty());
-
-        assertThatThrownBy(() ->
-                alertService.acknowledgeAlert(alertId, "unknown", new AcknowledgeRequest()))
-                .isInstanceOf(EntityNotFoundException.class)
-                .hasMessageContaining("unknown");
-    }
-
-    @Test
     @DisplayName("acknowledgeAlert: null note does not overwrite existing note")
     void acknowledgeAlert_nullNote_doesNotOverwrite() {
         openAlert.setNote("existing note");
-        AppUser mockUser = mock(AppUser.class);
-        when(mockUser.getId()).thenReturn(userId);
         when(alertEventRepository.findById(alertId)).thenReturn(Optional.of(openAlert));
-        when(appUserRepository.findByUsername("operator")).thenReturn(Optional.of(mockUser));
         when(alertEventRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
         AcknowledgeRequest req = new AcknowledgeRequest(); // note is null
