@@ -127,5 +127,12 @@ spring:
   datasource:
     hikari:
       maximum-pool-size: 5
+  data:
+    redis:
+      password: ""
   flyway:
-    locations: classpath:db/migration,classpath:db/test-data
+    locations: classpath:db/migration
+  kafka:
+    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:29092}
+    consumer:
+      auto-offset-reset: earliest

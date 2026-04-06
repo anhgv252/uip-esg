@@ -14,13 +14,13 @@ jobs:
       postgres:
         image: timescale/timescaledb:latest-pg16
         env:
-          POSTGRES_DB: uip_db
-          POSTGRES_USER: uip_user
-          POSTGRES_PASSWORD: uip_pass
+          POSTGRES_DB: uip_smartcity
+          POSTGRES_USER: uip
+          POSTGRES_PASSWORD: uip_test_pass
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U uip_user -d uip_db"
+          --health-cmd "pg_isready -U uip -d uip_smartcity"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 10
@@ -30,19 +30,19 @@ jobs:
           - 6379:6379
         options: --health-cmd "redis-cli ping" --health-interval 5s --health-timeout 3s --health-retries 5
     env:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/uip_db
-      SPRING_DATASOURCE_USERNAME: uip_user
-      SPRING_DATASOURCE_PASSWORD: uip_pass
-      SPRING_REDIS_HOST: localhost
-      SPRING_REDIS_PORT: 6379
-      DOCKER_API_VERSION: "1.41"
-      RYUK_DISABLED: "true"
+      SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/uip_smartcity
+      SPRING_DATASOURCE_USERNAME: uip
+      SPRING_DATASOURCE_PASSWORD: uip_test_pass
+      SPRING_DATA_REDIS_HOST: localhost
+      SPRING_DATA_REDIS_PORT: 6379
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: localhost:29092
+      SPRING_PROFILES_ACTIVE: test
     steps:
       - uses: actions/checkout@v4
-      - name: Set up JDK 21
+      - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
-          java-version: '21'
+          java-version: '17'
           distribution: temurin
           cache: gradle
       - name: Run backend tests

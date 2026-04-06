@@ -11,9 +11,9 @@ integration_tests_s3.py  –  Sprint 3 API Integration Test Suite
 
 Prerequisites:
   - Backend running at BASE_URL (default http://localhost:8080)
-  - At least one admin user seeded (admin / admin123)
+  - Admin credentials via env vars: ADMIN_USERNAME, ADMIN_PASSWORD
   - V6-V8 DB migrations applied
-  - Kafka + TimescaleDB up
+  - TimescaleDB up
 
 Usage:
   pip install requests
@@ -38,9 +38,9 @@ log = logging.getLogger("s3-integration-tests")
 
 BASE_URL = os.getenv("BASE_URL", "http://localhost:8080")
 ADMIN_USER = os.getenv("ADMIN_USERNAME", "admin")
-ADMIN_PASS = os.getenv("ADMIN_PASSWORD", "admin123")
-OPERATOR_USER = os.getenv("OPERATOR_USERNAME", "operator1")
-OPERATOR_PASS = os.getenv("OPERATOR_PASSWORD", "operator123")
+ADMIN_PASS = os.getenv("ADMIN_PASSWORD", "")
+OPERATOR_USER = os.getenv("OPERATOR_USERNAME", "operator")
+OPERATOR_PASS = os.getenv("OPERATOR_PASSWORD", "")
 
 # ── Test runner ────────────────────────────────────────────────────
 _results: list[tuple[str, bool, str]] = []
