@@ -93,6 +93,15 @@ jobs:
       - name: Run frontend tests
         working-directory: frontend
         run: npm test -- --run
+      - name: TypeScript type check
+        working-directory: frontend
+        run: npm run type-check
+      - name: Check API contract drift
+        working-directory: frontend
+        run: |
+          npm run generate:types
+          git diff --exit-code src/generated/api-types.ts || \
+            (echo "::error::API contract drift: run 'npm run generate:types' and commit src/generated/api-types.ts" && exit 1)
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4

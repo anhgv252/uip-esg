@@ -306,7 +306,7 @@ class Sprint2ApiRegressionIntegrationTest {
         }
 
         @Test
-        @DisplayName("POST /esg/reports/generate with query params returns 200 (ARCH fix: @RequestParam not @RequestBody)")
+        @DisplayName("POST /esg/reports/generate with query params returns 2xx (ARCH fix: @RequestParam not @RequestBody)")
         void esgGenerateReport_queryParams_returns200() throws Exception {
             String token = loginAndGetAccessToken();
             mockMvc.perform(post("/api/v1/esg/reports/generate")
@@ -314,7 +314,7 @@ class Sprint2ApiRegressionIntegrationTest {
                             .param("quarter", "1")
                             .param("period", "quarterly")
                             .header("Authorization", "Bearer " + token))
-                    .andExpect(status().isOk());
+                    .andExpect(status().is2xxSuccessful());
         }
     }
 

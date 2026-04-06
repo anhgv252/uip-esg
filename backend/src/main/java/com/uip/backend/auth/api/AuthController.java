@@ -58,4 +58,17 @@ public class AuthController {
         
         return ResponseEntity.ok(authResponse);
     }
+
+    @PostMapping("/logout")
+    @Operation(summary = "Logout — clear httpOnly cookie (stateless JWT; client must discard tokens)")
+    public ResponseEntity<Void> logout(HttpServletResponse response) {
+        // Expire the httpOnly cookie immediately
+        Cookie expiredCookie = new Cookie("access_token", "");
+        expiredCookie.setHttpOnly(true);
+        expiredCookie.setSecure(false);
+        expiredCookie.setPath("/");
+        expiredCookie.setMaxAge(0);
+        response.addCookie(expiredCookie);
+        return ResponseEntity.ok().build();
+    }
 }
