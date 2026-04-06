@@ -17,6 +17,10 @@ spring:
       connection-test-query: "SELECT 1"
       pool-name: UIP-HikariPool
 
+  jackson:
+    deserialization:
+      fail-on-unknown-properties: false
+
   jpa:
     hibernate:
       ddl-auto: validate

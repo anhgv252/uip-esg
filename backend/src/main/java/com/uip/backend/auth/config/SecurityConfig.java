@@ -59,6 +59,9 @@ public class SecurityConfig {
                 .requestMatchers("/api/v1/health", "/api/v1/auth/**").permitAll()
                 .requestMatchers("/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                 .requestMatchers("/actuator/health").permitAll()
+                // Citizen self-registration and building lookup are public
+                .requestMatchers(HttpMethod.POST, "/api/v1/citizen/register").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/v1/citizen/buildings", "/api/v1/citizen/buildings/by-district").permitAll()
                 .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.GET, "/api/v1/notifications/stream").authenticated()
                 .anyRequest().authenticated()

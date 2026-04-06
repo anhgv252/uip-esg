@@ -5,16 +5,17 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.Instant;
+import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class TrafficCountDto {
-    private String  intersectionId;
-    private Instant timestamp;
+    private UUID id;
+    private String intersectionId;
+    private LocalDateTime recordedAt;
     private Integer vehicleCount;
-    private Double  avgSpeedKmh;
-    private String  congestionLevel;
+    private String vehicleType;
 }

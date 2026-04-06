@@ -47,6 +47,7 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { label: 'Dashboard', path: '/dashboard', icon: <DashboardIcon /> },
+  { label: 'City Ops', path: '/city-ops', icon: <LocationCityIcon /> },
   { label: 'Environment', path: '/environment', icon: <EnvironmentIcon /> },
   { label: 'ESG Metrics', path: '/esg', icon: <EsgIcon /> },
   { label: 'Traffic', path: '/traffic', icon: <TrafficIcon /> },

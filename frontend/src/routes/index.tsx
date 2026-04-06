@@ -10,13 +10,20 @@ const EnvironmentPage = lazy(() => import('@/pages/EnvironmentPage'))
 const EsgPage = lazy(() => import('@/pages/EsgPage'))
 const TrafficPage = lazy(() => import('@/pages/TrafficPage'))
 const AlertsPage = lazy(() => import('@/pages/AlertsPage'))
+const CityOpsPage = lazy(() => import('@/pages/CityOpsPage'))
 const CitizenPage = lazy(() => import('@/pages/CitizenPage'))
+const CitizenRegisterPage = lazy(() => import('@/components/citizen/CitizenRegisterPage'))
 const AdminPage = lazy(() => import('@/pages/AdminPage'))
 
 export const routes: RouteObject[] = [
   {
     path: '/login',
     element: <LoginPage />,
+  },
+  // Public citizen registration (no auth required)
+  {
+    path: '/citizen/register',
+    element: <CitizenRegisterPage />,
   },
   {
     element: (
@@ -31,6 +38,7 @@ export const routes: RouteObject[] = [
       { path: '/esg', element: <EsgPage /> },
       { path: '/traffic', element: <TrafficPage /> },
       { path: '/alerts', element: <AlertsPage /> },
+      { path: '/city-ops', element: <CityOpsPage /> },
       { path: '/citizen', element: <CitizenPage /> },
       {
         path: '/admin',

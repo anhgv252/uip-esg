@@ -21,6 +21,7 @@ public class SensorDto {
     private Double latitude;
     private Double longitude;
     private String status;       // ONLINE / OFFLINE
+    private boolean active;
     private Instant lastSeenAt;
     private Instant installedAt;
 }

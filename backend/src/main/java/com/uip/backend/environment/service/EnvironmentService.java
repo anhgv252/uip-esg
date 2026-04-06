@@ -7,8 +7,10 @@ import com.uip.backend.environment.domain.Sensor;
 import com.uip.backend.environment.domain.SensorReading;
 import com.uip.backend.environment.repository.SensorReadingRepository;
 import com.uip.backend.environment.repository.SensorRepository;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,6 +18,7 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -36,6 +39,23 @@ public class EnvironmentService {
                 .stream()
                 .map(this::toSensorDto)
                 .toList();
+    }
+
+    /** Admin: list ALL sensors (active + inactive), sorted by name. */
+    public List<SensorDto> listAllSensors() {
+        return sensorRepository.findAll(Sort.by("sensorName"))
+                .stream()
+                .map(this::toSensorDto)
+                .toList();
+    }
+
+    /** Admin: toggle active status of a sensor. Returns the updated SensorDto. */
+    @Transactional
+    public SensorDto toggleSensor(UUID id, boolean active) {
+        Sensor sensor = sensorRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Sensor not found: " + id));
+        sensor.setActive(active);
+        return toSensorDto(sensorRepository.save(sensor));
     }
 
     // ─── Readings ─────────────────────────────────────────────────────────────
@@ -93,6 +113,7 @@ public class EnvironmentService {
                 .districtCode(s.getDistrictCode())
                 .latitude(s.getLatitude())
                 .longitude(s.getLongitude())
+                .active(s.isActive())
                 .status(status)
                 .lastSeenAt(s.getLastSeenAt())
                 .installedAt(s.getInstalledAt())
