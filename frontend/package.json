@@ -13,7 +13,8 @@
     "lint": "eslint src --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "type-check": "tsc --noEmit",
     "generate:types": "openapi-typescript ../docs/api/openapi.json -o src/generated/api-types.ts",
-    "generate:types:remote": "openapi-typescript http://localhost:8080/v3/api-docs -o src/generated/api-types.ts"
+    "generate:types:remote": "openapi-typescript http://localhost:8080/v3/api-docs -o src/generated/api-types.ts",
+    "prepare": "husky"
   },
   "dependencies": {
     "@emotion/react": "^11.11.4",
@@ -47,6 +48,7 @@
     "eslint": "^8.57.0",
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.6",
+    "husky": "^9.1.7",
     "jsdom": "^24.0.0",
     "openapi-typescript": "^7.13.0",
     "typescript": "^5.2.2",
