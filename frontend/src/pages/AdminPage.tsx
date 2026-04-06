@@ -2,8 +2,8 @@ import { useState, useMemo } from 'react';
 import {
   Box, Typography, Tabs, Tab, Table, TableHead, TableRow, TableCell,
   TableBody, TableContainer, Paper, Chip, IconButton, Tooltip,
-  Select, MenuItem, FormControl, InputLabel, Switch, CircularProgress,
-  Alert, Stack,
+  Select, MenuItem, FormControl, Switch, CircularProgress,
+  Alert,
 } from '@mui/material';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import { useQuery } from '@tanstack/react-query';
@@ -44,17 +44,13 @@ function UsersTab() {
           </TableRow>
         </TableHead>
         <TableBody>
-          {(users ?? []).map((u: UserSummaryDto) => (
+          {(users?.content ?? []).map((u: UserSummaryDto) => (
             <TableRow key={u.username} hover>
               <TableCell>{u.username}</TableCell>
               <TableCell>{u.email}</TableCell>
               <TableCell>
-                <Stack direction="row" spacing={0.5} flexWrap="wrap">
-                  {u.roles.map((r) => (
-                    <Chip key={r} label={r.replace('ROLE_', '')} size="small"
-                      color={r === 'ROLE_ADMIN' ? 'error' : r === 'ROLE_OPERATOR' ? 'warning' : 'default'} />
-                  ))}
-                </Stack>
+                <Chip label={u.role.replace('ROLE_', '')} size="small"
+                  color={u.role === 'ROLE_ADMIN' ? 'error' : u.role === 'ROLE_OPERATOR' ? 'warning' : 'default'} />
               </TableCell>
               <TableCell>
                 <Chip size="small"
@@ -132,7 +128,7 @@ function SensorsTab() {
                   size="small"
                   checked={s.active}
                   disabled={toggle.isPending}
-                  onChange={() => toggle.mutate({ sensorId: s.sensorId, active: !s.active })}
+                  onChange={() => toggle.mutate({ id: s.id, active: !s.active })}
                 />
               </TableCell>
             </TableRow>

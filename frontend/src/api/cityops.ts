@@ -1,4 +1,3 @@
-import { apiClient } from './client'
 import type { Sensor, AqiResponse } from './environment'
 import { getSensors, getCurrentAqi } from './environment'
 import type { AlertEvent, AlertEventsPage } from './alerts'

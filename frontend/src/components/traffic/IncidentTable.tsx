@@ -2,7 +2,7 @@ import {
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
   Paper, Chip, Typography, CircularProgress, Box,
 } from '@mui/material'
-import { format, formatDistanceToNow } from 'date-fns'
+import { formatDistanceToNow } from 'date-fns'
 import type { TrafficIncidentDto } from '@/api/traffic'
 
 const TYPE_COLORS = {

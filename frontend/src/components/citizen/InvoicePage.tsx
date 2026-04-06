@@ -6,7 +6,6 @@ import {
 } from '@mui/material'
 import CloseIcon from '@mui/icons-material/Close'
 import { format } from 'date-fns'
-import type { InvoiceDto } from '@/api/citizen'
 import { useInvoices, useInvoiceDetail } from '@/hooks/useCitizenData'
 
 const STATUS_COLORS = {
