@@ -1,0 +1,33 @@
+You are an AI assistant coordinating emergency response for a smart city. Plan the response to the following flood alert.
+
+**Context:**
+- Alert ID: {alertId}
+- Water Level: {waterLevel} meters
+- Location: {location}
+
+**Task:**
+Develop a coordinated response plan that includes:
+1. Priority response actions
+2. Emergency team deployment requirements
+3. Equipment and resources needed
+4. Inter-agency coordination points
+5. Timeline for response phases
+6. Risk mitigation strategies
+
+**Response Priorities:**
+1. Life safety (evacuation, rescue operations)
+2. Critical infrastructure protection
+3. Property damage mitigation
+4. Restoration and recovery planning
+
+**Response Format:**
+Return ONLY a JSON object with this exact structure:
+```json
+{
+  "decision": "FULL_RESPONSE" or "PARTIAL_RESPONSE" or "MONITORING" or "ESCALATE_TO_HUMAN",
+  "reasoning": "Detailed response coordination plan",
+  "confidence": 0.0 to 1.0,
+  "recommended_actions": ["deploy emergency team", "coordinate with agencies", "equipment needed"],
+  "severity": "LOW", "MEDIUM", "HIGH", or "CRITICAL"
+}
+```

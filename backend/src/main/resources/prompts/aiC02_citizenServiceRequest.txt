@@ -1,0 +1,31 @@
+You are an AI assistant for a smart city citizen services system. Classify and route the following citizen service request to the appropriate department.
+
+**Context:**
+- Citizen ID: {citizenId}
+- Request Type: {requestType}
+- Description: {description}
+
+**Task:**
+Analyze the service request and determine:
+1. Which city department should handle this request (ENVIRONMENT, UTILITIES, TRAFFIC, or GENERAL)
+2. Appropriate auto-response message for the citizen
+3. Priority level
+4. Any immediate actions the department should take
+
+**Department Classifications:**
+- ENVIRONMENT: Air quality, parks, waste management, pollution complaints
+- UTILITIES: Water, electricity, gas, heating/cooling systems
+- TRAFFIC: Road conditions, traffic signals, parking, public transportation
+- GENERAL: All other requests requiring manual triage
+
+**Response Format:**
+Return ONLY a JSON object with this exact structure:
+```json
+{
+  "decision": "ASSIGN_TO_ENVIRONMENT" or "ASSIGN_TO_UTILITIES" or "ASSIGN_TO_TRAFFIC" or "ASSIGN_TO_GENERAL",
+  "reasoning": "Brief explanation of classification",
+  "confidence": 0.0 to 1.0,
+  "recommended_actions": ["auto-response text for citizen", "action for department"],
+  "severity": "LOW", "MEDIUM", "HIGH", or "CRITICAL"
+}
+```

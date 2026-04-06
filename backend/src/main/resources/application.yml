@@ -81,6 +81,38 @@ security:
     expiration-ms: ${JWT_EXPIRATION_MS:900000}
     refresh-expiration-ms: ${JWT_REFRESH_EXPIRATION_MS:604800000}
 
+camunda:
+  bpm:
+    admin-user:
+      id: admin
+      password: admin_Dev#2026!
+      first-name: Admin
+    filter:
+      create: All Tasks
+    webapp:
+      application-path: /camunda
+    database:
+      schema-update: true
+    job-execution:
+      enabled: true
+    history-level: audit
+    generic-properties:
+      properties:
+        historyTimeToLive: 30
+        enforceHistoryTimeToLive: false
+    task:
+      execution:
+        pool:
+          core-size: 5
+          max-size: 20
+          queue-capacity: 100
+
+claude:
+  api:
+    key: ${CLAUDE_API_KEY:}
+    url: https://api.anthropic.com/v1/messages
+    timeout-seconds: 10
+
 management:
   endpoints:
     web:

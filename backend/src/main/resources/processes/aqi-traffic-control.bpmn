@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+                  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+                  xmlns:camunda="http://camunda.org/schema/1.0/bpmn"
+                  id="Definitions_5"
+                  targetNamespace="http://bpmn.io/schema/bpmn">
+  <bpmn:process id="aiM02_aqiTrafficControl" name="AI-M02: AQI Traffic and Construction Control" isExecutable="true">
+    <bpmn:startEvent id="StartEvent_5" name="High AQI Detected">
+      <bpmn:outgoing>Flow_1</bpmn:outgoing>
+    </bpmn:startEvent>
+    
+    <bpmn:serviceTask id="Task_AIAnalysis" name="AI Restriction Analysis" camunda:delegateExpression="${aiAnalysisDelegate}">
+      <bpmn:incoming>Flow_1</bpmn:incoming>
+      <bpmn:outgoing>Flow_2</bpmn:outgoing>
+    </bpmn:serviceTask>
+    
+    <bpmn:serviceTask id="Task_Control" name="Generate Restrictions" camunda:delegateExpression="${aqiTrafficControlDelegate}">
+      <bpmn:incoming>Flow_2</bpmn:incoming>
+      <bpmn:outgoing>Flow_3</bpmn:outgoing>
+    </bpmn:serviceTask>
+    
+    <bpmn:endEvent id="EndEvent_5" name="Restrictions Applied">
+      <bpmn:incoming>Flow_3</bpmn:incoming>
+    </bpmn:endEvent>
+    
+    <bpmn:sequenceFlow id="Flow_1" sourceRef="StartEvent_5" targetRef="Task_AIAnalysis"/>
+    <bpmn:sequenceFlow id="Flow_2" sourceRef="Task_AIAnalysis" targetRef="Task_Control"/>
+    <bpmn:sequenceFlow id="Flow_3" sourceRef="Task_Control" targetRef="EndEvent_5"/>
+  </bpmn:process>
+</bpmn:definitions>

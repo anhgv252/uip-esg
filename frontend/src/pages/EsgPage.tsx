@@ -70,8 +70,8 @@ export default function EsgPage() {
         <Grid item xs={12} sm={4}>
           <EsgKpiCard
             label="Carbon Footprint"
-            value={summary?.totalCarbonKg}
-            unit="kg CO₂"
+            value={summary?.totalCarbonTco2e}
+            unit="tCO₂e"
             trend={summary?.carbonTrend}
             loading={summaryLoading}
             higherIsBad

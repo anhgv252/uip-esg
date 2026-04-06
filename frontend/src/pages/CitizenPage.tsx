@@ -7,9 +7,11 @@ import PeopleIcon from '@mui/icons-material/People'
 import ReceiptIcon from '@mui/icons-material/Receipt'
 import PersonIcon from '@mui/icons-material/Person'
 import DashboardIcon from '@mui/icons-material/Dashboard'
+import LockIcon from '@mui/icons-material/Lock'
 import { useCitizenProfile, useInvoices } from '@/hooks/useCitizenData'
 import InvoicePage from '@/components/citizen/InvoicePage'
 import CitizenProfilePage from '@/components/citizen/CitizenProfilePage'
+import { useAuth } from '@/hooks/useAuth'
 
 function CitizenDashboard() {
   const { data: profile, isLoading, error } = useCitizenProfile()
@@ -70,6 +72,28 @@ function CitizenDashboard() {
 
 export default function CitizenPage() {
   const [tab, setTab] = useState(0)
+  const { user } = useAuth()
+
+  // Admin and Operator accounts do not have citizen profiles
+  if (user && user.role !== 'ROLE_CITIZEN') {
+    return (
+      <Box>
+        <Box display="flex" alignItems="center" gap={1} mb={3}>
+          <PeopleIcon color="primary" />
+          <Typography variant="h5">Citizen Portal</Typography>
+        </Box>
+        <Alert severity="info" icon={<LockIcon />}>
+          <Typography variant="body2">
+            Citizen Portal chỉ dành cho tài khoản <strong>ROLE_CITIZEN</strong>.
+            Tài khoản <strong>{user.username}</strong> ({user.role}) không có hồ sơ citizen.
+          </Typography>
+          <Typography variant="body2" mt={1}>
+            Đăng ký tài khoản citizen mới tại <strong>/register</strong> để trải nghiệm portal.
+          </Typography>
+        </Alert>
+      </Box>
+    )
+  }
 
   return (
     <Box>

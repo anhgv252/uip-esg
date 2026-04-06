@@ -47,6 +47,12 @@ dependencies {
     // ESG report generation (Apache POI — XLSX)
     implementation 'org.apache.poi:poi-ooxml:5.2.5'
 
+    // Camunda 7 — embedded BPM engine (Spring Boot 3.2 compatible)
+    implementation platform('org.camunda.bpm:camunda-bom:7.22.0')
+    implementation 'org.camunda.bpm.springboot:camunda-bpm-spring-boot-starter:7.22.0'
+    implementation 'org.camunda.bpm.springboot:camunda-bpm-spring-boot-starter-rest:7.22.0'
+    implementation 'org.camunda.bpm.springboot:camunda-bpm-spring-boot-starter-webapp:7.22.0'
+
     // Utilities
     compileOnly    'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'

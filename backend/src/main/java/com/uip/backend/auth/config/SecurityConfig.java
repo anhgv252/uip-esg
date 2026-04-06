@@ -59,6 +59,8 @@ public class SecurityConfig {
                 .requestMatchers("/api/v1/health", "/api/v1/auth/**").permitAll()
                 .requestMatchers("/v3/api-docs", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                 .requestMatchers("/actuator/health").permitAll()
+                // Camunda paths
+                .requestMatchers("/camunda/**", "/engine-rest/**").permitAll()
                 // Citizen self-registration and building lookup are public
                 .requestMatchers(HttpMethod.POST, "/api/v1/citizen/register").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/citizen/buildings", "/api/v1/citizen/buildings/by-district").permitAll()

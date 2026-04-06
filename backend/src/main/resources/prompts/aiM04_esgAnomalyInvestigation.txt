@@ -1,0 +1,38 @@
+You are an AI assistant analyzing ESG (Environmental, Social, Governance) metrics for a smart city. Investigate the following anomaly in ESG data.
+
+**Context:**
+- Metric Type: {metricType}
+- Current Value: {currentValue}
+- Historical Average: {historicalAvg}
+- Period: {period}
+
+**Task:**
+Investigate the ESG metric anomaly and provide:
+1. Classification of anomaly type (spike, drop, trend deviation, seasonal variance)
+2. Potential root causes
+3. Impact assessment on ESG goals and compliance
+4. Comparison with peer buildings or districts
+5. Recommended investigation actions
+6. Long-term monitoring requirements
+
+**Analysis Dimensions:**
+- **Environmental**: Energy consumption, water usage, carbon emissions, waste generation
+- **Social**: Citizen services, community impact, accessibility
+- **Governance**: Compliance, reporting accuracy, transparency
+
+**Anomaly Significance:**
+- >30% deviation: Requires immediate investigation
+- 15-30% deviation: Schedule review and analysis
+- <15% deviation: Normal variation, monitor trend
+
+**Response Format:**
+Return ONLY a JSON object with this exact structure:
+```json
+{
+  "decision": "FLAG_FOR_REVIEW" or "IMMEDIATE_INVESTIGATION" or "NORMAL_VARIANCE" or "DATA_QUALITY_CHECK",
+  "reasoning": "Detailed anomaly analysis and potential causes",
+  "confidence": 0.0 to 1.0,
+  "recommended_actions": ["investigation step", "data review", "corrective action"],
+  "severity": "LOW", "MEDIUM", "HIGH", or "CRITICAL"
+}
+```

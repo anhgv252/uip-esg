@@ -70,10 +70,10 @@ public class CitizenService {
         log.info("Linking household for citizen: {}", username);
         
         CitizenAccount citizen = citizenRepository.findByUsername(username)
-            .orElseThrow(() -> new IllegalArgumentException("Citizen not found: " + username));
+            .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Citizen not found: " + username));
         
         Building building = buildingRepository.findById(request.getBuildingId())
-            .orElseThrow(() -> new IllegalArgumentException("Building not found: " + request.getBuildingId()));
+            .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Building not found: " + request.getBuildingId()));
         
         // Check if household already exists for this citizen
         householdRepository.findByCitizenId(citizen.getId()).ifPresent(existing -> {
@@ -103,8 +103,8 @@ public class CitizenService {
         log.info("Fetching profile for citizen: {}", username);
         
         CitizenAccount citizen = citizenRepository.findByUsername(username)
-            .orElseThrow(() -> new IllegalArgumentException("Citizen not found: " + username));
-        
+            .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Citizen not found: " + username));
+
         Household household = householdRepository.findByCitizenId(citizen.getId()).orElse(null);
         
         return mapToProfileDto(citizen, household);

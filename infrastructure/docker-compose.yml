@@ -165,6 +165,10 @@ services:
     command: jobmanager
     environment:
       JOB_MANAGER_RPC_ADDRESS: flink-jobmanager
+      KAFKA_BOOTSTRAP: kafka:9092
+      DB_URL: jdbc:postgresql://timescaledb:5432/${POSTGRES_DB:-uip_smartcity}
+      DB_USER: ${POSTGRES_USER:-uip}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
       FLINK_PROPERTIES: |
         jobmanager.rpc.address: flink-jobmanager
         jobmanager.memory.process.size: 1g
@@ -196,6 +200,10 @@ services:
     command: taskmanager
     environment:
       JOB_MANAGER_RPC_ADDRESS: flink-jobmanager
+      KAFKA_BOOTSTRAP: kafka:9092
+      DB_URL: jdbc:postgresql://timescaledb:5432/${POSTGRES_DB:-uip_smartcity}
+      DB_USER: ${POSTGRES_USER:-uip}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
       FLINK_PROPERTIES: |
         jobmanager.rpc.address: flink-jobmanager
         taskmanager.memory.process.size: 2g
