@@ -76,8 +76,8 @@ public class EnvironmentFlinkJob {
                     stmt.setString(12, r.getRawPayload());
                 },
                 JdbcExecutionOptions.builder()
-                        .withBatchSize(500)
-                        .withBatchIntervalMs(1000)
+                        .withBatchSize(5000)
+                        .withBatchIntervalMs(200)
                         .withMaxRetries(3)
                         .build(),
                 new JdbcConnectionOptions.JdbcConnectionOptionsBuilder()
