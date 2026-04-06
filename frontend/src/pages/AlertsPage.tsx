@@ -64,7 +64,7 @@ function StatusBadge({ status }: { status: string }) {
 interface AlertDetailDrawerProps {
   alert: AlertEvent | null
   onClose: () => void
-  onAcknowledge: (id: number) => void
+  onAcknowledge: (id: string, note?: string) => void
   acknowledging: boolean
 }
 
@@ -82,7 +82,7 @@ function AlertDetailDrawer({ alert, onClose, onAcknowledge, acknowledging }: Ale
             <SeverityBadge severity={alert.severity} />
             <StatusBadge status={alert.status} />
           </Box>
-          <Typography variant="subtitle1" fontWeight={600} gutterBottom>{alert.ruleName}</Typography>
+          <Typography variant="subtitle1" fontWeight={600} gutterBottom>{alert.ruleName ?? alert.ruleId ?? '—'}</Typography>
           <Divider sx={{ my: 1.5 }} />
           <Grid container spacing={1}>
             {([
@@ -90,7 +90,7 @@ function AlertDetailDrawer({ alert, onClose, onAcknowledge, acknowledging }: Ale
               ['Measure', alert.measureType],
               ['Value', String(alert.value)],
               ['Threshold', String(alert.threshold)],
-              ['Sensor', alert.sensorName ?? '—'],
+              ['Sensor', alert.sensorId ?? '—'],
               ['Detected', format(new Date(alert.detectedAt), 'dd/MM/yyyy HH:mm:ss')],
               ...(alert.acknowledgedBy
                 ? [['Acknowledged by', alert.acknowledgedBy],
@@ -106,9 +106,9 @@ function AlertDetailDrawer({ alert, onClose, onAcknowledge, acknowledging }: Ale
               </Grid>
             ))}
           </Grid>
-          {alert.message && (
+          {alert.note && (
             <Box mt={2} p={1.5} bgcolor="background.default" borderRadius={1}>
-              <Typography variant="body2">{alert.message}</Typography>
+              <Typography variant="body2">{alert.note}</Typography>
             </Box>
           )}
           {alert.status !== 'ACKNOWLEDGED' && (
@@ -120,7 +120,7 @@ function AlertDetailDrawer({ alert, onClose, onAcknowledge, acknowledging }: Ale
               />
               <Button
                 variant="contained" fullWidth startIcon={<CheckCircleIcon />}
-                disabled={acknowledging} onClick={() => onAcknowledge(alert.id as number)}
+                disabled={acknowledging} onClick={() => onAcknowledge(String(alert.id), note)}
               >
                 {acknowledging ? <CircularProgress size={20} /> : 'Acknowledge'}
               </Button>
@@ -134,7 +134,7 @@ function AlertDetailDrawer({ alert, onClose, onAcknowledge, acknowledging }: Ale
 
 export default function AlertsPage() {
   const [selectedAlert, setSelectedAlert] = useState<AlertEvent | null>(null)
-  const [selected, setSelected] = useState<Set<number>>(new Set())
+  const [selected, setSelected] = useState<Set<string>>(new Set())
   const [page, setPage] = useState(0)
   const [filters, setFilters] = useState({ status: '', severity: '' })
 
@@ -147,8 +147,8 @@ export default function AlertsPage() {
 
   const { mutate: acknowledge, isPending: acknowledging } = useAcknowledgeAlert()
 
-  const handleAck = (id: number) => {
-    acknowledge({ id }, { onSuccess: () => { setSelectedAlert(null) } })
+  const handleAck = (id: string, note?: string) => {
+    acknowledge({ id, note }, { onSuccess: () => { setSelectedAlert(null) } })
   }
 
   const handleBulkAck = () => {
@@ -197,7 +197,7 @@ export default function AlertsPage() {
                 <Checkbox
                   indeterminate={selected.size > 0 && selected.size < alerts.length}
                   checked={alerts.length > 0 && selected.size === alerts.length}
-                  onChange={(e) => setSelected(e.target.checked ? new Set(alerts.map((a) => a.id as number)) : new Set())}
+                  onChange={(e) => setSelected(e.target.checked ? new Set(alerts.map((a) => String(a.id))) : new Set())}
                 />
               </TableCell>
               <TableCell>Severity</TableCell>
@@ -225,18 +225,18 @@ export default function AlertsPage() {
               <TableRow key={alert.id} hover sx={{ cursor: 'pointer' }} onClick={() => setSelectedAlert(alert)}>
                 <TableCell padding="checkbox" onClick={(e) => e.stopPropagation()}>
                   <Checkbox
-                    checked={selected.has(alert.id as number)}
+                    checked={selected.has(String(alert.id))}
                     onChange={(e) => setSelected((prev) => {
                       const next = new Set(prev)
-                      e.target.checked ? next.add(alert.id as number) : next.delete(alert.id as number)
+                      e.target.checked ? next.add(String(alert.id)) : next.delete(String(alert.id))
                       return next
                     })}
                   />
                 </TableCell>
                 <TableCell><SeverityBadge severity={alert.severity} /></TableCell>
-                <TableCell><Typography variant="body2" noWrap sx={{ maxWidth: 180 }}>{alert.ruleName}</Typography></TableCell>
+                <TableCell><Typography variant="body2" noWrap sx={{ maxWidth: 180 }}>{alert.ruleName ?? '—'}</Typography></TableCell>
                 <TableCell><Typography variant="body2">{alert.module}</Typography></TableCell>
-                <TableCell><Typography variant="body2" noWrap sx={{ maxWidth: 120 }}>{alert.sensorName ?? '—'}</Typography></TableCell>
+                <TableCell><Typography variant="body2" noWrap sx={{ maxWidth: 120 }}>{alert.sensorId ?? '—'}</Typography></TableCell>
                 <TableCell><Typography variant="body2">{alert.value}</Typography></TableCell>
                 <TableCell><StatusBadge status={alert.status} /></TableCell>
                 <TableCell>
@@ -249,7 +249,7 @@ export default function AlertsPage() {
                 <TableCell onClick={(e) => e.stopPropagation()}>
                   {alert.status !== 'ACKNOWLEDGED' && (
                     <Tooltip title="Acknowledge">
-                      <IconButton size="small" color="success" onClick={() => handleAck(alert.id as number)}>
+                      <IconButton size="small" color="success" onClick={() => handleAck(String(alert.id))}>
                         <CheckCircleIcon fontSize="small" />
                       </IconButton>
                     </Tooltip>

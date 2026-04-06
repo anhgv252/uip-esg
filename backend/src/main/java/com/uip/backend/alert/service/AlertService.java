@@ -98,9 +98,14 @@ public class AlertService {
     // ─── Mapper ───────────────────────────────────────────────────────────────
 
     private AlertEventDto toDto(AlertEvent a) {
+        String ruleName = a.getRuleId() != null
+                ? alertRuleRepository.findById(a.getRuleId())
+                        .map(AlertRule::getRuleName).orElse(null)
+                : null;
         return AlertEventDto.builder()
                 .id(a.getId())
                 .ruleId(a.getRuleId())
+                .ruleName(ruleName)
                 .sensorId(a.getSensorId())
                 .module(a.getModule())
                 .measureType(a.getMeasureType())

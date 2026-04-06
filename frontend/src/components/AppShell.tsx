@@ -144,7 +144,9 @@ export default function AppShell() {
       {/* Nav items */}
       <List sx={{ flex: 1, pt: 1 }}>
         {visibleItems.map((item) => {
-          const isActive = location.pathname.startsWith(item.path)
+          const isActive = item.path === '/'
+            ? location.pathname === '/'
+            : location.pathname.startsWith(item.path)
           return (
             <ListItem key={item.path} disablePadding sx={{ display: 'block' }}>
               <Tooltip

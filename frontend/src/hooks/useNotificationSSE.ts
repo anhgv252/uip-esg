@@ -4,7 +4,7 @@ const SSE_BASE_URL = (import.meta.env.VITE_SSE_BASE_URL ?? 'http://localhost:808
 const SSE_STREAM_URL = `${SSE_BASE_URL}/api/v1/notifications/stream`;
 
 export interface AlertNotification {
-  id: number;
+  id: string;
   ruleName: string;
   severity: string;
   message: string;

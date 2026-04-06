@@ -78,7 +78,7 @@ export default function AlertFeedPanel({ alerts, loading }: AlertFeedPanelProps)
                   secondary={
                     <Box mt={0.5}>
                       <Typography variant="caption" display="block" color="text.secondary">
-                        {alert.sensorName ?? alert.module} — {alert.measureType}: {alert.value}
+                        {alert.sensorId ?? alert.module} — {alert.measureType}: {alert.value}
                       </Typography>
                       <Typography variant="caption" color="text.disabled">
                         {formatDistanceToNow(new Date(alert.detectedAt), { addSuffix: true })}

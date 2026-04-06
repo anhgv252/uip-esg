@@ -83,7 +83,7 @@ describe('useNotificationSSE', () => {
 
     const es = (globalThis as any).__lastEventSource as MockEventSource
     const alertData: AlertNotification = {
-      id: 1,
+      id: '1',
       ruleName: 'High PM2.5',
       severity: 'critical',
       message: 'PM2.5 level exceeds 150 µg/m³',

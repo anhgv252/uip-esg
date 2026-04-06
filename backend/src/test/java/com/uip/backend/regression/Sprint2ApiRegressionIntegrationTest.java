@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -181,5 +182,206 @@ class Sprint2ApiRegressionIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
                 .andExpect(status().isBadRequest());
+    }
+
+    // ─── Sprint 1 Auth Regression ────────────────────────────────────────────
+
+    @Nested
+    @DisplayName("Sprint 1 — Auth API")
+    class AuthRegression {
+
+        @Test
+        @DisplayName("POST /auth/login with invalid credentials returns 401")
+        void login_invalidCredentials_returns401() throws Exception {
+            mockMvc.perform(post("/api/v1/auth/login")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""
+                                    {"username":"admin","password":"wrong_password"}
+                                    """))
+                    .andExpect(status().isUnauthorized());
+        }
+
+        @Test
+        @DisplayName("GET protected endpoint without token returns 401")
+        void protectedEndpoint_noToken_returns401() throws Exception {
+            mockMvc.perform(get("/api/v1/alerts"))
+                    .andExpect(status().isUnauthorized());
+        }
+
+        @Test
+        @DisplayName("POST /auth/logout returns 200 for authenticated user")
+        void logout_authenticated_returns200() throws Exception {
+            String token = loginAndGetAccessToken();
+            mockMvc.perform(post("/api/v1/auth/logout")
+                            .header("Authorization", "Bearer " + token))
+                    .andExpect(status().isOk());
+        }
+    }
+
+    // ─── Sprint 1 Environment API Regression ─────────────────────────────────
+
+    @Nested
+    @DisplayName("Sprint 1 — Environment API")
+    class EnvironmentRegression {
+
+        @Test
+        @DisplayName("GET /environment/sensors returns 200 with array")
+        void sensors_list_returns200() throws Exception {
+            String token = loginAndGetAccessToken();
+            MvcResult result = mockMvc.perform(get("/api/v1/environment/sensors")
+                            .header("Authorization", "Bearer " + token))
+                    .andExpect(status().isOk())
+                    .andReturn();
+
+            JsonNode body = objectMapper.readTree(result.getResponse().getContentAsString());
+            assert body.isArray() : "Expected array response from /environment/sensors";
+        }
+
+        @Test
+        @DisplayName("GET /environment/aqi/current returns 200 with array")
+        void aqiCurrent_returns200() throws Exception {
+            String token = loginAndGetAccessToken();
+            MvcResult result = mockMvc.perform(get("/api/v1/environment/aqi/current")
+                            .header("Authorization", "Bearer " + token))
+                    .andExpect(status().isOk())
+                    .andReturn();
+
+            JsonNode body = objectMapper.readTree(result.getResponse().getContentAsString());
+            assert body.isArray() : "Expected array response from /environment/aqi/current";
+        }
+
+        @Test
+        @DisplayName("GET /environment/aqi/history returns 200 with array")
+        void aqiHistory_returns200() throws Exception {
+            String token = loginAndGetAccessToken();
+            MvcResult result = mockMvc.perform(get("/api/v1/environment/aqi/history")
+                            .header("Authorization", "Bearer " + token))
+                    .andExpect(status().isOk())
+                    .andReturn();
+
+            JsonNode body = objectMapper.readTree(result.getResponse().getContentAsString());
+            assert body.isArray() : "Expected array response from /environment/aqi/history";
+        }
+    }
+
+    // ─── Sprint 1 ESG API Regression ─────────────────────────────────────────
+
+    @Nested
+    @DisplayName("Sprint 1 — ESG API")
+    class EsgRegression {
+
+        @Test
+        @DisplayName("GET /esg/summary returns 200")
+        void esgSummary_returns200() throws Exception {
+            String token = loginAndGetAccessToken();
+            mockMvc.perform(get("/api/v1/esg/summary")
+                            .header("Authorization", "Bearer " + token))
+                    .andExpect(status().isOk());
+        }
+
+        @Test
+        @DisplayName("GET /esg/energy returns 200 with array")
+        void esgEnergy_returns200() throws Exception {
+            String token = loginAndGetAccessToken();
+            MvcResult result = mockMvc.perform(get("/api/v1/esg/energy")
+                            .header("Authorization", "Bearer " + token))
+                    .andExpect(status().isOk())
+                    .andReturn();
+
+            JsonNode body = objectMapper.readTree(result.getResponse().getContentAsString());
+            assert body.isArray() : "Expected array response from /esg/energy";
+        }
+
+        @Test
+        @DisplayName("GET /esg/carbon returns 200 with array")
+        void esgCarbon_returns200() throws Exception {
+            String token = loginAndGetAccessToken();
+            MvcResult result = mockMvc.perform(get("/api/v1/esg/carbon")
+                            .header("Authorization", "Bearer " + token))
+                    .andExpect(status().isOk())
+                    .andReturn();
+
+            JsonNode body = objectMapper.readTree(result.getResponse().getContentAsString());
+            assert body.isArray() : "Expected array response from /esg/carbon";
+        }
+
+        @Test
+        @DisplayName("POST /esg/reports/generate with query params returns 200 (ARCH fix: @RequestParam not @RequestBody)")
+        void esgGenerateReport_queryParams_returns200() throws Exception {
+            String token = loginAndGetAccessToken();
+            mockMvc.perform(post("/api/v1/esg/reports/generate")
+                            .param("year", "2026")
+                            .param("quarter", "1")
+                            .param("period", "quarterly")
+                            .header("Authorization", "Bearer " + token))
+                    .andExpect(status().isOk());
+        }
+    }
+
+    // ─── Sprint 2 Alert Regression (extended) ────────────────────────────────
+
+    @Nested
+    @DisplayName("Sprint 2 — Alert API (extended)")
+    class AlertExtendedRegression {
+
+        @Test
+        @DisplayName("GET /alerts?severity=HIGH returns 200 with page structure")
+        void alerts_severityFilter_returns200() throws Exception {
+            String token = loginAndGetAccessToken();
+            MvcResult result = mockMvc.perform(get("/api/v1/alerts")
+                            .param("severity", "HIGH")
+                            .header("Authorization", "Bearer " + token))
+                    .andExpect(status().isOk())
+                    .andReturn();
+
+            JsonNode body = objectMapper.readTree(result.getResponse().getContentAsString());
+            assert body.has("content") : "Response should have 'content' field (Spring Page)";
+            assert body.has("totalElements") : "Response should have 'totalElements' field";
+        }
+
+        @Test
+        @DisplayName("GET /alerts response items include id as UUID string (V5 arch fix)")
+        void alerts_idsAreUuidStrings() throws Exception {
+            String token = loginAndGetAccessToken();
+            MvcResult result = mockMvc.perform(get("/api/v1/alerts")
+                            .param("size", "1")
+                            .header("Authorization", "Bearer " + token))
+                    .andExpect(status().isOk())
+                    .andReturn();
+
+            JsonNode body = objectMapper.readTree(result.getResponse().getContentAsString());
+            JsonNode content = body.get("content");
+            if (content != null && content.isArray() && content.size() > 0) {
+                JsonNode first = content.get(0);
+                String id = first.get("id").asText();
+                // UUIDs have format xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx (36 chars)
+                assert id.length() == 36 && id.contains("-")
+                        : "Alert id should be UUID string, got: " + id;
+            }
+        }
+
+        @Test
+        @DisplayName("GET /admin/alert-rules returns 200 with array")
+        void alertRules_list_returns200() throws Exception {
+            String token = loginAndGetAccessToken();
+            MvcResult result = mockMvc.perform(get("/api/v1/admin/alert-rules")
+                            .header("Authorization", "Bearer " + token))
+                    .andExpect(status().isOk())
+                    .andReturn();
+
+            JsonNode body = objectMapper.readTree(result.getResponse().getContentAsString());
+            assert body.isArray() : "Expected array response from /admin/alert-rules";
+        }
+
+        @Test
+        @DisplayName("GET /notifications/stream returns 200 (SSE endpoint alive)")
+        void notificationsStream_returns200() throws Exception {
+            String token = loginAndGetAccessToken();
+            // SSE connection — just check it doesn't 4xx/5xx
+            mockMvc.perform(get("/api/v1/notifications/stream")
+                            .header("Authorization", "Bearer " + token)
+                            .accept("text/event-stream"))
+                    .andExpect(status().isOk());
+        }
     }
 }

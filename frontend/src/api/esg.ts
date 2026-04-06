@@ -44,8 +44,10 @@ export const getEsgCarbon = (from?: string, to?: string) =>
     .get<EsgMetricEntry[]>('/esg/carbon', { params: { from, to } })
     .then((r) => r.data);
 
-export const triggerReportGeneration = (year: number, quarter: number) =>
-  apiClient.post<EsgReport>('/esg/reports/generate', { year, quarter }).then((r) => r.data);
+export const triggerReportGeneration = (year: number, quarter: number, period = 'quarterly') =>
+  apiClient
+    .post<EsgReport>('/esg/reports/generate', null, { params: { year, quarter, period } })
+    .then((r) => r.data);
 
 export const getReportStatus = (id: string) =>
   apiClient.get<EsgReport>(`/esg/reports/${id}/status`).then((r) => r.data);

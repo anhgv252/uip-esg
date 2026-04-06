@@ -19,7 +19,7 @@ export function useAlerts(filters?: {
 export function useAcknowledgeAlert() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ id, note }: { id: number; note?: string }) =>
+    mutationFn: ({ id, note }: { id: string; note?: string }) =>
       acknowledgeAlert(id, note),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['alerts'] }),
   })

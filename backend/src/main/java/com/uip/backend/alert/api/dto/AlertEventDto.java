@@ -15,6 +15,7 @@ import java.util.UUID;
 public class AlertEventDto {
     private UUID    id;
     private UUID    ruleId;
+    private String  ruleName;
     private String  sensorId;
     private String  module;
     private String  measureType;

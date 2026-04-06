@@ -1,16 +1,16 @@
 import { apiClient } from './client';
 
 export interface AlertEvent {
-  id: number;
-  ruleName: string;
+  id: string;
+  ruleId: string | null;
+  ruleName: string | null;
+  sensorId: string | null;
   module: string;
   measureType: string;
   severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
-  sensorId: number | null;
-  sensorName: string | null;
   value: number;
   threshold: number;
-  message: string;
+  note: string | null;
   status: 'OPEN' | 'ACKNOWLEDGED';
   acknowledgedBy: string | null;
   acknowledgedAt: string | null;
@@ -25,7 +25,7 @@ export interface AlertEventsPage {
 }
 
 export interface AlertRule {
-  id: number;
+  id: string;
   ruleName: string;
   module: string;
   measureType: string;
@@ -55,7 +55,7 @@ export const getAlerts = (params?: {
   size?: number;
 }) => apiClient.get<AlertEventsPage>('/alerts', { params }).then((r) => r.data);
 
-export const acknowledgeAlert = (id: number, note?: string) =>
+export const acknowledgeAlert = (id: string, note?: string) =>
   apiClient.put<AlertEvent>(`/alerts/${id}/acknowledge`, { note }).then((r) => r.data);
 
 export const getAlertRules = () =>
@@ -64,5 +64,5 @@ export const getAlertRules = () =>
 export const createAlertRule = (data: AlertRuleRequest) =>
   apiClient.post<AlertRule>('/admin/alert-rules', data).then((r) => r.data);
 
-export const deleteAlertRule = (id: number) =>
+export const deleteAlertRule = (id: string) =>
   apiClient.delete(`/admin/alert-rules/${id}`);
