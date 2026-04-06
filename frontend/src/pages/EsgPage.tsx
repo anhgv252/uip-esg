@@ -52,7 +52,7 @@ export default function EsgPage() {
             label="Energy Consumption"
             value={summary?.totalEnergyKwh}
             unit="kWh"
-            trend={summary?.energyTrend}
+            trend={summary?.energyTrend ?? undefined}
             loading={summaryLoading}
             higherIsBad
           />
@@ -62,7 +62,7 @@ export default function EsgPage() {
             label="Water Usage"
             value={summary?.totalWaterM3}
             unit="m³"
-            trend={summary?.waterTrend}
+            trend={summary?.waterTrend ?? undefined}
             loading={summaryLoading}
             higherIsBad
           />
@@ -72,7 +72,7 @@ export default function EsgPage() {
             label="Carbon Footprint"
             value={summary?.totalCarbonTco2e}
             unit="tCO₂e"
-            trend={summary?.carbonTrend}
+            trend={summary?.carbonTrend ?? undefined}
             loading={summaryLoading}
             higherIsBad
           />

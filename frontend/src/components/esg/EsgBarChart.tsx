@@ -39,8 +39,9 @@ export function EsgBarChart({ data, metricLabel, unit }: EsgBarChartProps) {
   for (const entry of data) {
     const date = format(new Date(entry.timestamp), 'dd/MM');
     if (!byDate[date]) byDate[date] = { date };
-    byDate[date][entry.buildingId] = (byDate[date][entry.buildingId] as number ?? 0) + entry.value;
-    buildings.add(entry.buildingId);
+    const bldId = entry.buildingId ?? 'unknown';
+    byDate[date][bldId] = (byDate[date][bldId] as number ?? 0) + entry.value;
+    buildings.add(bldId);
   }
 
   const chartData = Object.values(byDate).slice(-14); // last 14 days
