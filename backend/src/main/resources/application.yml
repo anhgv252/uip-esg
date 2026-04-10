@@ -1,6 +1,9 @@
 spring:
   application:
     name: uip-backend
+  autoconfigure:
+    exclude:
+      - org.camunda.bpm.spring.boot.starter.webapp.CamundaBpmWebappSecurityAutoConfiguration
 
   datasource:
     url: jdbc:postgresql://localhost:5432/uip_smartcity
@@ -84,18 +87,21 @@ security:
 camunda:
   bpm:
     admin-user:
-      id: admin
-      password: admin_Dev#2026!
+      id: ${CAMUNDA_ADMIN_USER:admin}
+      password: ${CAMUNDA_ADMIN_PASSWORD:admin_Dev#2026!}
       first-name: Admin
     filter:
       create: All Tasks
     webapp:
       application-path: /camunda
+      index-redirect-enabled: true
     database:
       schema-update: true
     job-execution:
       enabled: true
     history-level: audit
+    auto-deployment-enabled: true
+    deployment-resource-pattern: "classpath*:processes/*.bpmn"
     generic-properties:
       properties:
         historyTimeToLive: 30

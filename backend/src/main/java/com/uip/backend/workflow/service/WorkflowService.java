@@ -1,10 +1,12 @@
 package com.uip.backend.workflow.service;
 
+import com.uip.backend.common.exception.WorkflowNotFoundException;
 import com.uip.backend.workflow.dto.ProcessDefinitionDto;
 import com.uip.backend.workflow.dto.ProcessInstanceDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.camunda.bpm.engine.HistoryService;
+import org.camunda.bpm.engine.ProcessEngineException;
 import org.camunda.bpm.engine.RepositoryService;
 import org.camunda.bpm.engine.RuntimeService;
 import org.camunda.bpm.engine.history.HistoricProcessInstance;
@@ -87,9 +89,13 @@ public class WorkflowService {
 
     public ProcessInstanceDto startProcess(String processKey, Map<String, Object> variables) {
         log.info("Starting process: {} with variables: {}", processKey, variables.keySet());
-        ProcessInstance instance = runtimeService.startProcessInstanceByKey(processKey, variables);
-        log.info("Process started with instance ID: {}", instance.getId());
-        return toDto(instance);
+        try {
+            ProcessInstance instance = runtimeService.startProcessInstanceByKey(processKey, variables);
+            log.info("Process started with instance ID: {}", instance.getId());
+            return toDto(instance);
+        } catch (ProcessEngineException e) {
+            throw new WorkflowNotFoundException("Process not found: " + processKey);
+        }
     }
 
     public Map<String, Object> getInstanceVariables(String instanceId) {

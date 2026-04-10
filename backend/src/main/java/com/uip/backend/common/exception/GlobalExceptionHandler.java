@@ -43,6 +43,13 @@ public class GlobalExceptionHandler {
         return detail;
     }
 
+    @ExceptionHandler(WorkflowNotFoundException.class)
+    public ProblemDetail handleWorkflowNotFound(WorkflowNotFoundException ex) {
+        ProblemDetail detail = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
+        detail.setType(URI.create("/errors/workflow-not-found"));
+        return detail;
+    }
+
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ProblemDetail handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
         ProblemDetail detail = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Invalid request parameter");

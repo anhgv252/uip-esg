@@ -7,6 +7,7 @@ import io.github.bucket4j.Refill;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -45,6 +46,7 @@ public class SecurityConfig {
     private final Map<String, Bucket> loginBuckets = new ConcurrentHashMap<>();
 
     @Bean
+    @Order(2)
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
             .csrf(AbstractHttpConfigurer::disable)
@@ -59,8 +61,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/v1/health", "/api/v1/auth/**").permitAll()
                 .requestMatchers("/v3/api-docs", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                 .requestMatchers("/actuator/health").permitAll()
-                // Camunda paths
-                .requestMatchers("/camunda/**", "/engine-rest/**").permitAll()
+                // Camunda paths handled by CamundaSecurityConfig @Order(1)
                 // Citizen self-registration and building lookup are public
                 .requestMatchers(HttpMethod.POST, "/api/v1/citizen/register").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/citizen/buildings", "/api/v1/citizen/buildings/by-district").permitAll()
