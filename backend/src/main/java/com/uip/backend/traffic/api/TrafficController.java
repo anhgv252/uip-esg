@@ -41,7 +41,7 @@ public class TrafficController {
             @RequestParam(required = false) LocalDateTime from,
             @RequestParam(required = false) LocalDateTime to) {
         
-        LocalDateTime fromTime = from != null ? from : LocalDateTime.now().minusHours(24);
+        LocalDateTime fromTime = from != null ? from : LocalDateTime.now().minusDays(7);
         LocalDateTime toTime = to != null ? to : LocalDateTime.now();
         
         List<TrafficCountDto> counts = trafficService.getTrafficCounts(intersection, fromTime, toTime);

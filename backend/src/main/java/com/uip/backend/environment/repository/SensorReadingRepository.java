@@ -33,14 +33,12 @@ public interface SensorReadingRepository extends JpaRepository<SensorReading, Se
         """)
     Optional<SensorReading> findLatestBySensorId(@Param("sensorId") String sensorId);
 
-    @Query("""
-        SELECT r FROM SensorReading r
-        WHERE r.id.timestamp = (
-            SELECT MAX(r2.id.timestamp) FROM SensorReading r2
-            WHERE r2.sensorId = r.sensorId
-        )
-        ORDER BY r.sensorId
-        """)
+    @Query(value = """
+        SELECT DISTINCT ON (sensor_id)
+               id, sensor_id, timestamp, aqi, pm25, pm10, o3, no2, so2, co, temperature, humidity, raw_payload
+        FROM environment.sensor_readings
+        ORDER BY sensor_id, timestamp DESC
+        """, nativeQuery = true)
     List<SensorReading> findLatestPerSensor();
 
     @Query("""

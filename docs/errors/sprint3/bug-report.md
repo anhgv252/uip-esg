@@ -17,6 +17,9 @@
 | BUG-S3-MIGRATION-01~04 | 🔵 INFO | DB Migrations | Fixed trong testing | Schema đã ổn định |
 | BUG-S3-JACKSON-01 | 🔵 INFO | Backend config | Fixed trong testing | — |
 | BUG-S3-JSX-01 | 🔵 INFO | Frontend | Fixed trong testing | — |
+| **BUG-S3-ESG-03** | 🔴 HIGH | Backend / ESG | **FIXED 07/04** | ESG report sinh hoàn toàn không được (PENDING forever) |
+| **BUG-S3-TRAFFIC-01** | 🟡 MEDIUM | Backend / Traffic | **FIXED 07/04** | Traffic counts luôn rỗng do time-window quá hẹp |
+| **BUG-S3-CITIZEN-01** | 🟡 MEDIUM | DB Migration | **FIXED 07/04** | citizen2/citizen3 không đăng nhập được |
 
 ---
 
@@ -209,6 +212,146 @@ Các bug này đã được fix trực tiếp trong session QA ngày 06/04/2026.
 
 ---
 
+## Bugs Phát Hiện Trong Live Demo — 07/04/2026
+
+### BUG-S3-ESG-03 — ESG Report Stuck PENDING Forever
+
+| Field | Value |
+|---|---|
+| **ID** | BUG-S3-ESG-03 |
+| **Severity** | HIGH |
+| **Component** | `backend/src/main/java/com/uip/backend/esg/service/EsgService.java` |
+| **Phát hiện** | Live demo 07/04/2026 — `POST /api/v1/esg/reports/generate` |
+| **Trạng thái** | ✅ FIXED 07/04/2026 |
+
+### Mô tả
+Sau khi gọi `POST /esg/reports/generate`, report tạo ra nhưng status mãi là `PENDING` — không bao giờ chuyển sang `GENERATING` hay `DONE`.
+
+### Root Cause
+`EsgService` có class-level annotation `@Transactional(readOnly = true)`. Khi không có method-level override, Hibernate set `FlushMode.MANUAL` cho tất cả transactions → `reportRepository.save(report)` không commit row vào DB.
+
+Đồng thời, ngay sau `save()`, `reportGenerator.generateAsync(id)` được gọi. Thread async cố `findById(id)` nhưng row chưa tồn tại → `IllegalArgumentException("Report not found")` throw trước khi biến `report` được set → `catch` block không thể set `status=FAILED` → exception bị nuốt bởi `SimpleAsyncUncaughtExceptionHandler` → report còn mãi ở `PENDING`.
+
+Thứ tự lỗi:
+1. `@Transactional(readOnly=true)` → Hibernate `FlushMode.MANUAL`
+2. `save()` không flush → row không có trong DB
+3. `@Async` thread chạy ngay, `findById` → `IllegalArgumentException`
+4. Exception handler nuốt lỗi → PENDING forever
+
+### Fix
+```java
+// EsgService.java — trước đây (sai)
+// Không có @Transactional trên method → kế thừa class-level readOnly=true
+
+// Sau khi fix
+@Transactional  // override class-level readOnly — commit row ngay
+public EsgReportDto triggerReportGeneration(String periodType, int year, int quarter) {
+    EsgReport saved = reportRepository.save(report);
+    // Dispatch async CHỈ SAU KHI transaction commit
+    TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+        @Override
+        public void afterCommit() {
+            reportGenerator.generateAsync(saved.getId());
+        }
+    });
+    return toReportDto(saved);
+}
+```
+
+`TransactionSynchronizationManager.afterCommit()` đảm bảo async thread chỉ chạy sau khi INSERT đã visible với mọi connection.
+
+### Verify
+```bash
+curl -X POST '.../esg/reports/generate?periodType=QUARTERLY&year=2026&quarter=2' -H "Authorization: Bearer $TOKEN"
+# → {"status":"PENDING", "id":"..."}
+sleep 4
+curl '.../esg/reports/{id}/status' -H "Authorization: Bearer $TOKEN"
+# → {"status":"DONE", "downloadUrl":"/api/v1/esg/reports/{id}/download", ...}
+```
+**Kết quả thực tế:** `PENDING → DONE` trong ~1.2 giây ✅
+
+---
+
+### BUG-S3-TRAFFIC-01 — Traffic Counts Luôn Trả Về Mảng Rỗng
+
+| Field | Value |
+|---|---|
+| **ID** | BUG-S3-TRAFFIC-01 |
+| **Severity** | MEDIUM |
+| **Component** | `backend/.../traffic/api/TrafficController.java` |
+| **Phát hiện** | Live demo 07/04/2026 — `GET /api/v1/traffic/counts` |
+| **Trạng thái** | ✅ FIXED 07/04/2026 |
+
+### Mô tả
+`GET /api/v1/traffic/counts` luôn trả về `[]` dù DB có dữ liệu seed.
+
+### Root Cause
+`TrafficController.getTrafficCounts()` có default time-window là **24 giờ** (`from = now - 24h`). Dữ liệu seed trong V6 migration được insert với `recorded_at` cố định (timestamp tại thời điểm chạy migration, ~ngày 06/04). Sau 24 giờ kể từ migration, tất cả records đều nằm ngoài window → query trả về rỗng.
+
+### Fix
+Mở rộng default window từ **24 giờ → 7 ngày** trong `TrafficController`:
+
+```java
+// Trước
+Instant defaultFrom = Instant.now().minus(24, ChronoUnit.HOURS);
+
+// Sau
+Instant defaultFrom = Instant.now().minus(7, ChronoUnit.DAYS);
+```
+
+### Verify
+```bash
+curl '.../traffic/counts' -H "Authorization: Bearer $TOKEN"
+# → [{intersectionId: "INT-001", vehicleCount: 450, vehicleType: "CAR", ...}, ...]
+```
+**Kết quả thực tế:** Trả về records đúng ✅
+
+---
+
+### BUG-S3-CITIZEN-01 — citizen2/citizen3 Không Đăng Nhập Được
+
+| Field | Value |
+|---|---|
+| **ID** | BUG-S3-CITIZEN-01 |
+| **Severity** | MEDIUM |
+| **Component** | `backend/src/main/resources/db/migration/V7__create_citizen_entities.sql` |
+| **Phát hiện** | Live demo 07/04/2026 — test citizen login |
+| **Trạng thái** | ✅ FIXED 07/04/2026 (V9 migration) |
+
+### Mô tả
+`citizen2` và `citizen3` tồn tại trong `citizens.citizen_accounts` và có household + invoice data (từ V7/V8 migration), nhưng **không có record trong `public.app_users`** → `POST /auth/login` trả về `401 Invalid username or password`.
+
+`citizen1` cũng bị ảnh hưởng (đã fix riêng bằng cách reset password hash về `citizen_Dev#2026!`).
+
+### Root Cause
+V7 migration (`V7__create_citizen_entities.sql`) chỉ insert vào `citizens.citizen_accounts` (bảng profile) mà không insert vào `public.app_users` (bảng auth). Backend dùng `app_users` để authenticate — thiếu record ở đây dẫn đến `UsernameNotFoundException`.
+
+### Fix
+Thêm V9 migration insert citizen1/2/3 vào `app_users` với bcrypt hash của `citizen_Dev#2026!`:
+
+```sql
+-- V9__fix_citizen_auth_accounts.sql
+INSERT INTO public.app_users (username, email, password_hash, role)
+VALUES
+  ('citizen1', 'citizen1@example.com', '$2a$12$PNchUMuWmIKTRq/gi33.Zu744k2c/D.S1DvGXFin/qO/j1QuM6sg2', 'ROLE_CITIZEN'),
+  ('citizen2', 'citizen2@example.com', '$2a$12$PNchUMuWmIKTRq/gi33.Zu744k2c/D.S1DvGXFin/qO/j1QuM6sg2', 'ROLE_CITIZEN'),
+  ('citizen3', 'citizen3@example.com', '$2a$12$PNchUMuWmIKTRq/gi33.Zu744k2c/D.S1DvGXFin/qO/j1QuM6sg2', 'ROLE_CITIZEN')
+ON CONFLICT (username) DO NOTHING;
+```
+
+**Password:** `citizen_Dev#2026!` (cùng pattern với `citizen` seed account)
+
+### Verify
+```bash
+curl -X POST '.../auth/login' -d '{"username":"citizen2","password":"citizen_Dev#2026!"}' -H 'Content-Type: application/json'
+# → {"accessToken":"eyJ...", "tokenType":"Bearer", ...}
+curl '.../citizen/profile' -H "Authorization: Bearer $TOKEN"
+# → {"username":"citizen2", "fullName":"Trần Thị B", "household":{...}, ...}
+```
+**Kết quả thực tế:** citizen2 và citizen3 login thành công, profile và invoices trả về đúng ✅
+
+---
+
 ## Regression Checklist (QA verify trước khi approve Sprint 4)
 
 - [ ] **BUG-S3-CONFIG-01 verify**: Camunda webapp accessible tại `/camunda/app/cockpit`
@@ -221,6 +364,9 @@ Các bug này đã được fix trực tiếp trong session QA ngày 06/04/2026.
 - [ ] Regression: Login admin/citizen vẫn hoạt động sau fixes
 - [ ] Regression: Alert acknowledge flow vẫn hoạt động
 - [ ] Regression: Citizen registration 3-step wizard vẫn hoạt động
+- [ ] BUG-S3-ESG-03 verify: `POST /esg/reports/generate?periodType=QUARTERLY&year=2026&quarter=2` → wait 4s → `GET /esg/reports/{id}/status` returns `{"status":"DONE","downloadUrl":"..."}` not null
+- [ ] BUG-S3-TRAFFIC-01 verify: `GET /traffic/counts` (no params) returns non-empty list (>0 records)
+- [ ] BUG-S3-CITIZEN-01 verify: `POST /auth/login` với username=citizen2 + password=`citizen_Dev#2026!` → HTTP 200 + JWT; repeat với citizen3
 
 ---
 

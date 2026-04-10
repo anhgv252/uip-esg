@@ -11,6 +11,8 @@ import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.time.Instant;
@@ -79,9 +81,16 @@ public class EsgService {
         report.setYear(year);
         report.setQuarter(quarter);
         EsgReport saved = reportRepository.save(report);
-
-        reportGenerator.generateAsync(saved.getId());
-
+        UUID reportId = saved.getId();
+        // Schedule async generation to run AFTER the current transaction commits.
+        // This prevents the race condition where the async thread calls findById
+        // before the INSERT is visible to other connections.
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                reportGenerator.generateAsync(reportId);
+            }
+        });
         return toReportDto(saved);
     }
 

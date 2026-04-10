@@ -19,6 +19,7 @@ yarn-error.log*
 backend/.gradle/
 backend/build/
 backend/out/
+backend/bin/
 backend/*.iml
 *.jar
 *.war
@@ -34,6 +35,11 @@ frontend/coverage/
 frontend/.vite/
 frontend/.cache/
 frontend/targeted-jest-report.json
+
+# java-grapth
+.java-graph/
+.java-graph.yaml
+.mcp.json
 
 # Python caches (poc scripts)
 __pycache__/
