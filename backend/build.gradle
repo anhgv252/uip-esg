@@ -68,6 +68,8 @@ dependencies {
 
     // ArchUnit — module boundary enforcement
     testImplementation 'com.tngtech.archunit:archunit-junit5:1.3.0'
+    // Awaitility — async process completion in integration tests
+    testImplementation 'org.awaitility:awaitility:4.2.1'
 }
 
 dependencyManagement {
@@ -81,6 +83,9 @@ test {
     // Docker Engine 26+ deprecated API v1.24; force docker-java (used by Testcontainers) to use v1.41
     environment 'DOCKER_API_VERSION', '1.41'
     environment 'RYUK_DISABLED', 'true'
+    // Sequential forks: @SpringBootTest contexts share DB pool; parallel forks exhaust connections
+    maxParallelForks = 1
+    jvmArgs '-Xmx1g', '-Xms256m'
     finalizedBy jacocoTestReport
 }
 

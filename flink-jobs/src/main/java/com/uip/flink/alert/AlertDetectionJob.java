@@ -28,7 +28,7 @@ import java.time.Duration;
  * S1-08 — AlertDetectionJob
  * Reads environment.sensor_readings via TimescaleDB polling
  * OR processes the ngsi_ld_environment stream with a 5-min sliding window.
- * Emits AlertEvent to Kafka topic alert_events.
+ * Emits AlertEvent to Kafka topic UIP.flink.alert.detected.v1.
  */
 public class AlertDetectionJob {
 
@@ -54,11 +54,11 @@ public class AlertDetectionJob {
                 .setValueOnlyDeserializer(new NgsiLdDeserializer())
                 .build();
 
-        // Sink: publish AlertEvent JSON to Kafka alert_events
+        // Sink: publish AlertEvent JSON to Kafka — must match AlertEventKafkaConsumer.TOPIC
         KafkaSink<String> alertSink = KafkaSink.<String>builder()
                 .setBootstrapServers(KAFKA_BOOTSTRAP)
                 .setRecordSerializer(KafkaRecordSerializationSchema.builder()
-                        .setTopic("alert_events")
+                        .setTopic("UIP.flink.alert.detected.v1")
                         .setValueSerializationSchema(new SimpleStringSchema())
                         .build())
                 .build();
@@ -77,7 +77,7 @@ public class AlertDetectionJob {
         .process(new AlertDetectionFunction())
         .map(alert -> MAPPER.writeValueAsString(alert))
         .sinkTo(alertSink)
-        .name("Kafka alert_events Sink");
+        .name("Kafka UIP.flink.alert.detected.v1 Sink");
 
         LOG.info("Starting AlertDetectionJob");
         env.execute("AlertDetectionJob");

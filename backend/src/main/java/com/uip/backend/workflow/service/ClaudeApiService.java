@@ -60,7 +60,7 @@ public class ClaudeApiService {
             
             // Build Claude API request
             ClaudeApiRequest request = ClaudeApiRequest.builder()
-                    .model("claude-sonnet-4-20250514")
+                    .model("claude-sonnet-4-6")
                     .maxTokens(1024)
                     .messages(List.of(new ClaudeApiRequest.Message("user", prompt)))
                     .build();

@@ -1,0 +1,11 @@
+{
+  "test": "Kafka Direct Producer (alert_events)",
+  "timestamp": "2026-04-22T08:32:58.452727+00:00",
+  "duration_seconds": 60.0,
+  "target_rate": 2000,
+  "actual_rate": 1929.0,
+  "produced": 115800,
+  "delivered": 115800,
+  "failed": 0,
+  "status": "PASS"
+}

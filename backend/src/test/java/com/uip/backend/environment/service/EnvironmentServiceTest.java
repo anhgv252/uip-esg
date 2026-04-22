@@ -49,6 +49,7 @@ class EnvironmentServiceTest {
         activeSensor.setLastSeenAt(Instant.now().minusSeconds(60)); // 1 min ago → ONLINE
 
         SensorReadingId rid = new SensorReadingId();
+        rid.setId(1L);
         rid.setTimestamp(Instant.now().minusSeconds(30));
         reading = new SensorReading();
         reading.setId(rid);
@@ -145,11 +146,25 @@ class EnvironmentServiceTest {
 
     // ─── getCurrentAqi ──────────────────────────────────────────────────────
 
+    @SuppressWarnings("unchecked")
+    private List<Object[]> toRowListWithDistrict(SensorReading r, String districtCode) {
+        // Mirrors findLatestPerSensorWithDistrict() — 13 columns, no raw_payload
+        Object[] row = new Object[]{
+            r.getId().getId(), r.getSensorId(), r.getId().getTimestamp(),
+            r.getAqi(), r.getPm25(), r.getPm10(), r.getO3(), r.getNo2(),
+            r.getSo2(), r.getCo(), r.getTemperature(), r.getHumidity(),
+            districtCode
+        };
+        List<Object[]> list = new java.util.ArrayList<>();
+        list.add(row);
+        return list;
+    }
+
     @Test
     @DisplayName("getCurrentAqi: maps reading to AqiResponseDto with district info")
     void getCurrentAqi_withSensorFound_includesDistrictCode() {
-        when(readingRepository.findLatestPerSensor()).thenReturn(List.of(reading));
-        when(sensorRepository.findBySensorId("ENV-001")).thenReturn(Optional.of(activeSensor));
+        when(readingRepository.findLatestPerSensorWithDistrict())
+                .thenReturn(toRowListWithDistrict(reading, "D01"));
 
         var result = environmentService.getCurrentAqi();
 
@@ -161,8 +176,8 @@ class EnvironmentServiceTest {
     @Test
     @DisplayName("getCurrentAqi: null district when sensor not found in registry")
     void getCurrentAqi_sensorNotFound_districtCodeIsNull() {
-        when(readingRepository.findLatestPerSensor()).thenReturn(List.of(reading));
-        when(sensorRepository.findBySensorId("ENV-001")).thenReturn(Optional.empty());
+        when(readingRepository.findLatestPerSensorWithDistrict())
+                .thenReturn(toRowListWithDistrict(reading, null));
 
         var result = environmentService.getCurrentAqi();
 
@@ -173,7 +188,7 @@ class EnvironmentServiceTest {
     @Test
     @DisplayName("getCurrentAqi: empty readings returns empty list")
     void getCurrentAqi_noReadings_returnsEmpty() {
-        when(readingRepository.findLatestPerSensor()).thenReturn(List.of());
+        when(readingRepository.findLatestPerSensorWithDistrict()).thenReturn(List.of());
 
         assertThat(environmentService.getCurrentAqi()).isEmpty();
     }

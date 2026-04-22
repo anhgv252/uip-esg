@@ -24,6 +24,7 @@ public class CitizenServiceRequestDelegate implements JavaDelegate {
         String requestType = (String) execution.getVariable("requestType");
         String description = (String) execution.getVariable("description");
         String aiDecision = (String) execution.getVariable("aiDecision");
+        String aiSeverity = (String) execution.getVariable("aiSeverity");
         @SuppressWarnings("unchecked")
         List<String> recommendedActions = (List<String>) execution.getVariable("aiRecommendedActions");
 
@@ -31,7 +32,10 @@ public class CitizenServiceRequestDelegate implements JavaDelegate {
 
         // Determine department from AI decision
         String department = determineDepartment(aiDecision);
-        
+
+        // Determine priority from AI severity
+        String priority = determinePriority(aiSeverity);
+
         // Get auto-response text from AI recommendations
         String autoResponseText = recommendedActions != null && !recommendedActions.isEmpty()
                 ? recommendedActions.get(0)
@@ -43,21 +47,35 @@ public class CitizenServiceRequestDelegate implements JavaDelegate {
         execution.setVariable("department", department);
         execution.setVariable("autoResponseText", autoResponseText);
         execution.setVariable("requestId", requestId);
+        execution.setVariable("priority", priority);
 
-        log.info("Service request {} routed to department: {}", requestId, department);
+        log.info("Service request {} routed to department: {} with priority: {}", requestId, department, priority);
     }
 
     private String determineDepartment(String aiDecision) {
         if (aiDecision == null) {
             return "GENERAL";
         }
-        
+
         return switch (aiDecision.toUpperCase()) {
             case "ASSIGN_TO_ENVIRONMENT" -> "ENVIRONMENT";
             case "ASSIGN_TO_UTILITIES" -> "UTILITIES";
             case "ASSIGN_TO_TRAFFIC" -> "TRAFFIC";
             case "ASSIGN_TO_GENERAL" -> "GENERAL";
             default -> "GENERAL";
+        };
+    }
+
+    private String determinePriority(String aiSeverity) {
+        if (aiSeverity == null) {
+            return "MEDIUM";
+        }
+        return switch (aiSeverity.toUpperCase()) {
+            case "CRITICAL" -> "HIGH";
+            case "HIGH" -> "HIGH";
+            case "MEDIUM" -> "MEDIUM";
+            case "LOW" -> "LOW";
+            default -> "MEDIUM";
         };
     }
 }

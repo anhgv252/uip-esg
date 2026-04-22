@@ -15,10 +15,13 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
+import com.uip.backend.esg.dto.EsgAnomalyDto;
+
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -107,6 +110,53 @@ public class EsgService {
             throw new IllegalStateException("Report not ready: status=" + report.getStatus());
         }
         return report;
+    }
+
+    // ─── Anomaly Detection (M03/M04 scheduler) ─────────────────────────────────
+
+    private static final double ANOMALY_THRESHOLD_RATIO = 1.3;
+
+    public List<EsgAnomalyDto> detectUtilityAnomalies() {
+        Instant now   = Instant.now();
+        Instant from  = now.minus(30, ChronoUnit.DAYS);
+        List<EsgAnomalyDto> anomalies = new ArrayList<>();
+
+        for (String type : List.of("ENERGY", "WATER")) {
+            Double current = metricRepository.sumByTypeAndRange(type, from, now);
+            if (current == null || current == 0) continue;
+
+            Instant histFrom = from.minus(30, ChronoUnit.DAYS);
+            Double historical = metricRepository.sumByTypeAndRange(type, histFrom, from);
+            if (historical == null || historical == 0) continue;
+
+            if (current > historical * ANOMALY_THRESHOLD_RATIO) {
+                anomalies.add(new EsgAnomalyDto(
+                        type.toLowerCase(), current, historical, null, null));
+            }
+        }
+        return anomalies;
+    }
+
+    public List<EsgAnomalyDto> detectEsgAnomalies() {
+        Instant now   = Instant.now();
+        Instant from  = now.minus(30, ChronoUnit.DAYS);
+        List<EsgAnomalyDto> anomalies = new ArrayList<>();
+
+        for (String type : List.of("ENERGY", "WATER", "CARBON", "WASTE")) {
+            Double current = metricRepository.sumByTypeAndRange(type, from, now);
+            if (current == null || current == 0) continue;
+
+            Instant histFrom = from.minus(30, ChronoUnit.DAYS);
+            Double historical = metricRepository.sumByTypeAndRange(type, histFrom, from);
+            if (historical == null || historical == 0) continue;
+
+            if (current > historical * ANOMALY_THRESHOLD_RATIO) {
+                anomalies.add(new EsgAnomalyDto(
+                        type.toLowerCase(), current, historical, null,
+                        now.toString()));
+            }
+        }
+        return anomalies;
     }
 
     // ─── Helpers ──────────────────────────────────────────────────────────────

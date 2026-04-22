@@ -1,9 +1,6 @@
 package com.uip.backend.auth.config;
 
 import com.uip.backend.auth.service.UipUserDetailsService;
-import io.github.bucket4j.Bandwidth;
-import io.github.bucket4j.Bucket;
-import io.github.bucket4j.Refill;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -20,18 +17,15 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-import java.time.Duration;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 @Configuration
 @EnableWebSecurity
@@ -41,9 +35,6 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthFilter;
     private final UipUserDetailsService userDetailsService;
-
-    // Per-IP rate limit bucket for login: 5 attempts per minute
-    private final Map<String, Bucket> loginBuckets = new ConcurrentHashMap<>();
 
     @Bean
     @Order(2)
@@ -56,17 +47,32 @@ public class SecurityConfig {
                 .frameOptions(frame -> frame.deny())
                 .contentTypeOptions(content -> {})
                 .httpStrictTransportSecurity(hsts -> hsts.includeSubDomains(true).maxAgeInSeconds(31536000))
+                .contentSecurityPolicy(csp -> csp.policyDirectives(
+                    "default-src 'self'; " +
+                    "script-src 'self'; " +
+                    "style-src 'self' 'unsafe-inline'; " +
+                    "img-src 'self' data:; " +
+                    "connect-src 'self'; " +
+                    "frame-ancestors 'none'"
+                ))
             )
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/v1/health", "/api/v1/auth/**").permitAll()
-                .requestMatchers("/v3/api-docs", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
-                .requestMatchers("/actuator/health").permitAll()
+                .requestMatchers(
+                    AntPathRequestMatcher.antMatcher("/api/v1/health"),
+                    AntPathRequestMatcher.antMatcher("/api/v1/auth/**"),
+                    AntPathRequestMatcher.antMatcher("/v3/api-docs"),
+                    AntPathRequestMatcher.antMatcher("/v3/api-docs/**"),
+                    AntPathRequestMatcher.antMatcher("/swagger-ui/**"),
+                    AntPathRequestMatcher.antMatcher("/swagger-ui.html"),
+                    AntPathRequestMatcher.antMatcher("/actuator/health")
+                ).permitAll()
                 // Camunda paths handled by CamundaSecurityConfig @Order(1)
                 // Citizen self-registration and building lookup are public
-                .requestMatchers(HttpMethod.POST, "/api/v1/citizen/register").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/v1/citizen/buildings", "/api/v1/citizen/buildings/by-district").permitAll()
-                .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
-                .requestMatchers(HttpMethod.GET, "/api/v1/notifications/stream").authenticated()
+                .requestMatchers(AntPathRequestMatcher.antMatcher(HttpMethod.POST, "/api/v1/citizen/register")).permitAll()
+                .requestMatchers(AntPathRequestMatcher.antMatcher(HttpMethod.GET, "/api/v1/citizen/buildings")).permitAll()
+                .requestMatchers(AntPathRequestMatcher.antMatcher(HttpMethod.GET, "/api/v1/citizen/buildings/by-district")).permitAll()
+                .requestMatchers(AntPathRequestMatcher.antMatcher("/api/v1/admin/**")).hasRole("ADMIN")
+                .requestMatchers(AntPathRequestMatcher.antMatcher(HttpMethod.GET, "/api/v1/notifications/stream")).authenticated()
                 .anyRequest().authenticated()
             )
             .exceptionHandling(ex -> ex
@@ -113,14 +119,4 @@ public class SecurityConfig {
         return config.getAuthenticationManager();
     }
 
-    /**
-     * Returns a rate-limit bucket for login attempts per IP (5 / minute).
-     */
-    public Bucket loginBucketFor(String ip) {
-        return loginBuckets.computeIfAbsent(ip, key ->
-            Bucket.builder()
-                .addLimit(Bandwidth.classic(5, Refill.intervally(5, Duration.ofMinutes(1))))
-                .build()
-        );
-    }
 }

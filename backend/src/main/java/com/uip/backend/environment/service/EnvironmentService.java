@@ -5,6 +5,7 @@ import com.uip.backend.environment.api.dto.SensorDto;
 import com.uip.backend.environment.api.dto.SensorReadingDto;
 import com.uip.backend.environment.domain.Sensor;
 import com.uip.backend.environment.domain.SensorReading;
+import com.uip.backend.environment.domain.SensorReadingId;
 import com.uip.backend.environment.repository.SensorReadingRepository;
 import com.uip.backend.environment.repository.SensorRepository;
 import jakarta.persistence.EntityNotFoundException;
@@ -71,11 +72,12 @@ public class EnvironmentService {
     // ─── AQI Current ─────────────────────────────────────────────────────────
 
     public List<AqiResponseDto> getCurrentAqi() {
-        return readingRepository.findLatestPerSensor()
+        return readingRepository.findLatestPerSensorWithDistrict()
                 .stream()
-                .map(r -> {
-                    Optional<Sensor> sensor = sensorRepository.findBySensorId(r.getSensorId());
-                    return toAqiDto(r, sensor.map(Sensor::getDistrictCode).orElse(null));
+                .map(row -> {
+                    SensorReading r = mapRowToSensorReading(row);
+                    String districtCode = (String) row[row.length - 1];
+                    return toAqiDto(r, districtCode);
                 })
                 .toList();
     }
@@ -84,7 +86,7 @@ public class EnvironmentService {
         int hours = switch (period) {
             case "7d"  -> 24 * 7;
             case "30d" -> 24 * 30;
-            default    -> 24;   // "24h"
+            default    -> 24;
         };
         Instant from = Instant.now().minus(hours, ChronoUnit.HOURS);
         var pageable = PageRequest.of(0, 500);
@@ -100,6 +102,31 @@ public class EnvironmentService {
     }
 
     // ─── Mappers ──────────────────────────────────────────────────────────────
+
+    private SensorReading mapRowToSensorReading(Object[] row) {
+        SensorReading r = new SensorReading();
+        SensorReadingId id = new SensorReadingId();
+        id.setId(((Number) row[0]).longValue());
+        id.setTimestamp((Instant) row[2]);
+        r.setId(id);
+        r.setSensorId((String) row[1]);
+        r.setAqi(toDouble(row[3]));
+        r.setPm25(toDouble(row[4]));
+        r.setPm10(toDouble(row[5]));
+        r.setO3(toDouble(row[6]));
+        r.setNo2(toDouble(row[7]));
+        r.setSo2(toDouble(row[8]));
+        r.setCo(toDouble(row[9]));
+        r.setTemperature(toDouble(row[10]));
+        r.setHumidity(toDouble(row[11]));
+        return r;
+    }
+
+    private Double toDouble(Object val) {
+        if (val == null) return null;
+        if (val instanceof Number n) return n.doubleValue();
+        return null;
+    }
 
     private SensorDto toSensorDto(Sensor s) {
         Instant threshold = Instant.now().minus(ONLINE_THRESHOLD_MINUTES, ChronoUnit.MINUTES);

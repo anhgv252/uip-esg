@@ -1,0 +1,18 @@
+{
+  "test": "API Load Test (k6)",
+  "timestamp": "2026-04-22T10:27:51.906Z",
+  "scenarios": {
+    "vus": 50,
+    "duration": "300.4s"
+  },
+  "thresholds": {
+    "http_req_duration_p95": "20.77",
+    "errors_rate": "0.0000",
+    "http_req_failed_rate": "0.0000"
+  },
+  "requests": {
+    "total": 43631,
+    "rps": "145.3"
+  },
+  "status": "PASS"
+}

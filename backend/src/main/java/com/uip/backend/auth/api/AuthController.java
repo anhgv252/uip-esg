@@ -4,12 +4,15 @@ import com.uip.backend.auth.api.dto.AuthResponse;
 import com.uip.backend.auth.api.dto.LoginRequest;
 import com.uip.backend.auth.api.dto.RefreshRequest;
 import com.uip.backend.auth.service.AuthService;
+import com.uip.backend.auth.service.LoginRateLimitService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -20,23 +23,29 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
     private final AuthService authService;
+    private final LoginRateLimitService rateLimitService;
 
     @PostMapping("/login")
     @Operation(summary = "Login and receive JWT tokens")
-    public ResponseEntity<AuthResponse> login(
+    public ResponseEntity<?> login(
             @Valid @RequestBody LoginRequest request,
+            HttpServletRequest httpRequest,
             HttpServletResponse response
     ) {
+        if (!rateLimitService.tryConsume(httpRequest.getRemoteAddr())) {
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                    .body("Too many login attempts. Please try again in 1 minute.");
+        }
+
         AuthResponse authResponse = authService.login(request);
-        
-        // Set access token as httpOnly cookie for SSE authentication
+
         Cookie accessTokenCookie = new Cookie("access_token", authResponse.accessToken());
         accessTokenCookie.setHttpOnly(true);
-        accessTokenCookie.setSecure(false); // Set to true in production with HTTPS
+        accessTokenCookie.setSecure(false); // true in production (HTTPS)
         accessTokenCookie.setPath("/");
         accessTokenCookie.setMaxAge((int) authResponse.expiresIn());
         response.addCookie(accessTokenCookie);
-        
+
         return ResponseEntity.ok(authResponse);
     }
 
@@ -47,22 +56,20 @@ public class AuthController {
             HttpServletResponse response
     ) {
         AuthResponse authResponse = authService.refresh(request.refreshToken());
-        
-        // Update access token cookie on refresh
+
         Cookie accessTokenCookie = new Cookie("access_token", authResponse.accessToken());
         accessTokenCookie.setHttpOnly(true);
-        accessTokenCookie.setSecure(false); // Set to true in production with HTTPS
+        accessTokenCookie.setSecure(false); // true in production (HTTPS)
         accessTokenCookie.setPath("/");
         accessTokenCookie.setMaxAge((int) authResponse.expiresIn());
         response.addCookie(accessTokenCookie);
-        
+
         return ResponseEntity.ok(authResponse);
     }
 
     @PostMapping("/logout")
     @Operation(summary = "Logout — clear httpOnly cookie (stateless JWT; client must discard tokens)")
     public ResponseEntity<Void> logout(HttpServletResponse response) {
-        // Expire the httpOnly cookie immediately
         Cookie expiredCookie = new Cookie("access_token", "");
         expiredCookie.setHttpOnly(true);
         expiredCookie.setSecure(false);

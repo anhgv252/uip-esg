@@ -98,6 +98,14 @@ public class WorkflowService {
         }
     }
 
+    public boolean hasActiveProcess(String processKey, String variableName, String variableValue) {
+        return runtimeService.createProcessInstanceQuery()
+                .processDefinitionKey(processKey)
+                .variableValueEquals(variableName, variableValue)
+                .active()
+                .count() > 0;
+    }
+
     public Map<String, Object> getInstanceVariables(String instanceId) {
         log.info("Fetching variables for process instance: {}", instanceId);
         return runtimeService.getVariables(instanceId);
@@ -116,14 +124,19 @@ public class WorkflowService {
     }
 
     private ProcessInstanceDto toDto(ProcessInstance instance) {
-        Map<String, Object> variables = runtimeService.getVariables(instance.getId());
+        Map<String, Object> variables = Map.of();
+        try {
+            variables = runtimeService.getVariables(instance.getId());
+        } catch (ProcessEngineException e) {
+            // Process completed synchronously — execution no longer in runtime
+        }
         return ProcessInstanceDto.builder()
                 .id(instance.getId())
                 .processDefinitionId(instance.getProcessDefinitionId())
                 .processDefinitionKey(instance.getProcessInstanceId())
                 .businessKey(instance.getBusinessKey())
                 .state("ACTIVE")
-                .startTime(null) // Not available directly from RuntimeService
+                .startTime(null)
                 .variables(variables)
                 .build();
     }

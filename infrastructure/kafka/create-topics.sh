@@ -33,8 +33,8 @@ create_topic "ngsi_ld_esg" 3
 create_topic "ngsi_ld_traffic" 3
 create_topic "ngsi_ld_citizen" 3
 
-# Alert pipeline
-create_topic "alert_events" 3
+# Alert pipeline — Flink AlertDetectionJob → backend AlertEventKafkaConsumer + GenericKafkaTriggerService
+create_topic "UIP.flink.alert.detected.v1" 3
 
 echo "=== All topics created successfully ==="
 kafka-topics --bootstrap-server "${BOOTSTRAP}" --list
