@@ -163,4 +163,47 @@ class FilterEvaluatorTest {
         String json = "[{\"field\":\"description\",\"op\":\"CONTAINS\",\"value\":\"factory\"}]";
         assertThat(evaluator.matches(json, Map.of("description", "Bad smell near factory"))).isTrue();
     }
+
+    // ─── Boundary Value Tests — Smart City Thresholds ────────────────────
+
+    @org.junit.jupiter.params.ParameterizedTest(name = "AQI={0} → GT 150 → expect {1}")
+    @org.junit.jupiter.params.provider.CsvSource({
+        "149.0, false",
+        "150.0, false",
+        "150.1, true",
+        "151.0, true",
+        "200.0, true"
+    })
+    @DisplayName("AQI threshold GT 150 — boundary values")
+    void aqi_gt150_boundaryValues(double aqiValue, boolean expected) {
+        String filter = "[{\"field\":\"value\",\"op\":\"GT\",\"value\":150.0}]";
+        assertThat(evaluator.matches(filter, Map.of("value", aqiValue))).isEqualTo(expected);
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest(name = "WaterLevel={0} → GTE 3.5 → expect {1}")
+    @org.junit.jupiter.params.provider.CsvSource({
+        "3.49, false",
+        "3.50, true",
+        "3.51, true",
+        "4.20, true"
+    })
+    @DisplayName("Water level threshold GTE 3.5 — boundary values")
+    void waterLevel_gte350_boundaryValues(double level, boolean expected) {
+        String filter = "[{\"field\":\"value\",\"op\":\"GTE\",\"value\":3.5}]";
+        assertThat(evaluator.matches(filter, Map.of("value", level))).isEqualTo(expected);
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest(name = "module={0}, AQI={1} → ENVIRONMENT+GT150 → expect {2}")
+    @org.junit.jupiter.params.provider.CsvSource({
+        "ENVIRONMENT, 200.0, true",
+        "ENVIRONMENT, 149.0, false",
+        "TRAFFIC,     200.0, false",
+        "ENVIRONMENT, 150.0, false"
+    })
+    @DisplayName("Combined filter: module=ENVIRONMENT AND value GT 150")
+    void combinedFilter_moduleAndAqi(String module, double aqi, boolean expected) {
+        String filter = "[{\"field\":\"module\",\"op\":\"EQ\",\"value\":\"ENVIRONMENT\"}," +
+                         "{\"field\":\"value\",\"op\":\"GT\",\"value\":150.0}]";
+        assertThat(evaluator.matches(filter, Map.of("module", module.trim(), "value", aqi))).isEqualTo(expected);
+    }
 }

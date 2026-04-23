@@ -19,6 +19,11 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.kafka.support.Acknowledgment;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
+import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.time.Instant;
 import java.util.List;
@@ -32,8 +37,26 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @SpringBootTest
+@Testcontainers(disabledWithoutDocker = true)
 @DisplayName("S4-10 Generic Trigger Integration — 7 AI Scenarios")
 class GenericTriggerIntegrationTest {
+
+    @Container
+    static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:15-alpine")
+            .withDatabaseName("uip_test")
+            .withUsername("test")
+            .withPassword("test");
+
+    @DynamicPropertySource
+    static void overrideDataSource(DynamicPropertyRegistry registry) {
+        registry.add("spring.datasource.url", postgres::getJdbcUrl);
+        registry.add("spring.datasource.username", postgres::getUsername);
+        registry.add("spring.datasource.password", postgres::getPassword);
+        registry.add("spring.flyway.url", postgres::getJdbcUrl);
+        registry.add("spring.flyway.user", postgres::getUsername);
+        registry.add("spring.flyway.password", postgres::getPassword);
+    }
+
 
     @Autowired private WorkflowService workflowService;
     @Autowired private HistoryService historyService;

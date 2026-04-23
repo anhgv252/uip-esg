@@ -116,7 +116,7 @@ class CitizenServiceTest {
         when(citizenRepository.findByUsername("unknown")).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> citizenService.getProfile("unknown"))
-                .isInstanceOf(IllegalArgumentException.class)
+                .isInstanceOf(jakarta.persistence.EntityNotFoundException.class)
                 .hasMessageContaining("Citizen not found");
     }
 
@@ -133,7 +133,7 @@ class CitizenServiceTest {
         when(buildingRepository.findById(buildingId)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> citizenService.linkHousehold("nguyenvana", request))
-                .isInstanceOf(IllegalArgumentException.class)
+                .isInstanceOf(jakarta.persistence.EntityNotFoundException.class)
                 .hasMessageContaining("Building not found");
     }
 

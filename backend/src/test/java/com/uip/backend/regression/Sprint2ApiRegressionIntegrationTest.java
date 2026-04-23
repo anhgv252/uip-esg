@@ -86,6 +86,8 @@ class Sprint2ApiRegressionIntegrationTest {
                 () -> java.util.Base64.getEncoder().encodeToString(
                         "uip-integration-test-secret-32b!".getBytes()));
         registry.add("spring.flyway.locations", () -> "classpath:db/migration");
+        // Raise login rate-limit so multiple test methods don't exhaust the per-IP bucket
+        registry.add("security.login.rate-limit.capacity", () -> "1000");
     }
 
     private static String startContainer(String... args) throws Exception {

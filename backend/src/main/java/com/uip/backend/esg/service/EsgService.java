@@ -85,15 +85,19 @@ public class EsgService {
         report.setQuarter(quarter);
         EsgReport saved = reportRepository.save(report);
         UUID reportId = saved.getId();
-        // Schedule async generation to run AFTER the current transaction commits.
-        // This prevents the race condition where the async thread calls findById
-        // before the INSERT is visible to other connections.
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCommit() {
-                reportGenerator.generateAsync(reportId);
-            }
-        });
+        // Schedule async generation AFTER commit to avoid race where async thread
+        // reads the report before the INSERT is visible. Falls back to direct call
+        // when invoked outside a transaction (e.g., unit tests).
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    reportGenerator.generateAsync(reportId);
+                }
+            });
+        } else {
+            reportGenerator.generateAsync(reportId);
+        }
         return toReportDto(saved);
     }
 

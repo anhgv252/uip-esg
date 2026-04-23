@@ -41,7 +41,6 @@ class WorkflowServiceTest {
         ProcessInstance mockInstance = mock(ProcessInstance.class);
         when(mockInstance.getId()).thenReturn("pi-12345");
         when(mockInstance.getProcessDefinitionId()).thenReturn("pd-aiC01:1:999");
-        when(mockInstance.getProcessInstanceId()).thenReturn("pi-12345");
         when(mockInstance.getBusinessKey()).thenReturn(null);
         when(runtimeService.startProcessInstanceByKey(eq("aiC01_aqiCitizenAlert"), anyMap()))
             .thenReturn(mockInstance);

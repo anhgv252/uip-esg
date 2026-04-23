@@ -79,8 +79,7 @@ dependencyManagement {
 
 test {
     useJUnitPlatform()
-    // Docker Engine 26+ deprecated API v1.24; force docker-java (used by Testcontainers) to use v1.41
-    environment 'DOCKER_API_VERSION', '1.41'
+    // RYUK_DISABLED: Testcontainers skips the Ryuk cleanup container (acceptable for local dev)
     environment 'RYUK_DISABLED', 'true'
     // Sequential forks: @SpringBootTest contexts share DB pool; parallel forks exhaust connections
     maxParallelForks = 1

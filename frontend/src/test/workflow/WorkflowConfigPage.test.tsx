@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AuthContext, type AuthContextValue } from '@/contexts/AuthContext'
 import WorkflowConfigPage from '@/pages/WorkflowConfigPage'
@@ -98,11 +99,13 @@ function makeAdminCtx(): AuthContextValue {
 function renderPage() {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
-    <QueryClientProvider client={qc}>
-      <AuthContext.Provider value={makeAdminCtx()}>
-        <WorkflowConfigPage />
-      </AuthContext.Provider>
-    </QueryClientProvider>,
+    <MemoryRouter>
+      <QueryClientProvider client={qc}>
+        <AuthContext.Provider value={makeAdminCtx()}>
+          <WorkflowConfigPage />
+        </AuthContext.Provider>
+      </QueryClientProvider>
+    </MemoryRouter>,
   )
 }
 

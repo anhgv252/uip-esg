@@ -37,7 +37,7 @@ describe('workflowConfig API', () => {
 
       const result = await getWorkflowConfigs()
 
-      expect(mockGet).toHaveBeenCalledWith('/wf-config')
+      expect(mockGet).toHaveBeenCalledWith('/admin/workflow-configs')
       expect(result).toEqual(configs)
     })
   })
@@ -49,7 +49,7 @@ describe('workflowConfig API', () => {
 
       const result = await getWorkflowConfig(1)
 
-      expect(mockGet).toHaveBeenCalledWith('/wf-config/1')
+      expect(mockGet).toHaveBeenCalledWith('/admin/workflow-configs/1')
       expect(result).toEqual(config)
     })
   })
@@ -61,7 +61,7 @@ describe('workflowConfig API', () => {
 
       const result = await createWorkflowConfig(newConfig)
 
-      expect(mockPost).toHaveBeenCalledWith('/wf-config', newConfig)
+      expect(mockPost).toHaveBeenCalledWith('/admin/workflow-configs', newConfig)
       expect(result.id).toBe(10)
     })
   })
@@ -73,7 +73,7 @@ describe('workflowConfig API', () => {
 
       const result = await updateWorkflowConfig(1, updates)
 
-      expect(mockPut).toHaveBeenCalledWith('/wf-config/1', updates)
+      expect(mockPut).toHaveBeenCalledWith('/admin/workflow-configs/1', updates)
       expect(result.displayName).toBe('Updated Name')
     })
   })
@@ -84,7 +84,7 @@ describe('workflowConfig API', () => {
 
       await disableWorkflowConfig(1)
 
-      expect(mockDelete).toHaveBeenCalledWith('/wf-config/1')
+      expect(mockDelete).toHaveBeenCalledWith('/admin/workflow-configs/1')
     })
   })
 
@@ -96,7 +96,7 @@ describe('workflowConfig API', () => {
       const payload = { module: 'ENVIRONMENT', value: 180 }
       const result = await testWorkflowConfig(1, payload)
 
-      expect(mockPost).toHaveBeenCalledWith('/wf-config/1/test', payload)
+      expect(mockPost).toHaveBeenCalledWith('/admin/workflow-configs/1/test', payload)
       expect(result.filterMatch).toBe(true)
     })
   })
