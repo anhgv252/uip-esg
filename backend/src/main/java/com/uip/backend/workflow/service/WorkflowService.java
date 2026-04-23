@@ -49,6 +49,7 @@ public class WorkflowService {
         if ("ACTIVE".equalsIgnoreCase(status)) {
             List<ProcessInstance> instances = runtimeService.createProcessInstanceQuery()
                     .active()
+                    .orderByProcessInstanceId().desc()
                     .listPage((int) pageable.getOffset(), pageable.getPageSize());
             
             long total = runtimeService.createProcessInstanceQuery().active().count();
@@ -62,6 +63,7 @@ public class WorkflowService {
         } else if ("COMPLETED".equalsIgnoreCase(status)) {
             List<HistoricProcessInstance> instances = historyService.createHistoricProcessInstanceQuery()
                     .finished()
+                    .orderByProcessInstanceStartTime().desc()
                     .listPage((int) pageable.getOffset(), pageable.getPageSize());
             
             long total = historyService.createHistoricProcessInstanceQuery().finished().count();
@@ -75,6 +77,7 @@ public class WorkflowService {
         } else {
             // All instances (active + completed)
             List<HistoricProcessInstance> instances = historyService.createHistoricProcessInstanceQuery()
+                    .orderByProcessInstanceStartTime().desc()
                     .listPage((int) pageable.getOffset(), pageable.getPageSize());
             
             long total = historyService.createHistoricProcessInstanceQuery().count();
@@ -108,7 +111,33 @@ public class WorkflowService {
 
     public Map<String, Object> getInstanceVariables(String instanceId) {
         log.info("Fetching variables for process instance: {}", instanceId);
-        return runtimeService.getVariables(instanceId);
+        try {
+            return runtimeService.getVariables(instanceId);
+        } catch (ProcessEngineException e) {
+            log.debug("Instance {} not in runtime, checking history", instanceId);
+            List<org.camunda.bpm.engine.history.HistoricVariableInstance> vars =
+                    historyService.createHistoricVariableInstanceQuery()
+                            .processInstanceId(instanceId)
+                            .list();
+            return vars.stream().collect(Collectors.toMap(
+                    org.camunda.bpm.engine.history.HistoricVariableInstance::getName,
+                    org.camunda.bpm.engine.history.HistoricVariableInstance::getValue,
+                    (a, b) -> b
+            ));
+        }
+    }
+
+    public String getProcessDefinitionXml(String definitionId) {
+        log.info("Fetching BPMN XML for definition: {}", definitionId);
+        try {
+            org.camunda.bpm.engine.repository.ProcessDefinition definition =
+                    repositoryService.getProcessDefinition(definitionId);
+            java.io.InputStream is = repositoryService.getResourceAsStream(
+                    definition.getDeploymentId(), definition.getResourceName());
+            return new String(is.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+        } catch (Exception e) {
+            throw new WorkflowNotFoundException("Process definition not found: " + definitionId);
+        }
     }
 
     private ProcessDefinitionDto toDto(ProcessDefinition def) {
@@ -130,13 +159,29 @@ public class WorkflowService {
         } catch (ProcessEngineException e) {
             // Process completed synchronously — execution no longer in runtime
         }
+        LocalDateTime startTime = null;
+        try {
+            HistoricProcessInstance hpi = historyService.createHistoricProcessInstanceQuery()
+                    .processInstanceId(instance.getId())
+                    .singleResult();
+            if (hpi != null && hpi.getStartTime() != null) {
+                startTime = LocalDateTime.ofInstant(hpi.getStartTime().toInstant(), ZoneId.systemDefault());
+            }
+        } catch (Exception ignored) {}
+
+        String processDefinitionKey = null;
+        try {
+            ProcessDefinition def = repositoryService.getProcessDefinition(instance.getProcessDefinitionId());
+            processDefinitionKey = def.getKey();
+        } catch (Exception ignored) {}
+
         return ProcessInstanceDto.builder()
                 .id(instance.getId())
                 .processDefinitionId(instance.getProcessDefinitionId())
-                .processDefinitionKey(instance.getProcessInstanceId())
+                .processDefinitionKey(processDefinitionKey)
                 .businessKey(instance.getBusinessKey())
                 .state("ACTIVE")
-                .startTime(null)
+                .startTime(startTime)
                 .variables(variables)
                 .build();
     }

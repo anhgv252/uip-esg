@@ -1,0 +1,215 @@
+# UAT Override — layered on top of docker-compose.yml
+# Usage: docker compose -f docker-compose.yml -f docker-compose.uat.yml --env-file .env.uat up -d
+# Or:    make uat-up  (uses this automatically)
+#
+# Differences from dev stack:
+#   - Resource limits (CPU + memory) on every service
+#   - Structured JSON logging with rotation
+#   - Kafka UI disabled (internal only — no external demo access needed)
+#   - Flink JVM tuned to fit within resource limits
+#   - Backend: structured logging enabled, Actuator secured
+
+services:
+  # ── TimescaleDB ──────────────────────────────────────────────────────────────
+  timescaledb:
+    restart: on-failure
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "3"
+
+  # ── Redis ────────────────────────────────────────────────────────────────────
+  redis:
+    restart: on-failure
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          memory: 128M
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "3"
+
+  # ── Kafka ────────────────────────────────────────────────────────────────────
+  kafka:
+    restart: on-failure
+    environment:
+      KAFKA_LOG_RETENTION_HOURS: 72
+      KAFKA_LOG_SEGMENT_BYTES: 104857600
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1200M
+        reservations:
+          memory: 512M
+    logging:
+      driver: json-file
+      options:
+        max-size: "30m"
+        max-file: "3"
+
+  # ── Kafka init ───────────────────────────────────────────────────────────────
+  kafka-init:
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "1"
+
+  # ── Kafka UI — UAT: bind to 127.0.0.1 only (not exposed to demo audience) ──
+  kafka-ui:
+    ports:
+      - "127.0.0.1:8090:8080"
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 256M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "2"
+
+  # ── EMQX ─────────────────────────────────────────────────────────────────────
+  emqx:
+    restart: on-failure
+    # UAT: restrict management dashboard to localhost only
+    ports:
+      - "1883:1883"
+      - "8083:8083"
+      - "127.0.0.1:18083:18083"
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          memory: 256M
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "3"
+
+  # ── Redpanda Connect ─────────────────────────────────────────────────────────
+  redpanda-connect:
+    restart: on-failure
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          memory: 128M
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "3"
+
+  # ── Flink JobManager ─────────────────────────────────────────────────────────
+  flink-jobmanager:
+    restart: on-failure
+    environment:
+      FLINK_PROPERTIES: |
+        jobmanager.rpc.address: flink-jobmanager
+        jobmanager.memory.process.size: 1400m
+        state.backend: rocksdb
+        state.checkpoints.dir: file:///flink/checkpoints
+        execution.checkpointing.interval: 30000
+        execution.checkpointing.timeout: 60000
+        web.log.path: /flink/log
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1600M
+        reservations:
+          cpus: '0.25'
+          memory: 1G
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "3"
+
+  # ── Flink TaskManager ────────────────────────────────────────────────────────
+  flink-taskmanager:
+    restart: on-failure
+    environment:
+      FLINK_PROPERTIES: |
+        jobmanager.rpc.address: flink-jobmanager
+        taskmanager.memory.process.size: 2400m
+        taskmanager.numberOfTaskSlots: 4
+        state.backend: rocksdb
+        state.checkpoints.dir: file:///flink/checkpoints
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2600M
+        reservations:
+          cpus: '0.5'
+          memory: 2G
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "3"
+
+  # ── Backend ──────────────────────────────────────────────────────────────────
+  backend:
+    restart: on-failure
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      JAVA_TOOL_OPTIONS: >-
+        -XX:+UseContainerSupport
+        -XX:MaxRAMPercentage=70.0
+        -XX:InitialRAMPercentage=50.0
+        -Djava.security.egd=file:/dev/./urandom
+      MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: health,info
+      MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS: never
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 512M
+    logging:
+      driver: json-file
+      options:
+        max-size: "100m"
+        max-file: "5"
+
+  # ── Frontend ─────────────────────────────────────────────────────────────────
+  frontend:
+    restart: on-failure
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 128M
+        reservations:
+          memory: 64M
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "3"

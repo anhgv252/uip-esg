@@ -92,9 +92,6 @@ camunda:
       first-name: Admin
     filter:
       create: All Tasks
-    webapp:
-      application-path: /camunda
-      index-redirect-enabled: true
     database:
       schema-update: true
     job-execution:

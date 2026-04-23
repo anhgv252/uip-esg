@@ -6,6 +6,7 @@ import com.uip.backend.workflow.config.TriggerConfigRepository;
 import com.uip.backend.workflow.config.VariableMapper;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -41,7 +42,7 @@ public class WorkflowConfigController {
 
     @PostMapping
     @Operation(summary = "Create a new trigger configuration")
-    public TriggerConfig createConfig(@RequestBody TriggerConfig config) {
+    public TriggerConfig createConfig(@Valid @RequestBody TriggerConfig config) {
         return configRepo.save(config);
     }
 

@@ -31,6 +31,8 @@ import {
   AdminPanelSettings as AdminIcon,
   Logout as LogoutIcon,
   ChevronLeft as ChevronLeftIcon,
+  SmartToy as AiWorkflowIcon,
+  SettingsSuggest as WorkflowConfigIcon,
 } from '@mui/icons-material'
 import LocationCityIcon from '@mui/icons-material/LocationCity'
 import { useAuth } from '@/hooks/useAuth'
@@ -53,6 +55,18 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Traffic', path: '/traffic', icon: <TrafficIcon /> },
   { label: 'Alerts', path: '/alerts', icon: <AlertsIcon /> },
   { label: 'Citizens', path: '/citizen', icon: <CitizenIcon /> },
+  {
+    label: 'AI Workflows',
+    path: '/ai-workflow',
+    icon: <AiWorkflowIcon />,
+    roles: ['ROLE_ADMIN', 'ROLE_OPERATOR'],
+  },
+  {
+    label: 'Trigger Config',
+    path: '/workflow-config',
+    icon: <WorkflowConfigIcon />,
+    roles: ['ROLE_ADMIN'],
+  },
   {
     label: 'Admin',
     path: '/admin',

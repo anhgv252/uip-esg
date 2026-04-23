@@ -21,7 +21,7 @@ public class CamundaSecurityConfig {
     public SecurityFilterChain camundaFilterChain(HttpSecurity http) throws Exception {
         http
             .securityMatcher("/camunda/**", "/engine-rest/**", "/lib/**",
-                "/api/cockpit/**", "/api/admin/**", "/api/tasklist/**")
+                "/api/cockpit/**", "/api/tasklist/**")
             .csrf(AbstractHttpConfigurer::disable)
             .cors(cors -> cors.disable())
             // Camunda webapp needs sessions — do NOT use STATELESS here

@@ -33,6 +33,13 @@ public class WorkflowController {
         return ResponseEntity.ok(workflowService.listDefinitions());
     }
 
+    @GetMapping(value = "/definitions/{id}/xml", produces = "text/xml")
+    @PreAuthorize("hasAnyRole('OPERATOR', 'ADMIN')")
+    @Operation(summary = "Get BPMN XML", description = "Returns the BPMN XML for a specific process definition")
+    public ResponseEntity<String> getDefinitionXml(@PathVariable String id) {
+        return ResponseEntity.ok(workflowService.getProcessDefinitionXml(id));
+    }
+
     @GetMapping("/instances")
     @PreAuthorize("hasAnyRole('OPERATOR', 'ADMIN')")
     @Operation(summary = "List process instances", description = "Returns paginated list of process instances filtered by status")

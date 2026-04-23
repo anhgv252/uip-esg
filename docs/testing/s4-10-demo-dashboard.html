@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>S4-10 Demo — Workflow Trigger Config Engine</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; color: #212121; }
+
+  .header { background: #1565c0; color: white; padding: 20px 32px; display: flex; align-items: center; gap: 16px; }
+  .header h1 { font-size: 22px; font-weight: 600; }
+  .header .badge { background: rgba(255,255,255,0.2); padding: 4px 12px; border-radius: 20px; font-size: 13px; }
+
+  .container { max-width: 1200px; margin: 0 auto; padding: 24px 32px; }
+
+  .stats-row { display: flex; gap: 16px; margin-bottom: 24px; }
+  .stat-card { background: white; border-radius: 8px; padding: 16px 20px; flex: 1; box-shadow: 0 1px 4px rgba(0,0,0,.1); }
+  .stat-card .num { font-size: 32px; font-weight: 700; color: #1565c0; }
+  .stat-card .label { color: #666; font-size: 13px; margin-top: 2px; }
+
+  .section { background: white; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,.1); margin-bottom: 20px; overflow: hidden; }
+  .section-header { padding: 16px 20px; border-bottom: 1px solid #eee; display: flex; align-items: center; gap: 8px; }
+  .section-header h2 { font-size: 15px; font-weight: 600; }
+  .section-header .icon { font-size: 18px; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { background: #fafafa; padding: 10px 16px; text-align: left; font-weight: 600; color: #666; border-bottom: 1px solid #eee; }
+  td { padding: 10px 16px; border-bottom: 1px solid #f0f0f0; vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #f9fbff; }
+
+  .chip { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; color: white; }
+  .chip-kafka { background: #1976d2; }
+  .chip-sched { background: #7b1fa2; }
+  .chip-rest  { background: #2e7d32; }
+
+  .status-ok   { color: #2e7d32; font-weight: 600; }
+  .status-off  { color: #9e9e9e; }
+
+  .link-btn {
+    display: inline-block; padding: 8px 16px; border-radius: 6px; text-decoration: none;
+    font-size: 13px; font-weight: 500; margin: 4px;
+    transition: opacity .15s;
+  }
+  .link-btn:hover { opacity: .85; }
+  .btn-primary { background: #1565c0; color: white; }
+  .btn-success { background: #2e7d32; color: white; }
+  .btn-purple  { background: #6a1b9a; color: white; }
+  .btn-outline { background: white; color: #1565c0; border: 1.5px solid #1565c0; }
+
+  .tc-block { padding: 16px 20px; border-bottom: 1px solid #f0f0f0; }
+  .tc-block:last-child { border-bottom: none; }
+  .tc-id { font-size: 11px; font-weight: 700; color: #888; margin-bottom: 4px; }
+  .tc-title { font-size: 14px; font-weight: 600; margin-bottom: 6px; }
+  .tc-steps { padding-left: 18px; font-size: 13px; color: #444; line-height: 1.7; }
+  .tc-steps li { margin-bottom: 2px; }
+  .tc-result { margin-top: 8px; font-size: 12px; padding: 6px 10px; border-radius: 4px; }
+  .tc-pass { background: #e8f5e9; color: #1b5e20; }
+
+  .curl-block { background: #1e1e1e; color: #d4d4d4; border-radius: 6px; padding: 12px 16px; font-size: 12px; font-family: 'SF Mono', 'Consolas', monospace; overflow-x: auto; margin: 8px 0; white-space: pre; line-height: 1.6; }
+
+  .result-row { display: flex; gap: 16px; flex-wrap: wrap; }
+  .result-item { background: #f9f9f9; border: 1px solid #e0e0e0; border-radius: 6px; padding: 10px 14px; font-size: 13px; }
+  .result-item .res-label { color: #888; font-size: 11px; margin-bottom: 2px; }
+  .result-item .res-val { font-weight: 600; }
+  .res-pass { color: #2e7d32; }
+  .res-fail { color: #c62828; }
+
+  .bug-card { border: 1.5px solid; border-radius: 8px; padding: 14px 16px; margin-bottom: 12px; }
+  .bug-p2 { border-color: #ef9a9a; background: #fff8f8; }
+  .bug-p2 .bug-severity { color: #c62828; font-weight: 700; }
+  .bug-p3 { border-color: #ffe082; background: #fffdf0; }
+  .bug-p3 .bug-severity { color: #f57f17; font-weight: 700; }
+  .bug-resolved { border-color: #a5d6a7; background: #f1f8e9; }
+  .bug-resolved .bug-severity { color: #2e7d32; font-weight: 700; }
+  .bug-title { font-weight: 600; font-size: 14px; margin-bottom: 6px; }
+  .bug-detail { font-size: 12px; color: #555; }
+
+  .summary-box { background: #e3f2fd; border: 1.5px solid #90caf9; border-radius: 8px; padding: 16px 20px; margin-bottom: 20px; }
+  .summary-box h3 { font-size: 15px; color: #0d47a1; margin-bottom: 10px; }
+  .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .summary-num { font-size: 28px; font-weight: 700; }
+  .s-total { color: #1565c0; }
+  .s-pass  { color: #2e7d32; }
+  .s-fail  { color: #c62828; }
+  .s-bug   { color: #e65100; }
+  .summary-label { font-size: 12px; color: #555; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <span style="font-size:28px">⚙️</span>
+  <div>
+    <h1>S4-10 — Workflow Trigger Configuration Engine</h1>
+    <div style="display:flex;gap:8px;margin-top:6px">
+      <span class="badge">Sprint 4 · Demo</span>
+      <span class="badge">Admin: admin / admin_Dev#2026!</span>
+      <span class="badge">Backend: localhost:8080 ✅</span>
+      <span class="badge">Frontend: localhost:3000 ✅</span>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- Stats -->
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="num">7</div>
+      <div class="label">Trigger Configs (seeded)</div>
+    </div>
+    <div class="stat-card">
+      <div class="num">7</div>
+      <div class="label">BPMN Process Definitions</div>
+    </div>
+    <div class="stat-card">
+      <div class="num">234</div>
+      <div class="label">Process Instances (lịch sử)</div>
+    </div>
+    <div class="stat-card">
+      <div class="num" style="color:#2e7d32">104</div>
+      <div class="label">Frontend Tests PASS</div>
+    </div>
+  </div>
+
+  <!-- Test Summary -->
+  <div class="summary-box">
+    <h3>📋 Kết quả Manual Test Session — 23/04/2026</h3>
+    <div class="summary-grid">
+      <div><div class="summary-num s-total">22</div><div class="summary-label">Test Cases đã chạy</div></div>
+      <div><div class="summary-num s-pass">22</div><div class="summary-label">PASS (sau fix)</div></div>
+      <div><div class="summary-num s-fail">0</div><div class="summary-label">FAIL còn lại</div></div>
+      <div><div class="summary-num s-bug">0</div><div class="summary-label">P0/P1 Bugs mở</div></div>
+    </div>
+  </div>
+
+  <!-- Quick Navigation -->
+  <div class="section">
+    <div class="section-header">
+      <span class="icon">🔗</span>
+      <h2>Quick Navigation — Mở trong trình duyệt hoặc Simple Browser</h2>
+    </div>
+    <div style="padding:16px 20px;display:flex;flex-wrap:wrap;gap:8px">
+      <a class="link-btn btn-primary" href="http://localhost:3000/login" target="_blank">🔐 Login Page</a>
+      <a class="link-btn btn-primary" href="http://localhost:3000/dashboard" target="_blank">📊 Dashboard</a>
+      <a class="link-btn btn-purple" href="http://localhost:3000/ai-workflow" target="_blank">🤖 AI Workflow Dashboard</a>
+      <a class="link-btn btn-success" href="http://localhost:3000/workflow-config" target="_blank">⚙️ Trigger Config (Admin)</a>
+      <a class="link-btn btn-outline" href="http://localhost:3000/environment" target="_blank">🌿 Environment</a>
+      <a class="link-btn btn-outline" href="http://localhost:3000/esg" target="_blank">📈 ESG</a>
+      <a class="link-btn btn-outline" href="http://localhost:8080/swagger-ui.html" target="_blank">📖 Swagger API</a>
+    </div>
+  </div>
+
+  <!-- Trigger Configs Table -->
+  <div class="section">
+    <div class="section-header">
+      <span class="icon">⚙️</span>
+      <h2>7 Trigger Configurations (GET /api/v1/wf-config)</h2>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Display Name / Scenario Key</th>
+          <th>Trigger Type</th>
+          <th>Status</th>
+          <th>Topic / Cron / REST</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><b>Cảnh báo AQI cho cư dân</b><br><small style="color:#888;font-family:monospace">aiC01_aqiCitizenAlert</small></td>
+          <td><span class="chip chip-kafka">KAFKA</span></td>
+          <td class="status-ok">✅ Active</td>
+          <td style="font-family:monospace;font-size:11px">UIP.flink.alert.detected.v1</td>
+        </tr>
+        <tr>
+          <td><b>Cảnh báo khẩn cấp & sơ tán lũ</b><br><small style="color:#888;font-family:monospace">aiC03_floodEmergencyEvacuation</small></td>
+          <td><span class="chip chip-kafka">KAFKA</span></td>
+          <td class="status-ok">✅ Active</td>
+          <td style="font-family:monospace;font-size:11px">UIP.flink.alert.detected.v1</td>
+        </tr>
+        <tr>
+          <td><b>Phối hợp phản ứng lũ</b><br><small style="color:#888;font-family:monospace">aiM01_floodResponseCoordination</small></td>
+          <td><span class="chip chip-kafka">KAFKA</span></td>
+          <td class="status-ok">✅ Active</td>
+          <td style="font-family:monospace;font-size:11px">UIP.flink.alert.detected.v1</td>
+        </tr>
+        <tr>
+          <td><b>Kiểm soát giao thông khi AQI cao</b><br><small style="color:#888;font-family:monospace">aiM02_aqiTrafficControl</small></td>
+          <td><span class="chip chip-kafka">KAFKA</span></td>
+          <td class="status-ok">✅ Active</td>
+          <td style="font-family:monospace;font-size:11px">UIP.flink.alert.detected.v1</td>
+        </tr>
+        <tr>
+          <td><b>Yêu cầu dịch vụ công dân</b><br><small style="color:#888;font-family:monospace">aiC02_citizenServiceRequest</small></td>
+          <td><span class="chip chip-rest">REST</span></td>
+          <td class="status-ok">✅ Active</td>
+          <td style="font-family:monospace;font-size:11px">POST /api/v1/citizen/service-request</td>
+        </tr>
+        <tr>
+          <td><b>Phối hợp sự cố tiện ích</b><br><small style="color:#888;font-family:monospace">aiM03_utilityIncidentCoordination</small></td>
+          <td><span class="chip chip-sched">SCHEDULED</span></td>
+          <td class="status-ok">✅ Active</td>
+          <td style="font-family:monospace;font-size:11px">0 */2 * * *</td>
+        </tr>
+        <tr>
+          <td><b>Điều tra dị thường ESG</b><br><small style="color:#888;font-family:monospace">aiM04_esgAnomalyInvestigation</small></td>
+          <td><span class="chip chip-sched">SCHEDULED</span></td>
+          <td class="status-ok">✅ Active</td>
+          <td style="font-family:monospace;font-size:11px">0 */2 * * *</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Test Cases -->
+  <div class="section">
+    <div class="section-header">
+      <span class="icon">🧪</span>
+      <h2>Test Cases — Workflow Config Admin UI</h2>
+    </div>
+
+    <div class="tc-block">
+      <div class="tc-id">TC-WC-01 · P1 · Functional</div>
+      <div class="tc-title">Trang /workflow-config load danh sách 7 configs</div>
+      <ol class="tc-steps">
+        <li>Đăng nhập: <code>admin / admin_Dev#2026!</code></li>
+        <li>Click menu "Trigger Config" ở sidebar trái</li>
+        <li>Kiểm tra bảng hiển thị đủ 7 rows</li>
+        <li>Kiểm tra cột Type có Chip màu đúng: KAFKA=xanh dương, SCHEDULED=tím, REST=xanh lá</li>
+        <li>Kiểm tra cột Enabled toggle trạng thái</li>
+      </ol>
+      <div class="tc-result tc-pass">✅ PASS — 7 configs hiển thị, chips màu đúng, toggle hoạt động</div>
+    </div>
+
+    <div class="tc-block">
+      <div class="tc-id">TC-WC-02 · P1 · Functional</div>
+      <div class="tc-title">Enable/Disable toggle thay đổi trạng thái real-time</div>
+      <ol class="tc-steps">
+        <li>Tại trang Trigger Config, click toggle Switch của config bất kỳ</li>
+        <li>Quan sát Switch chuyển từ ON → OFF (hoặc ngược lại)</li>
+        <li>Reload trang → kiểm tra trạng thái vẫn được giữ</li>
+      </ol>
+      <div class="tc-result tc-pass">✅ PASS — PUT /wf-config/{id} gọi thành công, trạng thái persist</div>
+    </div>
+
+    <div class="tc-block">
+      <div class="tc-id">TC-WC-03 · P1 · Functional</div>
+      <div class="tc-title">Nút "Test Trigger" — verify filter & variable mapping</div>
+      <ol class="tc-steps">
+        <li>Click icon 🧪 (Science) trên row "Cảnh báo AQI cho cư dân"</li>
+        <li>Dialog mở — nhập payload khớp filter:</li>
+      </ol>
+      <div class="curl-block">{"module":"ENVIRONMENT","measureType":"AQI","value":180,"sensorId":"SENSOR-AIR-001","districtCode":"D07"}</div>
+      <ol class="tc-steps" start="3">
+        <li>Click "Run Test"</li>
+        <li>Kiểm tra kết quả: filterMatch=true, mappedVariables đầy đủ</li>
+        <li>Thử payload không khớp (value=50) → filterMatch=false</li>
+      </ol>
+      <div class="tc-result tc-pass">✅ PASS — filterMatch đúng với cả 2 case, variables mapped chính xác</div>
+    </div>
+
+    <div class="tc-block">
+      <div class="tc-id">TC-WC-04 · P1 · Functional</div>
+      <div class="tc-title">Nút "New Config" — tạo trigger config mới</div>
+      <ol class="tc-steps">
+        <li>Click nút "+ New Config" góc phải</li>
+        <li>Điền form:
+          <ul style="padding-left:16px">
+            <li>Display Name: <code>Demo PO Config</code></li>
+            <li>Scenario Key: <code>demo_po_test_001</code></li>
+            <li>Process Key: <code>aiC01_aqiCitizenAlert</code></li>
+            <li>Trigger Type: REST</li>
+            <li>Variable Mapping: <code>{"scenarioKey":{"static":"demo"}}</code></li>
+          </ul>
+        </li>
+        <li>Click "Create"</li>
+        <li>Config mới xuất hiện trong bảng</li>
+      </ol>
+      <div class="tc-result tc-pass">✅ PASS — POST /wf-config thành công, row mới hiển thị ngay</div>
+    </div>
+
+    <div class="tc-block">
+      <div class="tc-id">TC-WC-05 · P2 · Validation (đã fix BUG-002)</div>
+      <div class="tc-title">Validation: Submit form thiếu required fields → hiện lỗi inline</div>
+      <ol class="tc-steps">
+        <li>Click "+ New Config"</li>
+        <li>Chỉ nhập Display Name, bỏ trống Scenario Key và Process Key</li>
+        <li>Nút "Create" bị disabled vì <code>!form.scenarioKey || !form.processKey</code></li>
+        <li>Thêm Scenario Key nhưng giữ JSON không hợp lệ trong Variable Mapping</li>
+        <li>Click Create → Alert đỏ: "Variable Mapping: Invalid JSON"</li>
+      </ol>
+      <div class="tc-result tc-pass">✅ PASS — Frontend validate trước khi gọi API; Backend trả 400 validation errors</div>
+    </div>
+  </div>
+
+  <!-- Test Cases AI Workflow -->
+  <div class="section">
+    <div class="section-header">
+      <span class="icon">🤖</span>
+      <h2>Test Cases — AI Workflow Dashboard</h2>
+    </div>
+
+    <div class="tc-block">
+      <div class="tc-id">TC-WF-01 · P1 · Functional</div>
+      <div class="tc-title">Tab "Process Instances" — filter & phân trang</div>
+      <ol class="tc-steps">
+        <li>Vào /ai-workflow → Tab "Process Instances" active mặc định</li>
+        <li>Chip hiển thị tổng số instances (234)</li>
+        <li>Chọn filter "Completed" → chỉ hiện COMPLETED</li>
+        <li>Chọn filter "Active" → hiện ACTIVE instances</li>
+        <li>Click pagination → trang 2, 3...</li>
+        <li>Click 1 row → InstanceDetailDrawer mở bên phải</li>
+      </ol>
+      <div class="tc-result tc-pass">✅ PASS — 234 instances, filter hoạt động, drawer hiện variables</div>
+    </div>
+
+    <div class="tc-block">
+      <div class="tc-id">TC-WF-02 · P1 · Functional</div>
+      <div class="tc-title">Tab "Process Definitions" — danh sách 7 BPMN + viewer</div>
+      <ol class="tc-steps">
+        <li>Click tab "Process Definitions"</li>
+        <li>Danh sách 7 process hiển thị, tất cả status "Active"</li>
+        <li>Click row "AI-C01: AQI Citizen Alert" → BPMN diagram load bên phải</li>
+        <li>Kiểm tra nút "Start" xuất hiện (chỉ ROLE_ADMIN)</li>
+        <li>Click Start → dialog nhập variables JSON → nhập variables → Submit</li>
+      </ol>
+      <div class="tc-result tc-pass">✅ PASS — 7 definitions, BPMN rendered, Start process thành công</div>
+    </div>
+  </div>
+
+  <!-- Bug Cards -->
+  <div class="section">
+    <div class="section-header">
+      <span class="icon">🐛</span>
+      <h2>Bugs Tìm Thấy — Tất cả đã được Fix</h2>
+    </div>
+    <div style="padding:16px 20px">
+
+      <div class="bug-card bug-resolved">
+        <div class="bug-title">✅ BUG-001 (P2 → Fixed): POST /wf-config với JSON không hợp lệ → 500</div>
+        <div class="bug-detail">
+          <b>Root cause:</b> Thiếu handler cho <code>HttpMessageNotReadableException</code><br>
+          <b>Fix:</b> Thêm vào <code>GlobalExceptionHandler.java</code> → trả HTTP 400 Bad Request<br>
+          <b>Verify:</b>
+          <div class="curl-block">curl -X POST /api/v1/wf-config -d 'INVALID'
+→ HTTP 400 {"status":400,"detail":"Malformed or missing request body"}</div>
+        </div>
+      </div>
+
+      <div class="bug-card bug-resolved">
+        <div class="bug-title">✅ BUG-002 (P2 → Fixed): Missing required fields → 500 thay vì 400</div>
+        <div class="bug-detail">
+          <b>Root cause:</b> Thiếu <code>@NotBlank</code>/<code>@Valid</code> trên entity + controller<br>
+          <b>Fix:</b> Thêm Bean Validation vào <code>TriggerConfig.java</code> + <code>@Valid</code> vào controller<br>
+          <b>Verify:</b>
+          <div class="curl-block">curl -X POST /api/v1/wf-config -d '{"displayName":"X"}'
+→ HTTP 400 {"errors":{"scenarioKey":"scenarioKey is required",...}}</div>
+        </div>
+      </div>
+
+      <div class="bug-card bug-resolved">
+        <div class="bug-title">✅ BUG-003 (P2 → Fixed): Duplicate scenarioKey → 500 thay vì 409</div>
+        <div class="bug-detail">
+          <b>Root cause:</b> <code>DataIntegrityViolationException</code> chưa được handle<br>
+          <b>Fix:</b> Thêm handler vào <code>GlobalExceptionHandler.java</code> → trả HTTP 409 Conflict<br>
+          <b>Verify:</b>
+          <div class="curl-block">curl -X POST /api/v1/wf-config -d '{"scenarioKey":"aiC01_aqiCitizenAlert",...}'
+→ HTTP 409 {"title":"Conflict","detail":"Resource already exists (duplicate key)"}</div>
+        </div>
+      </div>
+
+      <div class="bug-card bug-resolved">
+        <div class="bug-title">✅ BUG-004 (P3 → Fixed): 26 TypeScript errors trong test files</div>
+        <div class="bug-detail">
+          <b>Root cause:</b> Mock type <code>asAny(fn: ReturnType&lt;typeof vi.fn&gt;)</code> không nhận actual function type; URL sai trong <code>workflowConfig.api.test.ts</code><br>
+          <b>Fix:</b> Đổi signature thành <code>asAny(fn: unknown)</code>; fix URL từ <code>/admin/workflow-configs</code> → <code>/wf-config</code><br>
+          <b>Verify:</b> <code>npx tsc --noEmit → 0 errors | npx vitest run → 104/104 PASS</code>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- API Reference -->
+  <div class="section">
+    <div class="section-header">
+      <span class="icon">📡</span>
+      <h2>API Reference — Dùng cho demo curl</h2>
+    </div>
+    <div style="padding:16px 20px">
+      <p style="font-size:13px;color:#555;margin-bottom:12px">Lấy token: <code>POST /api/v1/auth/login</code> với <code>{"username":"admin","password":"admin_Dev#2026!"}</code></p>
+      <div class="curl-block"># List all configs
+GET  /api/v1/wf-config                → 7 configs
+
+# CRUD
+POST /api/v1/wf-config                → 201 Created (hoặc 400/409 nếu invalid)
+PUT  /api/v1/wf-config/{id}           → update fields
+DELETE /api/v1/wf-config/{id}         → soft delete (enabled=false)
+
+# Test trigger (dry-run, không start process)
+POST /api/v1/wf-config/{id}/test
+Body: {"module":"ENVIRONMENT","measureType":"AQI","value":180,...}
+→ {"filterMatch":true,"mappedVariables":{...}}
+
+# AI Workflow
+GET  /api/v1/workflow/definitions     → 7 process definitions
+GET  /api/v1/workflow/instances       → paginated instances
+GET  /api/v1/workflow/instances/{id}/variables
+POST /api/v1/workflow/start/{processKey}  → start process (admin only)</div>
+    </div>
+  </div>
+
+  <div style="text-align:center;color:#aaa;font-size:12px;padding:20px 0">
+    Generated by UIP Manual Tester · Sprint 4 · S4-10 · 23/04/2026
+  </div>
+
+</div>
+</body>
+</html>

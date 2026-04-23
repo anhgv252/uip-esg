@@ -14,6 +14,8 @@ const CityOpsPage = lazy(() => import('@/pages/CityOpsPage'))
 const CitizenPage = lazy(() => import('@/pages/CitizenPage'))
 const CitizenRegisterPage = lazy(() => import('@/components/citizen/CitizenRegisterPage'))
 const AdminPage = lazy(() => import('@/pages/AdminPage'))
+const AiWorkflowPage = lazy(() => import('@/pages/AiWorkflowPage'))
+const WorkflowConfigPage = lazy(() => import('@/pages/WorkflowConfigPage'))
 
 export const routes: RouteObject[] = [
   {
@@ -40,6 +42,15 @@ export const routes: RouteObject[] = [
       { path: '/alerts', element: <AlertsPage /> },
       { path: '/city-ops', element: <CityOpsPage /> },
       { path: '/citizen', element: <CitizenPage /> },
+      { path: '/ai-workflow', element: <AiWorkflowPage /> },
+      {
+        path: '/workflow-config',
+        element: (
+          <ProtectedRoute requiredRole="ROLE_ADMIN">
+            <WorkflowConfigPage />
+          </ProtectedRoute>
+        ),
+      },
       {
         path: '/admin',
         element: (

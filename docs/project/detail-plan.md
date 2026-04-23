@@ -3,7 +3,7 @@
 **Dựa trên:** Master Plan v2.0 (28/03/2026)  
 **Ngày tạo:** 29/03/2026  
 **Thời gian thực hiện:** 28/03/2026 → 28/05/2026 (9 tuần)  
-**Trạng thái:** ✅ Sprint 1 DONE (30/03/2026) | ✅ Sprint 2 DONE (31/03/2026) | ✅ Architecture Stabilization DONE (04/04/2026) | ✅ Sprint 3 DONE (06/04/2026) | 🚀 Sprint 4 IN PROGRESS — S4-01✅, S4-02✅, S4-03✅, S4-04✅, S4-05✅, S4-06✅, S4-10✅
+**Trạng thái:** ✅ Sprint 1 DONE (30/03/2026) | ✅ Sprint 2 DONE (31/03/2026) | ✅ Architecture Stabilization DONE (04/04/2026) | ✅ Sprint 3 DONE (06/04/2026) | 🚀 Sprint 4 IN PROGRESS — S4-01✅, S4-02✅, S4-03✅, S4-04✅, S4-05✅, S4-06✅, S4-07✅, S4-10✅
 
 ---
 
@@ -1186,11 +1186,11 @@ Convention `UIP.{module}.{entity}.{event-type}.v{n}` được áp dụng luôn �
 **Owner:** Ops-1
 
 **Acceptance Criteria:**
-- [ ] `infrastructure/docker-compose.uat.yml` — production-near config
-- [ ] Startup: `make uat-up` → all services healthy trong 3 phút
-- [ ] `docs/deployment/UAT-GUIDE.md` — step-by-step cho city authority
-- [ ] `.env.uat.example` — template env file
-- [ ] Seed data script: `make seed-uat` — 50 buildings, 100 sensors, 3 citizens với invoices
+- [x] `infrastructure/docker-compose.uat.yml` — production-near config
+- [x] Startup: `make uat-up` → all services healthy trong 3 phút
+- [x] `docs/deployment/UAT-GUIDE.md` — step-by-step cho city authority
+- [x] `.env.uat.example` — template env file
+- [x] Seed data script: `make seed-uat` — 50 buildings, 100 sensors, 3 citizens với invoices
 
 **Sub-tasks:**
 1. `docker-compose.uat.yml` với resource limits
@@ -1437,12 +1437,12 @@ S4-05 (Perf Test) ─ depends on ─▶ All Flink jobs running (S1-03, S1-08, S2
 |-------|--------|-------|--------|
 | S4-05 Performance Test | 5 SP | QA-1 | ✅ QA Sign-off (22/04) — 20.77ms p95 @ 5min, 0% error, 2 bugs fixed |
 | S4-06 Security Hardening | 3 SP | Be-1 | ✅ DONE (22/04) — env vars, rate limit, CSP, SQL audit, auth tests fixed |
+| S4-07 UAT Docker Compose | 3 SP | Ops-1 | ✅ DONE (22/04) — docker-compose.uat.yml, Makefile targets, seed script (50 bldgs/100 sensors/6mo history), UAT-GUIDE.md, QA review + 8 bugs fixed |
 
 **Remaining:**
 | Story | Points | Owner | Status | Depends |
 |-------|--------|-------|--------|---------|
 | S4-00 Workflow Dashboard | 5 SP | Fe-1 | ⬜ Pending | S4-01 |
-| S4-07 UAT Docker Compose | 3 SP | Ops-1 | ⬜ Pending | — |
 | S4-08 Regression Test Suite | 5 SP | QA-1 | ⬜ Pending | — |
 | S4-09 Bug Fixes & Polish | 8 SP | All | ⬜ Pending | — |
 

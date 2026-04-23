@@ -1,6 +1,8 @@
 package com.uip.backend.workflow.config;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
@@ -16,17 +18,21 @@ public class TriggerConfig {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @NotBlank(message = "scenarioKey is required")
     @Column(name = "scenario_key", nullable = false, unique = true)
     private String scenarioKey;
 
+    @NotBlank(message = "processKey is required")
     @Column(name = "process_key", nullable = false)
     private String processKey;
 
+    @NotBlank(message = "displayName is required")
     @Column(name = "display_name", nullable = false)
     private String displayName;
 
     private String description;
 
+    @NotBlank(message = "triggerType is required")
     @Column(name = "trigger_type", nullable = false, length = 20)
     private String triggerType;
 
@@ -40,6 +46,7 @@ public class TriggerConfig {
     @Column(name = "filter_conditions", columnDefinition = "jsonb")
     private String filterConditions;
 
+    @NotBlank(message = "variableMapping is required")
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "variable_mapping", nullable = false, columnDefinition = "jsonb")
     private String variableMapping;
