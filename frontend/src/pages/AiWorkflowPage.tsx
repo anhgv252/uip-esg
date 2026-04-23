@@ -33,13 +33,11 @@ import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import BoltIcon from '@mui/icons-material/Bolt';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
-import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import {
   useProcessDefinitions,
   useProcessInstances,
   useProcessDefinitionXml,
   useStartProcess,
-  useInstanceVariables,
 } from '@/hooks/useWorkflowData';
 import ProcessInstanceTable from '@/components/workflow/ProcessInstanceTable';
 import InstanceDetailDrawer from '@/components/workflow/InstanceDetailDrawer';
@@ -336,7 +334,8 @@ type LogEntry = {
 };
 
 function ts() {
-  return new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3 });
+  const d = new Date();
+  return d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + '.' + String(d.getMilliseconds()).padStart(3, '0');
 }
 
 function aqiColor(v: number) {
@@ -762,7 +761,7 @@ function LiveDemoTab() {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [running, setRunning] = useState(false);
   const [result, setResult] = useState<Record<string, unknown> | null>(null);
-  const [processId, setProcessId] = useState<string | null>(null);
+  const [_processId, setProcessId] = useState<string | null>(null);
   const logIdRef = useRef(0);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
