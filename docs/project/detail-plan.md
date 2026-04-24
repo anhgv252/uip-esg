@@ -3,7 +3,7 @@
 **Dựa trên:** Master Plan v2.0 (28/03/2026)  
 **Ngày tạo:** 29/03/2026  
 **Thời gian thực hiện:** 28/03/2026 → 28/05/2026 (9 tuần)  
-**Trạng thái:** ✅ Sprint 1 DONE (30/03/2026) | ✅ Sprint 2 DONE (31/03/2026) | ✅ Architecture Stabilization DONE (04/04/2026) | ✅ Sprint 3 DONE (06/04/2026) | ✅ Sprint 4 DONE (23/04/2026) — S4-00✅, S4-01✅, S4-02✅, S4-03✅, S4-04✅, S4-05✅, S4-06✅, S4-07✅, S4-08✅, S4-09✅, S4-10✅
+**Trạng thái:** ✅ Sprint 1 DONE (30/03/2026) | ✅ Sprint 2 DONE (31/03/2026) | ✅ Architecture Stabilization DONE (04/04/2026) | ✅ Sprint 3 DONE (06/04/2026) | ✅ Sprint 4 DONE (23/04/2026) — S4-00✅, S4-01✅, S4-02✅, S4-03✅, S4-04✅, S4-05✅, S4-06✅, S4-07✅, S4-08✅, S4-09✅, S4-10✅ | 🔄 Technical Debt P0 DONE (24/04/2026) — T-DEBT-01✅, T-DEBT-02✅, T-DEBT-03✅
 
 ---
 
@@ -1471,11 +1471,11 @@ S4-05 (Perf Test) ─ depends on ─▶ All Flink jobs running (S1-03, S1-08, S2
 
 ### P0 — Phải xử lý trước Production Release
 
-| ID | Task | SP | Owner | Lý do |
-|----|------|----|-------|-------|
-| T-DEBT-01 | **Xóa 5 dead trigger classes** (tag git `pre-config-engine` trước): `AqiWorkflowTriggerService`, `FloodWorkflowTriggerService`, `FloodResponseTriggerService`, `ManagementWorkflowScheduler`, `AqiTrafficTriggerService` | 1 | Be-1 | Comment `// @Component` là anti-pattern; SonarQube false positive; confuse developer mới |
-| T-DEBT-02 | **DLQ cho `GenericKafkaTriggerService`**: nếu `FilterEvaluator`/`VariableMapper` throw → route vào `UIP.workflow.trigger.dlq.v1` + retry policy | 3 | Be-1 | Event loss nếu trigger processing fail — vi phạm Kafka anti-pattern checklist |
-| T-DEBT-03 | **Refactor reflection → Strategy registry**: thay `Method.invoke()` trong `GenericScheduledTriggerService` bằng `Map<String, ScheduledQueryStrategy>` Spring bean registry | 5 | Be-1 | R-13: rename bean → silent runtime failure; không refactor-safe; IDE blind |
+| ID | Task | SP | Owner | Lý do | Status |
+|----|------|----|-------|-------|--------|
+| T-DEBT-01 | **Xóa 5 dead trigger classes** (tag git `pre-config-engine` trước): `AqiWorkflowTriggerService`, `FloodWorkflowTriggerService`, `FloodResponseTriggerService`, `ManagementWorkflowScheduler`, `AqiTrafficTriggerService` | 1 | Be-1 | Comment `// @Component` là anti-pattern; SonarQube false positive; confuse developer mới | ✅ Done (24/04/2026) — git tag `pre-config-engine` tạo, 5 files đã xóa |
+| T-DEBT-02 | **DLQ cho `GenericKafkaTriggerService`**: nếu `FilterEvaluator`/`VariableMapper` throw → route vào `UIP.workflow.trigger.dlq.v1` + retry policy | 3 | Be-1 | Event loss nếu trigger processing fail — vi phạm Kafka anti-pattern checklist | ✅ Done (24/04/2026) — `KafkaTemplate` injected; per-config DLQ routing; 3 test cases mới (DLQ verify + multi-config isolation); `WorkflowNotFoundException` không route DLQ |
+| T-DEBT-03 | **Refactor reflection → Strategy registry**: thay `Method.invoke()` trong `GenericScheduledTriggerService` bằng `Map<String, ScheduledQueryStrategy>` Spring bean registry | 5 | Be-1 | R-13: rename bean → silent runtime failure; không refactor-safe; IDE blind | ✅ Done (24/04/2026) — `ScheduledQueryStrategy` interface + `EsgUtilityAnomalyStrategy` + `EsgAnomalyStrategy` + `ScheduledQueryStrategyRegistry`; `GenericScheduledTriggerService` bỏ `ApplicationContext` + reflection; `TriggerConfigStartupValidator` dùng registry; tất cả tests rewritten và pass |
 
 ### P1 — Sprint 5
 

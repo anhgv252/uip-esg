@@ -1,5 +1,6 @@
 package com.uip.backend.workflow.config;
 
+import com.uip.backend.workflow.trigger.strategy.ScheduledQueryStrategyRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -7,7 +8,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.boot.DefaultApplicationArguments;
-import org.springframework.context.ApplicationContext;
 
 import java.util.List;
 
@@ -19,18 +19,18 @@ import static org.mockito.Mockito.when;
 class TriggerConfigStartupValidatorTest {
 
     @Mock private TriggerConfigRepository configRepo;
-    @Mock private ApplicationContext applicationContext;
+    @Mock private ScheduledQueryStrategyRegistry strategyRegistry;
 
     private TriggerConfigStartupValidator validator;
 
     @BeforeEach
     void setUp() {
-        validator = new TriggerConfigStartupValidator(configRepo, applicationContext);
+        validator = new TriggerConfigStartupValidator(configRepo, strategyRegistry);
     }
 
     @Test
-    @DisplayName("Valid config — no exception thrown")
-    void validConfig_doesNotThrow() throws Exception {
+    @DisplayName("Valid config — strategy registered — no exception thrown")
+    void validConfig_doesNotThrow() {
         TriggerConfig config = TriggerConfig.builder()
                 .scenarioKey("aiM03_utilityIncidentCoordination")
                 .triggerType("SCHEDULED")
@@ -39,29 +39,23 @@ class TriggerConfigStartupValidatorTest {
                 .build();
 
         when(configRepo.findByTriggerTypeAndEnabled("SCHEDULED", true)).thenReturn(List.of(config));
-        when(applicationContext.containsBean("esgService")).thenReturn(true);
-
-        // Stub the bean to have the method
-        Object mockBean = new Object() {
-            public List<?> detectUtilityAnomalies() { return List.of(); }
-        };
-        when(applicationContext.getBean("esgService")).thenReturn(mockBean);
+        when(strategyRegistry.contains("esgService.detectUtilityAnomalies")).thenReturn(true);
 
         assertDoesNotThrow(() -> validator.run(new DefaultApplicationArguments()));
     }
 
     @Test
-    @DisplayName("Missing bean — no exception thrown (only logs error)")
-    void missingBean_doesNotThrow() {
+    @DisplayName("Unknown queryBeanRef — no strategy registered — no exception (only logs error)")
+    void unknownQueryBeanRef_doesNotThrow() {
         TriggerConfig config = TriggerConfig.builder()
                 .scenarioKey("aiM03_utilityIncidentCoordination")
                 .triggerType("SCHEDULED")
-                .scheduleQueryBean("unknownBean.someMethod")
+                .scheduleQueryBean("unknownService.someMethod")
                 .enabled(true)
                 .build();
 
         when(configRepo.findByTriggerTypeAndEnabled("SCHEDULED", true)).thenReturn(List.of(config));
-        when(applicationContext.containsBean("unknownBean")).thenReturn(false);
+        when(strategyRegistry.contains("unknownService.someMethod")).thenReturn(false);
 
         assertDoesNotThrow(() -> validator.run(new DefaultApplicationArguments()));
     }

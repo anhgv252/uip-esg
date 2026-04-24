@@ -14,6 +14,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.Acknowledgment;
 
 import java.util.List;
@@ -31,6 +32,7 @@ class GenericKafkaTriggerServiceTest {
     @Mock private WorkflowService workflowService;
     @Mock private FilterEvaluator filterEvaluator;
     @Mock private VariableMapper variableMapper;
+    @Mock private KafkaTemplate<String, Object> kafkaTemplate;
     @Mock private Acknowledgment ack;
     @InjectMocks private GenericKafkaTriggerService service;
 
@@ -106,8 +108,8 @@ class GenericKafkaTriggerServiceTest {
     }
 
     @Test
-    @DisplayName("WorkflowNotFoundException → acks and continues")
-    void processNotFound_acks() throws Exception {
+    @DisplayName("WorkflowNotFoundException → acks without DLQ")
+    void processNotFound_acksWithoutDlq() throws Exception {
         TriggerConfig config = buildConfig("missing", "missing", "[{}]", "{}", null);
         when(configRepo.findByTriggerTypeAndKafkaTopicAndEnabled("KAFKA", "UIP.flink.alert.detected.v1", true))
             .thenReturn(List.of(config));
@@ -118,6 +120,44 @@ class GenericKafkaTriggerServiceTest {
 
         service.onKafkaEvent(Map.of("value", 175.0), ack);
 
+        verify(ack).acknowledge();
+        verify(kafkaTemplate, never()).send(anyString(), anyString(), any());
+    }
+
+    @Test
+    @DisplayName("FilterEvaluator throws → routes to DLQ + acks")
+    void filterEvaluatorThrows_routesToDlqAndAcks() throws Exception {
+        TriggerConfig config = buildConfig("aiC01", "aiC01", "[{}]", "{}", null);
+        when(configRepo.findByTriggerTypeAndKafkaTopicAndEnabled("KAFKA", "UIP.flink.alert.detected.v1", true))
+            .thenReturn(List.of(config));
+        when(filterEvaluator.matches(anyString(), anyMap())).thenThrow(new RuntimeException("Bad filter JSON"));
+
+        service.onKafkaEvent(Map.of("value", 175.0), ack);
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<Map<String, Object>> dlqCaptor = ArgumentCaptor.forClass(Map.class);
+        verify(kafkaTemplate).send(eq(GenericKafkaTriggerService.DLQ_TOPIC), eq("aiC01"), dlqCaptor.capture());
+        assertThat(dlqCaptor.getValue()).containsKey("error").containsKey("originalPayload");
+        verify(ack).acknowledge();
+    }
+
+    @Test
+    @DisplayName("VariableMapper throws → routes to DLQ + acks, other configs still run")
+    void variableMapperThrows_routesToDlqContinuesOtherConfigs() throws Exception {
+        TriggerConfig failConfig = buildConfig("aiC01", "aiC01", "[{}]", "{bad}", null);
+        TriggerConfig goodConfig = buildConfig("aiM02", "aiM02", "[{}]", "{}", null);
+        when(configRepo.findByTriggerTypeAndKafkaTopicAndEnabled("KAFKA", "UIP.flink.alert.detected.v1", true))
+            .thenReturn(List.of(failConfig, goodConfig));
+        when(filterEvaluator.matches(anyString(), anyMap())).thenReturn(true);
+        when(variableMapper.map(eq("{bad}"), anyMap())).thenThrow(new RuntimeException("Mapping error"));
+        when(variableMapper.map(eq("{}"), anyMap())).thenReturn(Map.of());
+        when(workflowService.startProcess(eq("aiM02"), anyMap()))
+            .thenReturn(ProcessInstanceDto.builder().id("456").build());
+
+        service.onKafkaEvent(Map.of("value", 175.0), ack);
+
+        verify(kafkaTemplate).send(eq(GenericKafkaTriggerService.DLQ_TOPIC), eq("aiC01"), any());
+        verify(workflowService).startProcess(eq("aiM02"), anyMap());
         verify(ack).acknowledge();
     }
 }
