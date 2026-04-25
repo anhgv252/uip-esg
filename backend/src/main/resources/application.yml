@@ -59,6 +59,12 @@ spring:
           max-idle: 8
           min-idle: 2
 
+  cache:
+    type: redis
+    redis:
+      time-to-live: 300000   # 5 minutes TTL for trigger-config cache
+      cache-null-values: false
+
   kafka:
     bootstrap-servers: localhost:29092
     producer:
@@ -115,6 +121,19 @@ claude:
     key: ${CLAUDE_API_KEY:}
     url: https://api.anthropic.com/v1/messages
     timeout-seconds: 10
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      claude-api:
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 30s
+        permitted-number-of-calls-in-half-open-state: 3
+        record-exceptions:
+          - org.springframework.web.client.RestClientException
+          - java.io.IOException
 
 management:
   endpoints:

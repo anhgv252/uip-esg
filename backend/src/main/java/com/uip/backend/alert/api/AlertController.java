@@ -23,6 +23,15 @@ public class AlertController {
 
     private final AlertService alertService;
 
+    @GetMapping("/notifications")
+    @Operation(summary = "Recent HIGH/CRITICAL alerts for citizen notifications (last 48h)")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<Page<AlertEventDto>> getPublicNotifications(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return ResponseEntity.ok(alertService.getPublicNotifications(page, size));
+    }
+
     @GetMapping
     @Operation(summary = "Query alert events with optional filters")
     @PreAuthorize("isAuthenticated()")
@@ -45,5 +54,16 @@ public class AlertController {
             Authentication auth) {
         AcknowledgeRequest body = req != null ? req : new AcknowledgeRequest();
         return ResponseEntity.ok(alertService.acknowledgeAlert(id, auth.getName(), body));
+    }
+
+    @PutMapping("/{id}/escalate")
+    @Operation(summary = "Escalate an alert to higher authority")
+    @PreAuthorize("hasAnyRole('OPERATOR', 'ADMIN')")
+    public ResponseEntity<AlertEventDto> escalate(
+            @PathVariable UUID id,
+            @RequestBody(required = false) AcknowledgeRequest req,
+            Authentication auth) {
+        String note = req != null ? req.getNote() : null;
+        return ResponseEntity.ok(alertService.escalateAlert(id, auth.getName(), note));
     }
 }

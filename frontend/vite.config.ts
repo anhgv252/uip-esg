@@ -5,6 +5,10 @@ import { resolve } from 'path'
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
+  optimizeDeps: {
+    // Prevent duplicate emotion/MUI instances when HMR cache is warm
+    dedupe: ['@emotion/react', '@emotion/styled', '@mui/material'],
+  },
   resolve: {
     alias: {
       '@': resolve(__dirname, './src'),

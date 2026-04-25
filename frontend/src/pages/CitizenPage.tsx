@@ -1,16 +1,20 @@
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import {
   Box, Typography, Tabs, Tab, Grid, Paper, Chip,
-  CircularProgress, Alert,
+  CircularProgress, Alert, Badge,
 } from '@mui/material'
 import PeopleIcon from '@mui/icons-material/People'
 import ReceiptIcon from '@mui/icons-material/Receipt'
 import PersonIcon from '@mui/icons-material/Person'
 import DashboardIcon from '@mui/icons-material/Dashboard'
 import LockIcon from '@mui/icons-material/Lock'
+import NotificationsIcon from '@mui/icons-material/Notifications'
 import { useCitizenProfile, useInvoices } from '@/hooks/useCitizenData'
+import { useNotificationSSE } from '@/hooks/useNotificationSSE'
+import type { AlertNotification } from '@/hooks/useNotificationSSE'
 import InvoicePage from '@/components/citizen/InvoicePage'
 import CitizenProfilePage from '@/components/citizen/CitizenProfilePage'
+import CitizenNotificationsPage from '@/components/citizen/CitizenNotificationsPage'
 import { useAuth } from '@/hooks/useAuth'
 
 function CitizenDashboard() {
@@ -72,7 +76,16 @@ function CitizenDashboard() {
 
 export default function CitizenPage() {
   const [tab, setTab] = useState(0)
+  const [newAlertCount, setNewAlertCount] = useState(0)
+  const [liveAlerts, setLiveAlerts] = useState<AlertNotification[]>([])
   const { user } = useAuth()
+
+  const handleLiveAlert = useCallback((alert: AlertNotification) => {
+    setLiveAlerts((prev) => [alert, ...prev].slice(0, 50))
+    setNewAlertCount((c) => c + 1)
+  }, [])
+
+  useNotificationSSE(handleLiveAlert)
 
   // Admin and Operator accounts do not have citizen profiles
   if (user && user.role !== 'ROLE_CITIZEN') {
@@ -102,15 +115,39 @@ export default function CitizenPage() {
         <Typography variant="h5">Citizen Portal</Typography>
       </Box>
 
-      <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 3, borderBottom: 1, borderColor: 'divider' }}>
+      <Tabs
+        value={tab}
+        onChange={(_, v: number) => {
+          setTab(v)
+          if (v === 3) setNewAlertCount(0)
+        }}
+        sx={{ mb: 3, borderBottom: 1, borderColor: 'divider' }}
+      >
         <Tab icon={<DashboardIcon />} iconPosition="start" label="Dashboard" />
         <Tab icon={<ReceiptIcon />} iconPosition="start" label="My Bills" />
         <Tab icon={<PersonIcon />} iconPosition="start" label="Profile" />
+        <Tab
+          icon={
+            <Badge badgeContent={newAlertCount || undefined} color="error" max={99}>
+              <NotificationsIcon />
+            </Badge>
+          }
+          iconPosition="start"
+          label="Notifications"
+        />
       </Tabs>
 
       {tab === 0 && <CitizenDashboard />}
       {tab === 1 && <InvoicePage />}
       {tab === 2 && <CitizenProfilePage />}
+      {tab === 3 && (
+        <Box>
+          <Typography variant="subtitle1" fontWeight={600} gutterBottom>
+            Cảnh báo môi trường trong 48 giờ qua (HIGH / CRITICAL)
+          </Typography>
+          <CitizenNotificationsPage liveAlerts={liveAlerts} />
+        </Box>
+      )}
     </Box>
   )
 }

@@ -11,7 +11,7 @@ export interface AlertEvent {
   value: number;
   threshold: number;
   note: string | null;
-  status: 'OPEN' | 'ACKNOWLEDGED';
+  status: 'OPEN' | 'ACKNOWLEDGED' | 'ESCALATED';
   acknowledgedBy: string | null;
   acknowledgedAt: string | null;
   detectedAt: string;
@@ -57,6 +57,12 @@ export const getAlerts = (params?: {
 
 export const acknowledgeAlert = (id: string, note?: string) =>
   apiClient.put<AlertEvent>(`/alerts/${id}/acknowledge`, { note }).then((r) => r.data);
+
+export const escalateAlert = (id: string, note?: string) =>
+  apiClient.put<AlertEvent>(`/alerts/${id}/escalate`, { note }).then((r) => r.data);
+
+export const getCitizenNotifications = (params?: { page?: number; size?: number }) =>
+  apiClient.get<AlertEventsPage>('/alerts/notifications', { params }).then((r) => r.data);
 
 export const getAlertRules = () =>
   apiClient.get<AlertRule[]>('/admin/alert-rules').then((r) => r.data);

@@ -5,6 +5,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.uip.backend.workflow.dto.AIDecision;
 import com.uip.backend.workflow.dto.ClaudeApiRequest;
 import com.uip.backend.workflow.dto.ClaudeApiResponse;
+import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
+import io.github.resilience4j.circuitbreaker.CircuitBreaker;
+import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -33,6 +37,7 @@ public class ClaudeApiService {
     private final RestTemplate claudeRestTemplate;
     private final RuleBasedFallbackDecisionService fallbackService;
     private final ObjectMapper objectMapper;
+    private final CircuitBreakerRegistry circuitBreakerRegistry;
 
     @Value("${claude.api.key:}")
     private String apiKey;
@@ -43,47 +48,52 @@ public class ClaudeApiService {
     @Value("${claude.api.timeout-seconds:10}")
     private int timeoutSeconds;
 
+    private CircuitBreaker circuitBreaker;
+
+    @PostConstruct
+    void initCircuitBreaker() {
+        circuitBreaker = circuitBreakerRegistry.circuitBreaker("claude-api");
+        circuitBreaker.getEventPublisher()
+            .onStateTransition(e -> log.warn("[CB] claude-api state: {} → {}",
+                e.getStateTransition().getFromState(), e.getStateTransition().getToState()))
+            .onError(e -> {
+                float rate = circuitBreaker.getMetrics().getFailureRate();
+                if (rate > 20f) {
+                    log.warn("[CB] claude-api failure rate {}% — check Claude API health",
+                        String.format("%.1f", rate));
+                }
+            });
+    }
+
     @Async
     public CompletableFuture<AIDecision> analyzeAsync(String scenarioKey, Map<String, Object> context) {
-        // Check if API key is configured
         if (apiKey == null || apiKey.isBlank()) {
             log.warn("Claude API key not configured, using fallback for scenario: {}", scenarioKey);
             return CompletableFuture.completedFuture(fallbackService.getFallbackDecision(scenarioKey, context));
         }
 
         try {
-            // Load prompt template
             String promptTemplate = loadPromptTemplate(scenarioKey);
-            
-            // Substitute context variables
             String prompt = substituteVariables(promptTemplate, context);
-            
-            // Build Claude API request
+
             ClaudeApiRequest request = ClaudeApiRequest.builder()
                     .model("claude-sonnet-4-6")
                     .maxTokens(1024)
                     .messages(List.of(new ClaudeApiRequest.Message("user", prompt)))
                     .build();
-            
-            // Set headers
+
             HttpHeaders headers = new HttpHeaders();
             headers.set("x-api-key", apiKey);
             headers.set("anthropic-version", "2023-06-01");
             headers.set("Content-Type", "application/json");
-            
+
             HttpEntity<ClaudeApiRequest> entity = new HttpEntity<>(request, headers);
-            
-            // Call Claude API
+
             log.info("Calling Claude API for scenario: {}", scenarioKey);
-            ResponseEntity<ClaudeApiResponse> response = claudeRestTemplate.exchange(
-                    apiUrl,
-                    HttpMethod.POST,
-                    entity,
-                    ClaudeApiResponse.class
-            );
-            
-            // Parse response
-            if (response.getBody() != null && response.getBody().getContent() != null 
+            ResponseEntity<ClaudeApiResponse> response = circuitBreaker.executeSupplier(() ->
+                claudeRestTemplate.exchange(apiUrl, HttpMethod.POST, entity, ClaudeApiResponse.class));
+
+            if (response.getBody() != null && response.getBody().getContent() != null
                     && !response.getBody().getContent().isEmpty()) {
                 String responseText = response.getBody().getContent().get(0).getText();
                 AIDecision decision = parseAIDecision(responseText);
@@ -93,7 +103,10 @@ public class ClaudeApiService {
                 log.warn("Empty response from Claude API for scenario: {}", scenarioKey);
                 return CompletableFuture.completedFuture(fallbackService.getFallbackDecision(scenarioKey, context));
             }
-            
+
+        } catch (CallNotPermittedException e) {
+            log.warn("Claude API circuit OPEN for scenario: {} — using fallback", scenarioKey);
+            return CompletableFuture.completedFuture(fallbackService.getFallbackDecision(scenarioKey, context));
         } catch (Exception e) {
             log.error("Error calling Claude API for scenario {}: {}", scenarioKey, e.getMessage());
             return CompletableFuture.completedFuture(fallbackService.getFallbackDecision(scenarioKey, context));

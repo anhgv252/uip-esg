@@ -109,6 +109,52 @@ jobs:
           name: frontend-test-results
           path: frontend/test-results/
 
+  openapi-contract:
+    name: OpenAPI Contract (Breaking Change Gate)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get baseline spec from main branch
+        run: |
+          git fetch origin main --depth=1
+          git show origin/main:docs/api/openapi.json > /tmp/baseline-openapi.json 2>/dev/null || \
+            echo '{"openapi":"3.0.1","info":{"title":"baseline","version":"0"},"paths":{}}' > /tmp/baseline-openapi.json
+
+      - name: Download openapi-diff CLI
+        run: |
+          curl -sL \
+            https://github.com/OpenAPITools/openapi-diff/releases/download/openapi-diff-2.1.0/openapi-diff-2.1.0.jar \
+            -o /tmp/openapi-diff.jar
+
+      - name: Run openapi-diff (breaking change detection)
+        id: openapi_diff
+        run: |
+          java -jar /tmp/openapi-diff.jar \
+            /tmp/baseline-openapi.json \
+            docs/api/openapi.json \
+            --fail-on-incompatible \
+            --markdown /tmp/openapi-diff-report.md 2>&1 || {
+              echo "BREAKING_CHANGES=true" >> "$GITHUB_ENV"
+              echo "::error title=Breaking API Changes::This PR introduces breaking API changes. See openapi-diff report artifact."
+              echo "## Breaking API Changes Detected" >> "$GITHUB_STEP_SUMMARY"
+              cat /tmp/openapi-diff-report.md >> "$GITHUB_STEP_SUMMARY" || true
+              exit 1
+            }
+          echo "## OpenAPI Diff — No Breaking Changes" >> "$GITHUB_STEP_SUMMARY"
+          cat /tmp/openapi-diff-report.md >> "$GITHUB_STEP_SUMMARY" || true
+
+      - name: Upload diff report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: openapi-diff-report
+          path: /tmp/openapi-diff-report.md
+          retention-days: 7
+
   e2e-tests:
     name: E2E (Playwright)
     runs-on: ubuntu-latest

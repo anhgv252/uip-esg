@@ -18,8 +18,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -36,9 +38,18 @@ public class EnvironmentService {
     // ─── Sensors ─────────────────────────────────────────────────────────────
 
     public List<SensorDto> listSensors() {
-        return sensorRepository.findByActiveTrueOrderBySensorNameAsc()
+        List<Sensor> sensors = sensorRepository.findByActiveTrueOrderBySensorNameAsc();
+        // Fallback: use latest reading timestamp if sensors.last_seen_at is stale
+        // (covers dev environments where the DB trigger fires via Flink, not directly)
+        Map<String, Instant> latestReadingTs = readingRepository.findLatestPerSensor()
                 .stream()
-                .map(this::toSensorDto)
+                .collect(Collectors.toMap(
+                        SensorReading::getSensorId,
+                        r -> r.getId().getTimestamp(),
+                        (a, b) -> a.isAfter(b) ? a : b
+                ));
+        return sensors.stream()
+                .map(s -> toSensorDto(s, latestReadingTs.get(s.getSensorId())))
                 .toList();
     }
 
@@ -129,8 +140,18 @@ public class EnvironmentService {
     }
 
     private SensorDto toSensorDto(Sensor s) {
+        return toSensorDto(s, null);
+    }
+
+    private SensorDto toSensorDto(Sensor s, Instant latestReadingTs) {
+        // Use the most recent of sensor.last_seen_at and latest reading timestamp
+        Instant effectiveLastSeen = s.getLastSeenAt();
+        if (latestReadingTs != null &&
+                (effectiveLastSeen == null || latestReadingTs.isAfter(effectiveLastSeen))) {
+            effectiveLastSeen = latestReadingTs;
+        }
         Instant threshold = Instant.now().minus(ONLINE_THRESHOLD_MINUTES, ChronoUnit.MINUTES);
-        String status = (s.getLastSeenAt() != null && s.getLastSeenAt().isAfter(threshold))
+        String status = (effectiveLastSeen != null && effectiveLastSeen.isAfter(threshold))
                 ? "ONLINE" : "OFFLINE";
         return SensorDto.builder()
                 .id(s.getId())
@@ -142,7 +163,7 @@ public class EnvironmentService {
                 .longitude(s.getLongitude())
                 .active(s.isActive())
                 .status(status)
-                .lastSeenAt(s.getLastSeenAt())
+                .lastSeenAt(effectiveLastSeen)
                 .installedAt(s.getInstalledAt())
                 .build();
     }

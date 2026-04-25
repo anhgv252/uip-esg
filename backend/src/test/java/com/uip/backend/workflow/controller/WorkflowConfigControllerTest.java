@@ -2,6 +2,9 @@ package com.uip.backend.workflow.controller;
 
 import com.uip.backend.workflow.config.FilterEvaluator;
 import com.uip.backend.workflow.config.TriggerConfig;
+import com.uip.backend.workflow.config.TriggerConfigAudit;
+import com.uip.backend.workflow.config.TriggerConfigAuditService;
+import com.uip.backend.workflow.config.TriggerConfigCacheInvalidator;
 import com.uip.backend.workflow.config.TriggerConfigRepository;
 import com.uip.backend.workflow.config.VariableMapper;
 import org.junit.jupiter.api.DisplayName;
@@ -11,12 +14,15 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
+import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.security.core.Authentication;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
@@ -27,6 +33,9 @@ class WorkflowConfigControllerTest {
     @Mock private TriggerConfigRepository configRepo;
     @Mock private FilterEvaluator filterEvaluator;
     @Mock private VariableMapper variableMapper;
+    @Mock private TriggerConfigAuditService auditService;
+    @Mock private KafkaTemplate<String, Object> kafkaTemplate;
+    @Mock private Authentication auth;
     @InjectMocks private WorkflowConfigController controller;
 
     private TriggerConfig buildConfig(Long id, String key) {
@@ -75,7 +84,8 @@ class WorkflowConfigControllerTest {
         TriggerConfig input = buildConfig(null, "newScenario");
         when(configRepo.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-        TriggerConfig result = controller.createConfig(input);
+        when(auth.getName()).thenReturn("admin");
+        TriggerConfig result = controller.createConfig(input, auth);
 
         assertThat(result.getScenarioKey()).isEqualTo("newScenario");
         verify(configRepo).save(input);
@@ -88,7 +98,7 @@ class WorkflowConfigControllerTest {
         when(configRepo.findById(1L)).thenReturn(Optional.of(config));
         when(configRepo.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-        var response = controller.disableConfig(1L);
+        var response = controller.disableConfig(1L, auth);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
         verify(configRepo).save(argThat(c -> !c.getEnabled()));
@@ -109,5 +119,93 @@ class WorkflowConfigControllerTest {
         @SuppressWarnings("unchecked")
         Map<String, Object> vars = (Map<String, Object>) response.getBody().get("mappedVariables");
         assertThat(vars).containsEntry("sensorId", "AQI-001");
+    }
+
+    // ─── GAP-03: GET /{id}/audit ─────────────────────────────────────────────
+
+    @Test
+    @DisplayName("GET /{id}/audit — config not found → 404")
+    void getAuditHistory_configNotFound_returns404() {
+        when(configRepo.existsById(99L)).thenReturn(false);
+
+        var response = controller.getAuditHistory(99L);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        verifyNoInteractions(auditService);
+    }
+
+    @Test
+    @DisplayName("GET /{id}/audit — config exists → 200 with audit history")
+    void getAuditHistory_configExists_returnsHistory() {
+        when(configRepo.existsById(1L)).thenReturn(true);
+        TriggerConfigAudit entry = TriggerConfigAudit.builder()
+            .id(10L).configId(1L).action("CREATE")
+            .changedBy("admin").snapshot("{}").build();
+        when(auditService.getHistory(1L)).thenReturn(List.of(entry));
+
+        var response = controller.getAuditHistory(1L);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        @SuppressWarnings("unchecked")
+        var body = (List<TriggerConfigAudit>) response.getBody();
+        assertThat(body).hasSize(1);
+        assertThat(body.get(0).getAction()).isEqualTo("CREATE");
+    }
+
+    // ─── GAP-05: Kafka publish ───────────────────────────────────────────────
+
+    @Test
+    @DisplayName("POST / — publishes config-updated Kafka event after create")
+    void createConfig_publishesKafkaEvent() {
+        TriggerConfig input = buildConfig(null, "newScenario");
+        when(configRepo.save(any())).thenAnswer(inv -> {
+            TriggerConfig c = inv.getArgument(0);
+            return TriggerConfig.builder().id(42L).scenarioKey(c.getScenarioKey())
+                .processKey(c.getScenarioKey()).triggerType("KAFKA").enabled(true)
+                .filterConditions("[{}]").variableMapping("{}").build();
+        });
+        when(auth.getName()).thenReturn("admin");
+
+        controller.createConfig(input, auth);
+
+        verify(kafkaTemplate).send(
+            eq(TriggerConfigCacheInvalidator.TOPIC),
+            argThat((Map<String, Object> m) ->
+                Long.valueOf(42L).equals(m.get("configId")) && "CREATE".equals(m.get("action")))
+        );
+    }
+
+    @Test
+    @DisplayName("DELETE /{id} — publishes config-updated Kafka event after disable")
+    void disableConfig_publishesKafkaEvent() {
+        TriggerConfig config = buildConfig(1L, "aiC01");
+        when(configRepo.findById(1L)).thenReturn(Optional.of(config));
+        when(configRepo.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        controller.disableConfig(1L, auth);
+
+        verify(kafkaTemplate).send(
+            eq(TriggerConfigCacheInvalidator.TOPIC),
+            argThat((Map<String, Object> m) ->
+                Long.valueOf(1L).equals(m.get("configId")) && "DISABLE".equals(m.get("action")))
+        );
+    }
+
+    // ─── GAP-11: Kafka failure non-fatal ────────────────────────────────────
+
+    @Test
+    @DisplayName("kafkaTemplate.send() throws → controller does not propagate exception")
+    void createConfig_kafkaFails_doesNotThrow() {
+        TriggerConfig input = buildConfig(null, "resilientScenario");
+        when(configRepo.save(any())).thenAnswer(inv -> {
+            TriggerConfig c = inv.getArgument(0);
+            return TriggerConfig.builder().id(99L).scenarioKey(c.getScenarioKey())
+                .processKey(c.getScenarioKey()).triggerType("KAFKA").enabled(true)
+                .filterConditions("[{}]").variableMapping("{}").build();
+        });
+        when(auth.getName()).thenReturn("admin");
+        when(kafkaTemplate.send(anyString(), any())).thenThrow(new RuntimeException("Kafka broker down"));
+
+        assertThatCode(() -> controller.createConfig(input, auth)).doesNotThrowAnyException();
     }
 }

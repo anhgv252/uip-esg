@@ -44,6 +44,12 @@ dependencies {
     // Rate limiting
     implementation 'com.bucket4j:bucket4j-core:8.7.0'
 
+    // Resilience4j — circuit breaker for Claude API calls
+    implementation 'io.github.resilience4j:resilience4j-spring-boot3:2.2.0'
+
+    // Caching abstraction (backed by Redis)
+    implementation 'org.springframework.boot:spring-boot-starter-cache'
+
     // ESG report generation (Apache POI — XLSX)
     implementation 'org.apache.poi:poi-ooxml:5.2.5'
 

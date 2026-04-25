@@ -4,7 +4,7 @@ import com.uip.backend.alert.kafka.AlertEventKafkaConsumer;
 import com.uip.backend.common.exception.WorkflowNotFoundException;
 import com.uip.backend.workflow.config.FilterEvaluator;
 import com.uip.backend.workflow.config.TriggerConfig;
-import com.uip.backend.workflow.config.TriggerConfigRepository;
+import com.uip.backend.workflow.config.TriggerConfigCacheService;
 import com.uip.backend.workflow.config.VariableMapper;
 import com.uip.backend.workflow.service.WorkflowService;
 import lombok.RequiredArgsConstructor;
@@ -25,7 +25,7 @@ public class GenericKafkaTriggerService {
 
     public static final String DLQ_TOPIC = "UIP.workflow.trigger.dlq.v1";
 
-    private final TriggerConfigRepository configRepo;
+    private final TriggerConfigCacheService configCacheService;
     private final WorkflowService workflowService;
     private final FilterEvaluator filterEvaluator;
     private final VariableMapper variableMapper;
@@ -39,8 +39,7 @@ public class GenericKafkaTriggerService {
     public void onKafkaEvent(Map<String, Object> payload, Acknowledgment ack) {
         List<TriggerConfig> configs;
         try {
-            configs = configRepo
-                .findByTriggerTypeAndKafkaTopicAndEnabled("KAFKA", AlertEventKafkaConsumer.TOPIC, true);
+            configs = configCacheService.findActiveKafkaConfigs(AlertEventKafkaConsumer.TOPIC);
         } catch (Exception e) {
             log.error("Failed to load trigger configs, routing to DLQ: {}", e.getMessage(), e);
             sendToDlq("CONFIG_LOAD_ERROR", payload, e);

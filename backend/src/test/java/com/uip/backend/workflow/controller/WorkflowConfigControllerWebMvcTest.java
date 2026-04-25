@@ -3,6 +3,7 @@ package com.uip.backend.workflow.controller;
 import com.uip.backend.auth.config.JwtAuthenticationFilter;
 import com.uip.backend.workflow.config.FilterEvaluator;
 import com.uip.backend.workflow.config.TriggerConfig;
+import com.uip.backend.workflow.config.TriggerConfigAuditService;
 import com.uip.backend.workflow.config.TriggerConfigRepository;
 import com.uip.backend.workflow.config.VariableMapper;
 import org.junit.jupiter.api.DisplayName;
@@ -12,6 +13,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.FilterType;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -38,6 +40,8 @@ class WorkflowConfigControllerWebMvcTest {
     @MockBean TriggerConfigRepository configRepo;
     @MockBean FilterEvaluator filterEvaluator;
     @MockBean VariableMapper variableMapper;
+    @MockBean TriggerConfigAuditService auditService;
+    @MockBean KafkaTemplate<String, Object> kafkaTemplate;
 
     @Test
     @DisplayName("GET /api/v1/admin/workflow-configs — correct path returns 200")

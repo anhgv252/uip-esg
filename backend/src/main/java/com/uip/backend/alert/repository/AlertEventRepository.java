@@ -23,4 +23,15 @@ public interface AlertEventRepository extends JpaRepository<AlertEvent, UUID>, J
             @Param("sensorId")    String sensorId,
             @Param("measureType") String measureType,
             @Param("since")       Instant since);
+
+    @Query("""
+        SELECT a FROM AlertEvent a
+        WHERE a.severity IN ('HIGH', 'CRITICAL')
+          AND a.status IN ('OPEN', 'ESCALATED')
+          AND a.detectedAt >= :since
+        ORDER BY a.detectedAt DESC
+        """)
+    org.springframework.data.domain.Page<AlertEvent> findRecentPublicAlerts(
+            @Param("since") Instant since,
+            org.springframework.data.domain.Pageable pageable);
 }

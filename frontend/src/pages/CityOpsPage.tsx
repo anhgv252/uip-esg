@@ -1,8 +1,8 @@
 import { useState, useCallback } from 'react'
-import { Box, Typography, CircularProgress, Alert } from '@mui/material'
+import { Box, Typography, CircularProgress, Alert, FormControlLabel, Switch } from '@mui/material'
 import LocationCityIcon from '@mui/icons-material/LocationCity'
 import { useQuery } from '@tanstack/react-query'
-import { getSensorsForMap, getRecentAlerts } from '@/api/cityops'
+import { getSensorsForMap, getRecentAlerts, getCongestionSegments } from '@/api/cityops'
 import type { SensorWithAqi } from '@/api/cityops'
 import type { AlertEvent } from '@/api/alerts'
 import SensorMap from '@/components/cityops/SensorMap'
@@ -13,6 +13,7 @@ import { useMapSSE } from '@/hooks/useMapSSE'
 export default function CityOpsPage() {
   const [districtFilter, setDistrictFilter] = useState<string | null>(null)
   const [liveAlerts, setLiveAlerts] = useState<AlertEvent[]>([])
+  const [showTraffic, setShowTraffic] = useState(false)
 
   const { data: sensors = [], isLoading: sensorsLoading, error: sensorsError } = useQuery({
     queryKey: ['sensors-for-map'],
@@ -24,6 +25,13 @@ export default function CityOpsPage() {
     queryKey: ['recent-alerts'],
     queryFn: getRecentAlerts,
     refetchInterval: 30_000,
+  })
+
+  const { data: congestionSegments = [] } = useQuery({
+    queryKey: ['congestion'],
+    queryFn: getCongestionSegments,
+    refetchInterval: 60_000,
+    enabled: showTraffic,
   })
 
   const [sensorOverrides, setSensorOverrides] = useState<Record<string, SensorWithAqi>>({})
@@ -58,11 +66,17 @@ export default function CityOpsPage() {
             ({displayedSensors.filter((s) => s.status === 'ONLINE').length} sensors online)
           </Typography>
         </Box>
-        <DistrictFilter
-          sensors={displayedSensors}
-          value={districtFilter}
-          onChange={setDistrictFilter}
-        />
+        <Box display="flex" alignItems="center" gap={2}>
+          <DistrictFilter
+            sensors={displayedSensors}
+            value={districtFilter}
+            onChange={setDistrictFilter}
+          />
+          <FormControlLabel
+            control={<Switch size="small" checked={showTraffic} onChange={(e) => setShowTraffic(e.target.checked)} />}
+            label={<Typography variant="body2">Traffic</Typography>}
+          />
+        </Box>
       </Box>
 
       {sensorsError && (
@@ -85,7 +99,12 @@ export default function CityOpsPage() {
               <CircularProgress />
             </Box>
           ) : (
-            <SensorMap sensors={displayedSensors} districtFilter={districtFilter} />
+            <SensorMap
+              sensors={displayedSensors}
+              districtFilter={districtFilter}
+              congestionSegments={congestionSegments}
+              showTraffic={showTraffic}
+            />
           )}
         </Box>
 

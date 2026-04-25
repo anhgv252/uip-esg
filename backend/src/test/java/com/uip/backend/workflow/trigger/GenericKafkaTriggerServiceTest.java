@@ -3,7 +3,7 @@ package com.uip.backend.workflow.trigger;
 import com.uip.backend.common.exception.WorkflowNotFoundException;
 import com.uip.backend.workflow.config.FilterEvaluator;
 import com.uip.backend.workflow.config.TriggerConfig;
-import com.uip.backend.workflow.config.TriggerConfigRepository;
+import com.uip.backend.workflow.config.TriggerConfigCacheService;
 import com.uip.backend.workflow.config.VariableMapper;
 import com.uip.backend.workflow.dto.ProcessInstanceDto;
 import com.uip.backend.workflow.service.WorkflowService;
@@ -28,7 +28,7 @@ import static org.mockito.Mockito.*;
 @DisplayName("GenericKafkaTriggerService")
 class GenericKafkaTriggerServiceTest {
 
-    @Mock private TriggerConfigRepository configRepo;
+    @Mock private TriggerConfigCacheService configCacheService;
     @Mock private WorkflowService workflowService;
     @Mock private FilterEvaluator filterEvaluator;
     @Mock private VariableMapper variableMapper;
@@ -48,7 +48,7 @@ class GenericKafkaTriggerServiceTest {
     @DisplayName("Matching config → starts process")
     void matchingConfig_startsProcess() throws Exception {
         TriggerConfig config = buildConfig("aiC01", "aiC01", "[{}]", "{}", null);
-        when(configRepo.findByTriggerTypeAndKafkaTopicAndEnabled("KAFKA", "UIP.flink.alert.detected.v1", true))
+        when(configCacheService.findActiveKafkaConfigs("UIP.flink.alert.detected.v1"))
             .thenReturn(List.of(config));
         when(filterEvaluator.matches(anyString(), anyMap())).thenReturn(true);
         when(variableMapper.map(anyString(), anyMap())).thenReturn(Map.of("scenarioKey", "aiC01"));
@@ -64,7 +64,7 @@ class GenericKafkaTriggerServiceTest {
     @DisplayName("No matching filter → skips process")
     void noMatch_skipsProcess() throws Exception {
         TriggerConfig config = buildConfig("aiC01", "aiC01", "[{}]", "{}", null);
-        when(configRepo.findByTriggerTypeAndKafkaTopicAndEnabled("KAFKA", "UIP.flink.alert.detected.v1", true))
+        when(configCacheService.findActiveKafkaConfigs("UIP.flink.alert.detected.v1"))
             .thenReturn(List.of(config));
         when(filterEvaluator.matches(anyString(), anyMap())).thenReturn(false);
 
@@ -78,7 +78,7 @@ class GenericKafkaTriggerServiceTest {
     @DisplayName("Deduplication → skips if active process exists")
     void deduplication_skipsActiveProcess() throws Exception {
         TriggerConfig config = buildConfig("aiC01", "aiC01", "[{}]", "{}", "sensorId");
-        when(configRepo.findByTriggerTypeAndKafkaTopicAndEnabled("KAFKA", "UIP.flink.alert.detected.v1", true))
+        when(configCacheService.findActiveKafkaConfigs("UIP.flink.alert.detected.v1"))
             .thenReturn(List.of(config));
         when(filterEvaluator.matches(anyString(), anyMap())).thenReturn(true);
         when(variableMapper.extractValue(eq("sensorId"), anyMap())).thenReturn("AQI-001");
@@ -95,7 +95,7 @@ class GenericKafkaTriggerServiceTest {
     void multipleConfigs_startsMultiple() throws Exception {
         TriggerConfig c1 = buildConfig("aiC01", "aiC01", "[{}]", "{}", null);
         TriggerConfig c2 = buildConfig("aiM02", "aiM02", "[{}]", "{}", null);
-        when(configRepo.findByTriggerTypeAndKafkaTopicAndEnabled("KAFKA", "UIP.flink.alert.detected.v1", true))
+        when(configCacheService.findActiveKafkaConfigs("UIP.flink.alert.detected.v1"))
             .thenReturn(List.of(c1, c2));
         when(filterEvaluator.matches(anyString(), anyMap())).thenReturn(true);
         when(variableMapper.map(anyString(), anyMap())).thenReturn(Map.of());
@@ -111,7 +111,7 @@ class GenericKafkaTriggerServiceTest {
     @DisplayName("WorkflowNotFoundException → acks without DLQ")
     void processNotFound_acksWithoutDlq() throws Exception {
         TriggerConfig config = buildConfig("missing", "missing", "[{}]", "{}", null);
-        when(configRepo.findByTriggerTypeAndKafkaTopicAndEnabled("KAFKA", "UIP.flink.alert.detected.v1", true))
+        when(configCacheService.findActiveKafkaConfigs("UIP.flink.alert.detected.v1"))
             .thenReturn(List.of(config));
         when(filterEvaluator.matches(anyString(), anyMap())).thenReturn(true);
         when(variableMapper.map(anyString(), anyMap())).thenReturn(Map.of());
@@ -128,7 +128,7 @@ class GenericKafkaTriggerServiceTest {
     @DisplayName("FilterEvaluator throws → routes to DLQ + acks")
     void filterEvaluatorThrows_routesToDlqAndAcks() throws Exception {
         TriggerConfig config = buildConfig("aiC01", "aiC01", "[{}]", "{}", null);
-        when(configRepo.findByTriggerTypeAndKafkaTopicAndEnabled("KAFKA", "UIP.flink.alert.detected.v1", true))
+        when(configCacheService.findActiveKafkaConfigs("UIP.flink.alert.detected.v1"))
             .thenReturn(List.of(config));
         when(filterEvaluator.matches(anyString(), anyMap())).thenThrow(new RuntimeException("Bad filter JSON"));
 
@@ -146,7 +146,7 @@ class GenericKafkaTriggerServiceTest {
     void variableMapperThrows_routesToDlqContinuesOtherConfigs() throws Exception {
         TriggerConfig failConfig = buildConfig("aiC01", "aiC01", "[{}]", "{bad}", null);
         TriggerConfig goodConfig = buildConfig("aiM02", "aiM02", "[{}]", "{}", null);
-        when(configRepo.findByTriggerTypeAndKafkaTopicAndEnabled("KAFKA", "UIP.flink.alert.detected.v1", true))
+        when(configCacheService.findActiveKafkaConfigs("UIP.flink.alert.detected.v1"))
             .thenReturn(List.of(failConfig, goodConfig));
         when(filterEvaluator.matches(anyString(), anyMap())).thenReturn(true);
         when(variableMapper.map(eq("{bad}"), anyMap())).thenThrow(new RuntimeException("Mapping error"));

@@ -3,6 +3,10 @@ package com.uip.backend.workflow.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.uip.backend.workflow.dto.AIDecision;
 import com.uip.backend.workflow.dto.ClaudeApiResponse;
+import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
+import io.github.resilience4j.circuitbreaker.CircuitBreaker;
+import io.github.resilience4j.circuitbreaker.CircuitBreakerConfig;
+import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -30,6 +34,9 @@ class ClaudeApiServiceTest {
 
     @Mock private RestTemplate claudeRestTemplate;
     @Mock private RuleBasedFallbackDecisionService fallbackService;
+    @Mock private CircuitBreakerRegistry circuitBreakerRegistry;
+    @Mock private CircuitBreaker circuitBreaker;
+    @Mock private CircuitBreaker.EventPublisher eventPublisher;
 
     private ClaudeApiService claudeApiService;
 
@@ -38,7 +45,16 @@ class ClaudeApiServiceTest {
 
     @BeforeEach
     void setUp() {
-        claudeApiService = new ClaudeApiService(claudeRestTemplate, fallbackService, new ObjectMapper());
+        when(circuitBreakerRegistry.circuitBreaker("claude-api")).thenReturn(circuitBreaker);
+        when(circuitBreaker.getEventPublisher()).thenReturn(eventPublisher);
+        when(eventPublisher.onStateTransition(any())).thenReturn(eventPublisher);
+        when(eventPublisher.onError(any())).thenReturn(eventPublisher);
+        // By default, CB delegates to real supplier (circuit closed). lenient() — blank-key path skips CB entirely.
+        lenient().doAnswer(inv -> ((java.util.function.Supplier<?>) inv.getArgument(0)).get())
+            .when(circuitBreaker).executeSupplier(any());
+
+        claudeApiService = new ClaudeApiService(claudeRestTemplate, fallbackService, new ObjectMapper(), circuitBreakerRegistry);
+        claudeApiService.initCircuitBreaker();
         ReflectionTestUtils.setField(claudeApiService, "apiKey", "test-api-key");
         ReflectionTestUtils.setField(claudeApiService, "apiUrl", "https://api.anthropic.com/v1/messages");
         ReflectionTestUtils.setField(claudeApiService, "timeoutSeconds", 10);
@@ -136,6 +152,28 @@ class ClaudeApiServiceTest {
     // ─── Case 5 ──────────────────────────────────────────────────────────────
 
     @Test
+    @DisplayName("Circuit breaker OPEN → fallback ngay, RestTemplate không được gọi")
+    void analyzeAsync_circuitOpen_usesFallbackWithoutCallingRestTemplate() throws Exception {
+        // Arrange — wire mocks needed by createCallNotPermittedException static factory
+        when(circuitBreaker.getName()).thenReturn("claude-api");
+        when(circuitBreaker.getState()).thenReturn(CircuitBreaker.State.OPEN);
+        when(circuitBreaker.getCircuitBreakerConfig()).thenReturn(CircuitBreakerConfig.ofDefaults());
+        doThrow(CallNotPermittedException.createCallNotPermittedException(circuitBreaker))
+            .when(circuitBreaker).executeSupplier(any());
+        AIDecision fallback = buildDecision("FALLBACK", 0.5, "MEDIUM");
+        when(fallbackService.getFallbackDecision(eq(SCENARIO_KEY), anyMap())).thenReturn(fallback);
+
+        // Act
+        AIDecision result = claudeApiService.analyzeAsync(SCENARIO_KEY, CONTEXT).get();
+
+        // Assert
+        assertThat(result.getDecision()).isEqualTo("FALLBACK");
+        verifyNoInteractions(claudeRestTemplate);
+    }
+
+    // ─── Case 6 ──────────────────────────────────────────────────────────────
+
+    @Test
     @DisplayName("Claude response trả về content rỗng → fallback được dùng")
     void analyzeAsync_emptyContent_usesFallback() throws Exception {
         // Arrange
@@ -153,7 +191,7 @@ class ClaudeApiServiceTest {
         assertThat(result.getDecision()).isEqualTo("FALLBACK");
     }
 
-    // ─── Case 6 ──────────────────────────────────────────────────────────────
+    // ─── Case 7 ──────────────────────────────────────────────────────────────
 
     @Test
     @DisplayName("Claude response text không phải JSON → trả về PARSE_ERROR decision")
@@ -169,7 +207,7 @@ class ClaudeApiServiceTest {
         assertThat(result.getConfidence()).isEqualTo(0.0);
     }
 
-    // ─── Case 7 ──────────────────────────────────────────────────────────────
+    // ─── Case 8 ──────────────────────────────────────────────────────────────
 
     @Test
     @DisplayName("substituteVariables thay thế đúng placeholder trong prompt template")

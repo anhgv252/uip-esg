@@ -62,6 +62,8 @@ export default function AlertFeedPanel({ alerts, loading }: AlertFeedPanelProps)
             <Box key={alert.id}>
               <ListItem alignItems="flex-start" sx={{ px: 2, py: 1 }}>
                 <ListItemText
+                  primaryTypographyProps={{ component: 'div' }}
+                  secondaryTypographyProps={{ component: 'div' }}
                   primary={
                     <Box display="flex" alignItems="center" gap={1} flexWrap="wrap">
                       <Chip

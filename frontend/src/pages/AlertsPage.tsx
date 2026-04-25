@@ -26,9 +26,10 @@ import {
 import CloseIcon from '@mui/icons-material/Close'
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive'
+import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward'
 import { formatDistanceToNow, format } from 'date-fns'
 import type { AlertEvent } from '@/api/alerts'
-import { useAlerts, useAcknowledgeAlert } from '@/hooks/useAlertManagement'
+import { useAlerts, useAcknowledgeAlert, useEscalateAlert } from '@/hooks/useAlertManagement'
 
 const SEVERITY_COLORS = {
   LOW: '#4caf50',
@@ -51,25 +52,22 @@ function SeverityBadge({ severity }: { severity: string }) {
 }
 
 function StatusBadge({ status }: { status: string }) {
-  return (
-    <Chip
-      label={status}
-      size="small"
-      variant="outlined"
-      color={status === 'ACKNOWLEDGED' ? 'success' : 'warning'}
-    />
-  )
+  const color = status === 'ACKNOWLEDGED' ? 'success' : status === 'ESCALATED' ? 'error' : 'warning'
+  return <Chip label={status} size="small" variant="outlined" color={color} />
 }
 
 interface AlertDetailDrawerProps {
   alert: AlertEvent | null
   onClose: () => void
   onAcknowledge: (id: string, note?: string) => void
+  onEscalate: (id: string, note?: string) => void
   acknowledging: boolean
+  escalating: boolean
 }
 
-function AlertDetailDrawer({ alert, onClose, onAcknowledge, acknowledging }: AlertDetailDrawerProps) {
+function AlertDetailDrawer({ alert, onClose, onAcknowledge, onEscalate, acknowledging, escalating }: AlertDetailDrawerProps) {
   const [note, setNote] = useState('')
+  const actionLabel = alert?.status === 'ACKNOWLEDGED' ? 'Acknowledged by' : 'Escalated by'
   return (
     <Drawer anchor="right" open={!!alert} onClose={onClose} PaperProps={{ sx: { width: 420 } }}>
       {alert && (
@@ -93,8 +91,8 @@ function AlertDetailDrawer({ alert, onClose, onAcknowledge, acknowledging }: Ale
               ['Sensor', alert.sensorId ?? '—'],
               ['Detected', format(new Date(alert.detectedAt), 'dd/MM/yyyy HH:mm:ss')],
               ...(alert.acknowledgedBy
-                ? [['Acknowledged by', alert.acknowledgedBy],
-                   ['Acknowledged at', alert.acknowledgedAt
+                ? [[actionLabel, alert.acknowledgedBy],
+                   ['At', alert.acknowledgedAt
                      ? format(new Date(alert.acknowledgedAt), 'dd/MM/yyyy HH:mm') : '—']]
                 : []),
             ] as [string, string][]).map(([label, value]) => (
@@ -111,19 +109,31 @@ function AlertDetailDrawer({ alert, onClose, onAcknowledge, acknowledging }: Ale
               <Typography variant="body2">{alert.note}</Typography>
             </Box>
           )}
-          {alert.status !== 'ACKNOWLEDGED' && (
+          {(alert.status === 'OPEN' || alert.status === 'ACKNOWLEDGED') && (
             <Box mt={3}>
               <Divider sx={{ mb: 2 }} />
               <TextField
                 fullWidth size="small" label="Note (optional)" value={note}
                 onChange={(e) => setNote(e.target.value)} multiline rows={2} sx={{ mb: 1.5 }}
               />
-              <Button
-                variant="contained" fullWidth startIcon={<CheckCircleIcon />}
-                disabled={acknowledging} onClick={() => onAcknowledge(String(alert.id), note)}
-              >
-                {acknowledging ? <CircularProgress size={20} /> : 'Acknowledge'}
-              </Button>
+              <Box display="flex" gap={1.5}>
+                {alert.status === 'OPEN' && (
+                  <Button
+                    variant="contained" fullWidth startIcon={<CheckCircleIcon />}
+                    disabled={acknowledging || escalating} onClick={() => onAcknowledge(String(alert.id), note)}
+                  >
+                    {acknowledging ? <CircularProgress size={20} /> : 'Acknowledge'}
+                  </Button>
+                )}
+                <Button
+                  variant="outlined" fullWidth startIcon={<ArrowUpwardIcon />}
+                  disabled={acknowledging || escalating}
+                  onClick={() => onEscalate(String(alert.id), note)}
+                  color="warning"
+                >
+                  {escalating ? <CircularProgress size={20} /> : 'Escalate'}
+                </Button>
+              </Box>
             </Box>
           )}
         </Box>
@@ -146,9 +156,14 @@ export default function AlertsPage() {
   })
 
   const { mutate: acknowledge, isPending: acknowledging } = useAcknowledgeAlert()
+  const { mutate: escalate, isPending: escalating } = useEscalateAlert()
 
   const handleAck = (id: string, note?: string) => {
     acknowledge({ id, note }, { onSuccess: () => { setSelectedAlert(null) } })
+  }
+
+  const handleEscalate = (id: string, note?: string) => {
+    escalate({ id, note }, { onSuccess: () => { setSelectedAlert(null) } })
   }
 
   const handleBulkAck = () => {
@@ -247,13 +262,22 @@ export default function AlertsPage() {
                   </Tooltip>
                 </TableCell>
                 <TableCell onClick={(e) => e.stopPropagation()}>
-                  {alert.status !== 'ACKNOWLEDGED' && (
-                    <Tooltip title="Acknowledge">
-                      <IconButton size="small" color="success" onClick={() => handleAck(String(alert.id))}>
-                        <CheckCircleIcon fontSize="small" />
-                      </IconButton>
-                    </Tooltip>
-                  )}
+                  <Box display="flex" gap={0.5}>
+                    {alert.status === 'OPEN' && (
+                      <Tooltip title="Acknowledge">
+                        <IconButton size="small" color="success" onClick={() => handleAck(String(alert.id))}>
+                          <CheckCircleIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                    )}
+                    {(alert.status === 'OPEN' || alert.status === 'ACKNOWLEDGED') && (
+                      <Tooltip title="Escalate">
+                        <IconButton size="small" color="warning" onClick={() => handleEscalate(String(alert.id))}>
+                          <ArrowUpwardIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                    )}
+                  </Box>
                 </TableCell>
               </TableRow>
             ))}
@@ -270,7 +294,8 @@ export default function AlertsPage() {
 
       <AlertDetailDrawer
         alert={selectedAlert} onClose={() => setSelectedAlert(null)}
-        onAcknowledge={handleAck} acknowledging={acknowledging}
+        onAcknowledge={handleAck} onEscalate={handleEscalate}
+        acknowledging={acknowledging} escalating={escalating}
       />
     </Box>
   )

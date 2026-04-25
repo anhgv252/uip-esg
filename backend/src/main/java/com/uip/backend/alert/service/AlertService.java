@@ -68,6 +68,27 @@ public class AlertService {
         return toDto(alertEventRepository.save(event));
     }
 
+    public Page<AlertEventDto> getPublicNotifications(int page, int size) {
+        var pageable = PageRequest.of(page, Math.min(size, 50),
+                Sort.by(Sort.Direction.DESC, "detectedAt"));
+        Instant since = Instant.now().minus(java.time.Duration.ofHours(48));
+        return alertEventRepository.findRecentPublicAlerts(since, pageable).map(this::toDto);
+    }
+
+    @Transactional
+    public AlertEventDto escalateAlert(UUID alertId, String username, String note) {
+        AlertEvent event = alertEventRepository.findById(alertId)
+                .orElseThrow(() -> new EntityNotFoundException("Alert not found: " + alertId));
+
+        event.setStatus("ESCALATED");
+        event.setAcknowledgedBy(username);
+        event.setAcknowledgedAt(Instant.now());
+        if (note != null) {
+            event.setNote(note);
+        }
+        return toDto(alertEventRepository.save(event));
+    }
+
     // ─── Alert Rules (Admin) ──────────────────────────────────────────────────
 
     public List<AlertRule> listRules() {

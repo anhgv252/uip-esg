@@ -140,6 +140,105 @@ class AlertServiceTest {
         assertThat(result.getNote()).isEqualTo("existing note");
     }
 
+    // ─── escalateAlert ──────────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("escalateAlert: sets ESCALATED status and records username + timestamp")
+    void escalateAlert_found_setsEscalated() {
+        when(alertEventRepository.findById(alertId)).thenReturn(Optional.of(openAlert));
+        when(alertEventRepository.save(any(AlertEvent.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        var result = alertService.escalateAlert(alertId, "supervisor", "Needs management decision");
+
+        assertThat(result.getStatus()).isEqualTo("ESCALATED");
+        assertThat(result.getAcknowledgedBy()).isEqualTo("supervisor");
+        assertThat(result.getNote()).isEqualTo("Needs management decision");
+        verify(alertEventRepository).save(argThat(e ->
+            "ESCALATED".equals(e.getStatus()) && e.getAcknowledgedAt() != null));
+    }
+
+    @Test
+    @DisplayName("escalateAlert: already ESCALATED → overwrites acknowledgedBy/At (idempotent re-escalate)")
+    void escalateAlert_alreadyEscalated_updatesMetadata() {
+        openAlert.setStatus("ESCALATED");
+        openAlert.setAcknowledgedBy("original-supervisor");
+        when(alertEventRepository.findById(alertId)).thenReturn(Optional.of(openAlert));
+        when(alertEventRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        var result = alertService.escalateAlert(alertId, "new-supervisor", "Re-escalated");
+
+        assertThat(result.getStatus()).isEqualTo("ESCALATED");
+        assertThat(result.getAcknowledgedBy()).isEqualTo("new-supervisor");
+    }
+
+    @Test
+    @DisplayName("escalateAlert: alert not found → throws EntityNotFoundException")
+    void escalateAlert_notFound_throwsEntityNotFoundException() {
+        when(alertEventRepository.findById(alertId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> alertService.escalateAlert(alertId, "supervisor", null))
+            .isInstanceOf(EntityNotFoundException.class)
+            .hasMessageContaining(alertId.toString());
+    }
+
+    @Test
+    @DisplayName("escalateAlert: null note does not overwrite existing note")
+    void escalateAlert_nullNote_preservesExistingNote() {
+        openAlert.setNote("original note");
+        when(alertEventRepository.findById(alertId)).thenReturn(Optional.of(openAlert));
+        when(alertEventRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        var result = alertService.escalateAlert(alertId, "supervisor", null);
+
+        assertThat(result.getNote()).isEqualTo("original note");
+    }
+
+    // ─── getPublicNotifications ─────────────────────────────────────────────
+
+    @Test
+    @DisplayName("getPublicNotifications: delegates to repo with page params")
+    void getPublicNotifications_delegatesToRepoWithCorrectParams() {
+        when(alertEventRepository.findRecentPublicAlerts(any(Instant.class), any(org.springframework.data.domain.Pageable.class)))
+            .thenReturn(new PageImpl<>(List.of(openAlert)));
+
+        var result = alertService.getPublicNotifications(0, 20);
+
+        assertThat(result.getContent()).hasSize(1);
+        ArgumentCaptor<org.springframework.data.domain.Pageable> pageableCaptor =
+            ArgumentCaptor.forClass(org.springframework.data.domain.Pageable.class);
+        verify(alertEventRepository).findRecentPublicAlerts(any(Instant.class), pageableCaptor.capture());
+        assertThat(pageableCaptor.getValue().getPageSize()).isEqualTo(20);
+    }
+
+    @Test
+    @DisplayName("getPublicNotifications: size > 50 → capped at 50")
+    void getPublicNotifications_sizeOverCap_isCappedAt50() {
+        when(alertEventRepository.findRecentPublicAlerts(any(Instant.class), any(org.springframework.data.domain.Pageable.class)))
+            .thenReturn(new PageImpl<>(List.of()));
+
+        alertService.getPublicNotifications(0, 999);
+
+        ArgumentCaptor<org.springframework.data.domain.Pageable> captor =
+            ArgumentCaptor.forClass(org.springframework.data.domain.Pageable.class);
+        verify(alertEventRepository).findRecentPublicAlerts(any(Instant.class), captor.capture());
+        assertThat(captor.getValue().getPageSize()).isEqualTo(50);
+    }
+
+    @Test
+    @DisplayName("getPublicNotifications: queries with 48h lookback window")
+    void getPublicNotifications_uses48hLookbackWindow() {
+        when(alertEventRepository.findRecentPublicAlerts(any(Instant.class), any(org.springframework.data.domain.Pageable.class)))
+            .thenReturn(new PageImpl<>(List.of()));
+
+        alertService.getPublicNotifications(0, 20);
+
+        ArgumentCaptor<Instant> sinceCaptor = ArgumentCaptor.forClass(Instant.class);
+        verify(alertEventRepository).findRecentPublicAlerts(sinceCaptor.capture(), any(org.springframework.data.domain.Pageable.class));
+        assertThat(sinceCaptor.getValue())
+            .isAfter(Instant.now().minus(java.time.Duration.ofHours(49)))
+            .isBefore(Instant.now().minus(java.time.Duration.ofHours(47)));
+    }
+
     // ─── listRules ──────────────────────────────────────────────────────────
 
     @Test
