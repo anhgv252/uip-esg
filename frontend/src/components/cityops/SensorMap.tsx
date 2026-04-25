@@ -8,7 +8,8 @@ import SensorMarker from './SensorMarker'
 
 // Fix Leaflet default marker icon path issue with Vite
 import L from 'leaflet'
-import type { MarkerCluster } from 'leaflet'
+// MarkerCluster type: minimal interface for iconCreateFunction callback
+interface MarkerCluster { getAllChildMarkers(): L.Marker[]; getChildCount(): number }
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png'
 import markerIcon from 'leaflet/dist/images/marker-icon.png'
 import markerShadow from 'leaflet/dist/images/marker-shadow.png'
