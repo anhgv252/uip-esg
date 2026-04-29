@@ -51,6 +51,10 @@
 
 Xem: [Demo & Roadmap 2026-04-25](project/demo-and-roadmap-2026-04-25.md)
 
+## Implementation Backlog (ADR-driven)
+
+Xem: [Implementation Backlog](project/implementation-backlog.md) — task cụ thể theo từng ADR, file cần tạo/sửa, dependency map
+
 ---
 
 ## Cấu trúc tài liệu MVP2
@@ -66,13 +70,18 @@ Xem: [Demo & Roadmap 2026-04-25](project/demo-and-roadmap-2026-04-25.md)
 
 ---
 
-## ADRs cần viết (backlog)
+## ADRs
 
-| ADR | Title | Priority |
-|-----|-------|---------|
-| ADR-010 | Multi-tenant strategy: tenant_id + LTREE + RLS | **P0 — Tuần 1** |
-| ADR-011 | Module extraction order | P1 |
-| ADR-012 | ClickHouse adoption trigger criteria | P1 |
-| ADR-013 | Edge computing với EMQX edge + Flink edge jobs | P1 |
-| ADR-014 | API Gateway: Kong vs Spring Cloud Gateway | P2 |
-| ADR-015 | IdP: Keycloak migration từ JWT hardcode | P2 |
+### Tất cả ADRs — xem `architecture/`
+
+| ADR | Title | Status |
+|-----|-------|--------|
+| ADR-010 | Multi-tenant strategy: tenant_id + LTREE (metadata only) + RLS + HikariCP SET LOCAL | ✅ Accepted |
+| ADR-011 | Monorepo architecture + capability flags + module extraction order + strangler fig | ✅ Accepted |
+| ADR-012 | ClickHouse adoption: chỉ khi ESG query >5 phút hoặc >10K sensors | ✅ Accepted |
+| ADR-013 | Edge computing: EMQX Edge buffer (T2), Flink Edge agg (T3), Edge AI (T4) | ✅ Accepted |
+| ADR-014 | Telemetry Enrichment Pattern: inject tenant_id vào stream | ✅ Accepted |
+| ADR-015 | Caching & Read-Heavy Performance: Redis TTL + Continuous Aggregates | ✅ Accepted |
+| ADR-016 | Data Lakehouse: Iceberg on MinIO + Trino (không Snowflake) | ✅ Accepted |
+| ADR-017 | Multi-region: Warm DR trước → Active-Active khi ≥2 cities | ✅ Accepted |
+| ADR-019 | Partner Customization: 3-layer extension (DB config → YAML → Spring module) | ✅ Accepted |

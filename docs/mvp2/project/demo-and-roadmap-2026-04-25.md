@@ -546,18 +546,20 @@ CREATE INDEX idx_sensor_tenant_path ON environment.sensor_readings
 
 ---
 
-## ADR Cần Viết (Backlog)
+## ADR Registry
 
-| ADR ID | Title | Target Tier | Priority |
+### Tất cả ADRs — `docs/mvp2/architecture/`
+
+| ADR ID | Title | Target Tier | Status |
 |---|---|---|---|
-| ADR-010 | Multi-tenant strategy: tenant_id + LTREE + RLS roadmap | T1→T4 | **P0 — Tuần 1** |
-| ADR-011 | Module extraction order: iot → alert → analytics → ai-workflow → citizen | T2→T3 | P1 |
-| ADR-012 | ClickHouse adoption trigger criteria | T3 | P1 |
-| ADR-013 | Edge computing với EMQX edge + Flink edge jobs | T2→T4 | P1 |
-| ADR-014 | API Gateway: Kong vs Spring Cloud Gateway | T3 | P2 |
-| ADR-015 | IdP: Keycloak migration từ JWT hardcode | T3 | P2 |
-| ADR-016 | Data Lakehouse: Iceberg/MinIO vs Snowflake | T4 | P2 |
-| ADR-017 | Multi-region: active-active vs warm DR | T4 | P2 |
+| ADR-010 | Multi-tenant strategy: tenant_id + LTREE (metadata only) + RLS + HikariCP SET LOCAL | T1→T4 | ✅ Accepted |
+| ADR-011 | Monorepo architecture + capability flags + module extraction order + strangler fig | T1→T4 | ✅ Accepted |
+| ADR-012 | ClickHouse adoption: chỉ khi ESG query >5 phút hoặc >10K sensors | T3 | ✅ Accepted |
+| ADR-013 | Edge computing: EMQX Edge buffer (T2), Flink Edge agg (T3), Edge AI (T4) | T2→T4 | ✅ Accepted |
+| ADR-014 | Telemetry Enrichment Pattern: inject tenant_id vào stream (RC pipeline / Flink Broadcast State) | T2→T4 | 📋 Proposed |
+| ADR-015 | Caching & Read-Heavy Performance: Redis TTL + TimescaleDB Continuous Aggregates cho ESG API | T2→T4 | 📋 Proposed |
+| ADR-016 | Data Lakehouse: Iceberg on MinIO + Trino (không Snowflake) | T4 | ✅ Accepted |
+| ADR-017 | Multi-region: Warm DR trước → Active-Active khi ≥2 cities | T4 | ✅ Accepted |
 
 ---
 
@@ -567,7 +569,7 @@ CREATE INDEX idx_sensor_tenant_path ON environment.sensor_readings
 2. **Backend**: Thêm `tenant_id` + `location_path` vào schema MVP1 (low-risk, backward compat) — tiền đề bắt buộc cho T2
 3. **DevOps**: Setup HashiCorp Vault staging environment
 4. **QA**: Setup Testcontainers trên CI Ubuntu (fix GAP-04, GAP-06 trước)
-5. **SA**: Viết ADR-010 (Multi-tenant strategy) — chốt trước Sprint MVP2-2
+5. **SA**: ADR-010 đã viết ✅ — tiếp theo viết ADR-011 (Module extraction order) trước Sprint MVP2-2
 
 **Week 4 checkpoint:** Tier 1 customer ký UAT agreement; K8s stack functional; security audit complete  
 **Week 8:** Production readiness review; SLA agreement signed với khách hàng đầu tiên
