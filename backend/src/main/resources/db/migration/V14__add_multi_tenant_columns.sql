@@ -58,8 +58,8 @@ ALTER TABLE alerts.alert_events
 ALTER TABLE traffic.traffic_counts
     ADD COLUMN tenant_id TEXT NOT NULL DEFAULT 'default';
 
--- incidents: event log table — tenant_id only, NO location_path
-ALTER TABLE traffic.incidents
+-- traffic_incidents: event log table — tenant_id only, NO location_path
+ALTER TABLE traffic.traffic_incidents
     ADD COLUMN tenant_id TEXT NOT NULL DEFAULT 'default';
 
 -- =============================================================================
@@ -99,11 +99,11 @@ CREATE INDEX idx_buildings_tenant   ON citizens.buildings  (tenant_id);
 -- Time-series tables: composite B-tree on (tenant_id, timestamp DESC) — NO GIST
 CREATE INDEX idx_sensor_readings_tenant_ts ON environment.sensor_readings (tenant_id, timestamp DESC);
 CREATE INDEX idx_clean_metrics_tenant_ts   ON esg.clean_metrics           (tenant_id, timestamp DESC);
-CREATE INDEX idx_traffic_counts_tenant_ts  ON traffic.traffic_counts      (tenant_id, timestamp DESC);
+CREATE INDEX idx_traffic_counts_tenant_ts  ON traffic.traffic_counts      (tenant_id, recorded_at DESC);
 
 -- Event/operational tables: B-tree on tenant_id
 CREATE INDEX idx_alert_events_tenant ON alerts.alert_events (tenant_id);
-CREATE INDEX idx_incidents_tenant    ON traffic.incidents    (tenant_id);
+CREATE INDEX idx_incidents_tenant    ON traffic.traffic_incidents    (tenant_id);
 
 -- Config tables: B-tree on tenant_id
 CREATE INDEX idx_alert_rules_tenant       ON alerts.alert_rules        (tenant_id);
