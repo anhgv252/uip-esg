@@ -39,17 +39,28 @@ function PageFallback() {
   )
 }
 
-export default function App() {
+/**
+ * ThemedApp sits inside AuthProvider (and future TenantConfigProvider)
+ * so theme can be overridden by tenant branding at runtime.
+ * Sprint 2 will add TenantConfigProvider above ThemeProvider.
+ */
+function ThemedApp() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <Suspense fallback={<PageFallback />}>
-            <RouterProvider router={router} />
-          </Suspense>
-        </AuthProvider>
-      </QueryClientProvider>
+      <Suspense fallback={<PageFallback />}>
+        <RouterProvider router={router} />
+      </Suspense>
     </ThemeProvider>
+  )
+}
+
+export default function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <ThemedApp />
+      </AuthProvider>
+    </QueryClientProvider>
   )
 }

@@ -40,6 +40,30 @@ apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
 let _isRefreshing = false
 let _refreshQueue: Array<(token: string) => void> = []
 
+// Extract traceId from error responses for user-facing error display
+export interface ApiError extends Error {
+  traceId?: string
+  timestamp?: string
+  path?: string
+  status?: number
+}
+
+export function createApiError(error: unknown): ApiError {
+  if (error && typeof error === 'object' && 'response' in error) {
+    const axiosError = error as { response?: { status?: number; data?: Record<string, unknown> } }
+    const data = axiosError.response?.data
+    const apiError = new Error(
+      (data?.detail as string) || (data?.title as string) || 'An error occurred'
+    ) as ApiError
+    apiError.traceId = data?.traceId as string | undefined
+    apiError.timestamp = data?.timestamp as string | undefined
+    apiError.path = data?.path as string | undefined
+    apiError.status = axiosError.response?.status
+    return apiError
+  }
+  return error instanceof Error ? (error as ApiError) : new Error(String(error))
+}
+
 apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
