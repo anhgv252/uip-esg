@@ -62,7 +62,7 @@ spring:
   cache:
     type: redis
     redis:
-      time-to-live: 300000   # 5 minutes TTL for trigger-config cache
+      time-to-live: 60000   # 60s TTL for trigger-config cache
       cache-null-values: false
 
   kafka:
@@ -127,12 +127,33 @@ resilience4j:
     instances:
       claude-api:
         sliding-window-size: 10
-        minimum-number-of-calls: 5
+        minimum-number-of-calls: 10
         failure-rate-threshold: 50
         wait-duration-in-open-state: 30s
         permitted-number-of-calls-in-half-open-state: 3
+        register-health-indicator: true
         record-exceptions:
           - org.springframework.web.client.RestClientException
+          - java.io.IOException
+      kafka-producer:
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 30s
+        permitted-number-of-calls-in-half-open-state: 2
+        register-health-indicator: true
+        record-exceptions:
+          - org.springframework.kafka.KafkaException
+          - java.io.IOException
+      redis-cache:
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 30s
+        permitted-number-of-calls-in-half-open-state: 2
+        register-health-indicator: true
+        record-exceptions:
+          - org.springframework.data.redis.RedisConnectionFailureException
           - java.io.IOException
 
 management:

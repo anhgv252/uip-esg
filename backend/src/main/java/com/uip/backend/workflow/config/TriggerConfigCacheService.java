@@ -4,6 +4,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.kafka.KafkaException;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -23,6 +26,7 @@ public class TriggerConfigCacheService {
         return configRepo.findByTriggerTypeAndKafkaTopicAndEnabled("KAFKA", topic, true);
     }
 
+    @Retryable(retryFor = KafkaException.class, maxAttempts = 3, backoff = @Backoff(delay = 200))
     @CacheEvict(value = CACHE_NAME, allEntries = true)
     public void evictAll() {
         log.info("[CACHE] Evicted all trigger-config cache entries");

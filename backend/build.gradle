@@ -47,6 +47,12 @@ dependencies {
     // Resilience4j — circuit breaker for Claude API calls
     implementation 'io.github.resilience4j:resilience4j-spring-boot3:2.2.0'
 
+    // Spring Retry — retry for cache eviction and transient failures
+    implementation 'org.springframework.retry:spring-retry'
+
+    // Structured JSON logging (Logstash encoder)
+    implementation 'net.logstash.logback:logstash-logback-encoder:7.4'
+
     // Caching abstraction (backed by Redis)
     implementation 'org.springframework.boot:spring-boot-starter-cache'
 

@@ -65,8 +65,12 @@ public class SecurityConfig {
                     AntPathRequestMatcher.antMatcher("/v3/api-docs/**"),
                     AntPathRequestMatcher.antMatcher("/swagger-ui/**"),
                     AntPathRequestMatcher.antMatcher("/swagger-ui.html"),
-                    AntPathRequestMatcher.antMatcher("/actuator/health")
+                    AntPathRequestMatcher.antMatcher("/actuator/health"),
+                    AntPathRequestMatcher.antMatcher("/actuator/info")
                 ).permitAll()
+                .requestMatchers(AntPathRequestMatcher.antMatcher("/actuator/prometheus")).hasRole("ADMIN")
+                .requestMatchers(AntPathRequestMatcher.antMatcher("/actuator/metrics")).hasRole("ADMIN")
+                .requestMatchers(AntPathRequestMatcher.antMatcher("/actuator/**")).denyAll()
                 // Camunda paths handled by CamundaSecurityConfig @Order(1)
                 // Citizen self-registration and building lookup are public
                 .requestMatchers(AntPathRequestMatcher.antMatcher(HttpMethod.POST, "/api/v1/citizen/register")).permitAll()
