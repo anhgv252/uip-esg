@@ -66,6 +66,7 @@ public class SecurityConfig {
                     AntPathRequestMatcher.antMatcher("/swagger-ui/**"),
                     AntPathRequestMatcher.antMatcher("/swagger-ui.html"),
                     AntPathRequestMatcher.antMatcher("/actuator/health"),
+                    AntPathRequestMatcher.antMatcher("/actuator/health/**"),
                     AntPathRequestMatcher.antMatcher("/actuator/info")
                 ).permitAll()
                 .requestMatchers(AntPathRequestMatcher.antMatcher("/actuator/prometheus")).hasRole("ADMIN")

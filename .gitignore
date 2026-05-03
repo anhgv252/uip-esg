@@ -49,3 +49,11 @@ __pycache__/
 # Temporary files
 *.tmp
 *.swp
+nohup.out
+
+# Root node_modules (if any)
+node_modules/
+
+# Playwright artifacts
+frontend/test-results/
+frontend/playwright-report/

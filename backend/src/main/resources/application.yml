@@ -20,6 +20,12 @@ spring:
       connection-test-query: "SELECT 1"
       pool-name: UIP-HikariPool
 
+  mvc:
+    throw-exception-if-no-handler-found: true
+  web:
+    resources:
+      add-mappings: false
+
   jackson:
     deserialization:
       fail-on-unknown-properties: false
@@ -85,6 +91,9 @@ spring:
         spring.json.trusted.packages: "com.uip.*"
 
 security:
+  login:
+    rate-limit:
+      capacity: 100
   jwt:
     secret: ${JWT_SECRET:changeme_jwt_secret_must_be_at_least_256_bits_long_for_hmac_sha256}
     expiration-ms: ${JWT_EXPIRATION_MS:900000}

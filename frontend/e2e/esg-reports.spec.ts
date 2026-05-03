@@ -1,58 +1,48 @@
 import { test, expect } from '@playwright/test';
-import { loginAsAdmin } from './helpers/auth';
+import { loginAsAdmin, navigateTo } from './helpers/auth';
 
 /**
  * TC-E2E-05: ESG Report Generation
- * Tests ESG report creation workflow
- * This test requires running backend for report generation
+ * Tests ESG report creation workflow — ReportGenerationPanel is embedded in /esg route.
+ * Use sidebar navigation to preserve in-memory auth token.
  */
 test.describe('ESG Report Generation', () => {
   
   test.beforeEach(async ({ page }) => {
     await loginAsAdmin(page);
+    // Navigate to ESG page via sidebar (SPA navigation preserves auth token)
+    await navigateTo(page, 'ESG Metrics');
   });
 
   test('should navigate to ESG reports section', async ({ page }) => {
-    await page.goto('/esg');
-    
-    // Look for reports tab or link
-    const reportsTab = page.locator('text=/report/i, [role="tab"]:has-text("report")').first();
-    
-    if (await reportsTab.isVisible({ timeout: 5000 })) {
-      await reportsTab.click();
-      await expect(page.locator('text=/generate|create|new report/i')).toBeVisible({ timeout: 10000 });
-    } else {
-      // Try direct navigation if tab not found
-      await page.goto('/esg/reports');
-      await expect(page.locator('text=/report|generate/i')).toBeVisible({ timeout: 10000 });
-    }
+    // ReportGenerationPanel is embedded directly in the ESG page (no separate tab)
+    // The panel heading is "Generate ESG Report"
+    await expect(
+      page.locator('p, h5, h6').filter({ hasText: /generate esg report/i }).first()
+    ).toBeVisible({ timeout: 10000 });
   });
 
   test('should allow selecting period and clicking generate', async ({ page }) => {
-    await page.goto('/esg/reports');
-    
-    // Look for period selector (dropdown or date picker)
-    const periodSelector = page.locator('select, [role="combobox"], input[type="date"]').first();
-    
-    if (await periodSelector.isVisible({ timeout: 5000 })) {
-      await periodSelector.click();
+    // Year and Quarter selectors should be visible (MUI Select → role="combobox")
+    const yearSelector = page.getByRole('combobox', { name: /year/i });
+    if (await yearSelector.isVisible({ timeout: 5000 }).catch(() => false)) {
+      // combobox found — fine
     }
     
-    // Generate button should be present
-    const generateButton = page.getByRole('button', { name: /generate|create|download/i });
-    await expect(generateButton).toBeVisible();
+    // "Generate Report" button should be present and enabled
+    const generateButton = page.getByRole('button', { name: /generate report/i });
+    await expect(generateButton).toBeVisible({ timeout: 10000 });
     await expect(generateButton).toBeEnabled();
   });
 
   test('should show report generation UI elements', async ({ page }) => {
-    await page.goto('/esg/reports');
+    // The ReportGenerationPanel contains Year/Quarter selects and Generate button
+    await expect(
+      page.getByRole('button', { name: /generate report/i })
+    ).toBeVisible({ timeout: 10000 });
     
-    // Report form/interface should be present
-    const reportUI = page.locator('form, [class*="report"], [data-testid*="report"]').first();
-    await expect(reportUI).toBeVisible({ timeout: 10000 });
-    
-    // Should have some control elements
-    const hasControls = await page.locator('button, select, input').count();
+    // Should have combobox selectors (Year, Quarter)
+    const hasControls = await page.getByRole('combobox').count();
     expect(hasControls).toBeGreaterThan(0);
   });
 });

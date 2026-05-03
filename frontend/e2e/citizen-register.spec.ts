@@ -14,9 +14,9 @@ test.describe('Citizen Registration Flow', () => {
   test('should load the registration page with step 1 form', async ({ page }) => {
     await page.goto('/citizen/register');
 
-    // Heading should mention register or create account
+    // Heading is "Create Citizen Account" (MUI variant=h5 → <h5>)
     await expect(
-      page.locator('h1, h2, h3, h4, h5, h6').filter({ hasText: /register|đăng ký|create account/i }).first()
+      page.locator('h1, h2, h3, h4, h5, h6').filter({ hasText: /register|đăng ký|create.*account/i }).first()
     ).toBeVisible({ timeout: 10_000 });
 
     // Step 1: personal info fields

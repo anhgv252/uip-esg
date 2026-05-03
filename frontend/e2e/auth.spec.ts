@@ -10,22 +10,22 @@ test.describe('Authentication', () => {
     await page.goto('/login');
     
     await page.getByLabel(/username/i).fill('admin');
-    await page.getByLabel(/password/i).fill('admin_Dev#2026!');
-    await page.getByRole('button', { name: /login/i }).click();
+    await page.locator('input[name="password"]').fill('admin_Dev#2026!');
+    await page.getByRole('button', { name: /sign in/i }).click();
     
     // Should redirect to dashboard after successful login
     await expect(page).toHaveURL(/.*dashboard/);
     
     // Dashboard should be visible
-    await expect(page.locator('text=/city operations|dashboard/i')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('text=/city operations|dashboard/i').first()).toBeVisible({ timeout: 10000 });
   });
 
   test('should show error message with invalid credentials', async ({ page }) => {
     await page.goto('/login');
     
     await page.getByLabel(/username/i).fill('wronguser');
-    await page.getByLabel(/password/i).fill('wrongpass');
-    await page.getByRole('button', { name: /login/i }).click();
+    await page.locator('input[name="password"]').fill('wrongpass');
+    await page.getByRole('button', { name: /sign in/i }).click();
     
     // Should show error message (could be alert, toast, or inline error)
     await expect(page.locator('text=/invalid|error|failed|incorrect/i')).toBeVisible({ timeout: 5000 });

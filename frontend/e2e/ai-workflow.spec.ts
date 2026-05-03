@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { loginAsAdmin } from './helpers/auth';
+import { loginAsAdmin, navigateTo } from './helpers/auth';
 
 /**
  * TC-E2E-09: AI Workflow Dashboard
@@ -10,56 +10,50 @@ test.describe('AI Workflow Dashboard', () => {
   
   test.beforeEach(async ({ page }) => {
     await loginAsAdmin(page);
-    await page.goto('/workflows');
+    // Navigate via sidebar — route is /ai-workflow, sidebar label is "AI Workflows"
+    await navigateTo(page, 'AI Workflows');
   });
 
   test('should load workflows page', async ({ page }) => {
-    // Workflows heading should be visible
-    await expect(page.locator('h1, h2, h3').filter({ hasText: /workflow|process/i }).first())
+    // Heading is "AI Workflow Dashboard" (MUI variant=h5 → <h5>)
+    await expect(page.locator('h1, h2, h3, h4, h5, h6').filter({ hasText: /ai workflow|workflow/i }).first())
       .toBeVisible({ timeout: 10000 });
   });
 
   test('should display 7 process definitions in definitions tab', async ({ page }) => {
-    // Look for definitions tab
-    const definitionsTab = page.locator('[role="tab"]:has-text("definition"), text=/definition/i').first();
-    
-    if (await definitionsTab.isVisible({ timeout: 5000 })) {
+    // AiWorkflowPage has tabs: "Process Instances" | "Process Definitions" | "Live Demo"
+    // Click the "Process Definitions" tab
+    const definitionsTab = page.getByRole('tab', { name: /process definitions/i });
+    if (await definitionsTab.isVisible({ timeout: 5000 }).catch(() => false)) {
       await definitionsTab.click();
-      await page.waitForTimeout(1000); // Wait for tab content to load
+      await page.waitForTimeout(1000);
     }
     
-    // Count process definition rows or cards
-    // This test requires running backend with 7 process definitions
-    const processRows = page.locator('tr, [class*="process"], [class*="definition"], [data-testid*="process"]');
+    // Should show table rows or at least structure (backend may have varying counts)
+    const processRows = page.locator('tbody tr');
     const count = await processRows.count();
-    
-    // Should have 7 process definitions (or at least show table structure)
-    expect(count).toBeGreaterThanOrEqual(1); // At least structure exists
+    expect(count).toBeGreaterThanOrEqual(1);
   });
 
   test('should be able to switch to instances tab', async ({ page }) => {
-    // Look for instances tab
-    const instancesTab = page.locator('[role="tab"]:has-text("instance"), text=/instance|running/i').first();
-    
+    // "Process Instances" is the first tab (already selected by default)
+    const instancesTab = page.getByRole('tab', { name: /process instances/i });
     await expect(instancesTab).toBeVisible({ timeout: 10000 });
     await instancesTab.click();
     
-    // Instances content should load
-    await expect(page.locator('table, [class*="instance"], text=/instance|status/i').first())
-      .toBeVisible({ timeout: 10000 });
+    // After tab click, table or empty state should appear
+    const tableVisible = await page.locator('table').isVisible({ timeout: 8000 }).catch(() => false);
+    const emptyVisible = await page.getByText(/no instances|status|running/i).first().isVisible({ timeout: 3000 }).catch(() => false);
+    expect(tableVisible || emptyVisible).toBeTruthy();
   });
 
   test('should show workflow management interface', async ({ page }) => {
-    // Should have tabs or navigation for workflows
-    const hasTabs = await page.locator('[role="tablist"], [role="tab"]').count();
-    expect(hasTabs).toBeGreaterThan(0);
+    // MUI Tabs renders as [role="tablist"] with [role="tab"] children
+    await expect(page.locator('[role="tablist"]')).toBeVisible({ timeout: 10000 });
     
-    // Should have some workflow-related content
-    const hasWorkflowContent = await page.locator('text=/process|workflow|bpmn|definition|instance/i')
-      .first()
-      .isVisible({ timeout: 5000 })
-      .catch(() => false);
-    
-    expect(hasWorkflowContent).toBeTruthy();
+    // Should have workflow-related tab labels
+    const hasWorkflowTabs = await page.getByRole('tab', { name: /process|instances|definitions|demo/i })
+      .first().isVisible({ timeout: 5000 }).catch(() => false);
+    expect(hasWorkflowTabs).toBeTruthy();
   });
 });

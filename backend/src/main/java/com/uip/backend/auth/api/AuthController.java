@@ -5,6 +5,8 @@ import com.uip.backend.auth.api.dto.LoginRequest;
 import com.uip.backend.auth.api.dto.RefreshRequest;
 import com.uip.backend.auth.service.AuthService;
 import com.uip.backend.auth.service.LoginRateLimitService;
+import com.uip.backend.auth.service.JwtTokenProvider;
+import com.uip.backend.auth.service.TokenBlacklistService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.Cookie;
@@ -24,6 +26,8 @@ public class AuthController {
 
     private final AuthService authService;
     private final LoginRateLimitService rateLimitService;
+    private final JwtTokenProvider jwtTokenProvider;
+    private final TokenBlacklistService tokenBlacklistService;
 
     @PostMapping("/login")
     @Operation(summary = "Login and receive JWT tokens")
@@ -68,8 +72,19 @@ public class AuthController {
     }
 
     @PostMapping("/logout")
-    @Operation(summary = "Logout — clear httpOnly cookie (stateless JWT; client must discard tokens)")
-    public ResponseEntity<Void> logout(HttpServletResponse response) {
+    @Operation(summary = "Logout — clear httpOnly cookie and invalidate token")
+    public ResponseEntity<Void> logout(HttpServletRequest request, HttpServletResponse response) {
+        // Invalidate the current token by adding it to the blacklist
+        String jwt = extractToken(request);
+        if (jwt != null) {
+            try {
+                long expiresAt = jwtTokenProvider.extractExpirationMs(jwt);
+                tokenBlacklistService.invalidate(jwt, expiresAt);
+            } catch (Exception ignored) {
+                // token may already be expired or malformed — clear cookie regardless
+            }
+        }
+
         Cookie expiredCookie = new Cookie("access_token", "");
         expiredCookie.setHttpOnly(true);
         expiredCookie.setSecure(false);
@@ -77,5 +92,20 @@ public class AuthController {
         expiredCookie.setMaxAge(0);
         response.addCookie(expiredCookie);
         return ResponseEntity.ok().build();
+    }
+
+    private String extractToken(HttpServletRequest request) {
+        String authHeader = request.getHeader("Authorization");
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            return authHeader.substring(7);
+        }
+        if (request.getCookies() != null) {
+            for (Cookie cookie : request.getCookies()) {
+                if ("access_token".equals(cookie.getName())) {
+                    return cookie.getValue();
+                }
+            }
+        }
+        return null;
     }
 }

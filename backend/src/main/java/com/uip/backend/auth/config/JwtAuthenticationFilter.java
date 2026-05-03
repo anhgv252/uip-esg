@@ -1,6 +1,7 @@
 package com.uip.backend.auth.config;
 
 import com.uip.backend.auth.service.JwtTokenProvider;
+import com.uip.backend.auth.service.TokenBlacklistService;
 import com.uip.backend.auth.service.UipUserDetailsService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -27,6 +28,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtTokenProvider tokenProvider;
     private final UipUserDetailsService userDetailsService;
+    private final TokenBlacklistService tokenBlacklistService;
 
     @Override
     protected void doFilterInternal(
@@ -54,6 +56,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         // 3. If no token found, skip authentication
         if (jwt == null) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        // 3b. Reject blacklisted (logged-out) tokens
+        if (tokenBlacklistService.isBlacklisted(jwt)) {
             filterChain.doFilter(request, response);
             return;
         }

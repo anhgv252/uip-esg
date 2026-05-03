@@ -7,6 +7,7 @@ import { defineConfig, devices } from '@playwright/test';
  * To add to CI pipeline, see commented YAML example below.
  */
 export default defineConfig({
+  tsconfig: './tsconfig.playwright.json',
   testDir: './e2e',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
@@ -23,9 +24,12 @@ export default defineConfig({
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
     actionTimeout: 5000,
+    launchOptions: {
+      slowMo: process.env.SLOW_MO ? parseInt(process.env.SLOW_MO) : 0,
+    },
   },
 
-  timeout: 30000, // 30s per test
+  timeout: process.env.SLOW_MO ? 120000 : 30000,
 
   projects: [
     {
@@ -36,13 +40,15 @@ export default defineConfig({
 
   /* Start dev server only if not already running */
   webServer: {
-    command: 'npm run preview',
+    command: 'npm run dev -- --host 0.0.0.0',
     url: 'http://localhost:3000',
     reuseExistingServer: true,
     timeout: 120000,
+    stdout: 'pipe',
+    stderr: 'pipe',
   },
 
-  outputDir: 'playwright-report/test-results',
+  outputDir: 'test-results',
 });
 
 /*
