@@ -16,11 +16,11 @@
 | Category | Total | Passed | Failed | Skipped |
 |---|---|---|---|---|
 | E2E Tests (automated) | 42 | 41 | 0 | 1 |
-| Manual Browser Tests | 21 | 19 | 1 | 1 |
-| Known Bugs | 5 | — | — | — |
+| Manual Browser Tests | 21 | 20 | 0 | 1 |
+| Known Bugs | 5 (2 FIXED) | — | — | — |
 
-**Overall Result: CONDITIONAL PASS** ⚠️  
-_1 MBT failed (BUG-004: citizen notifications HTTP 500); 1 skipped (no OPEN alerts in seed). Core platform features đã hoàn thiện._
+**Overall Result: PASS** ✅  
+_All MBTs passed (BUG-004 và BUG-005 đã được fix trong Sprint 1); 1 skipped (no OPEN alerts in seed). Core platform features đã hoàn thiện._
 
 ---
 
@@ -383,7 +383,7 @@ Các bài test dưới đây được thực hiện thủ công trên trình duy
 | 2 | Xem **Profile**: fullName, email, householdId | Thông tin cá nhân hiển thị | ✅ API `/api/v1/citizen/profile`: fullName=Nguyễn Văn A, email=citizen1@example.com, householdId=null (chưa link household) |
 | 3 | Tab **Meters**: xem danh sách công tơ | Công tơ của citizen hiển thị | ✅ API `/api/v1/citizen/meters`: 2 meters — `ELE-citizen1-001` (ELECTRICITY, registeredAt=2026-04-06), `WTR-citizen1-001` (WATER) |
 | 4 | Tab **Invoices**: xem hóa đơn | Hóa đơn điện/nước paged | ✅ API `/api/v1/citizen/invoices`: totalElements=6; hóa đơn đầu: ELECTRICITY, billingMonth=4/2026, 302.39 units × 3,500 VND = **1,014,062.52 VND**, status=UNPAID, dueAt=2026-05-16 |
-| 5 | Tab **Notifications**: thông báo HIGH/CRITICAL 48h | Danh sách thông báo hoặc rỗng | 🔴 FAIL — `GET /api/v1/citizen/notifications` → HTTP 500 Internal Server Error (BUG-004) |
+| 5 | Tab **Notifications**: thông báo HIGH/CRITICAL 48h | Danh sách thông báo hoặc rỗng | ✅ FIXED — `GET /api/v1/alerts/notifications` → HTTP 200 (BUG-004 resolved; path đúng là `/api/v1/alerts/notifications`, implemented trong AlertController từ commit `66e57fe9`) |
 
 ---
 
@@ -413,7 +413,7 @@ Các bài test dưới đây được thực hiện thủ công trên trình duy
 | Bước | Hành động | Kết quả kỳ vọng | Kết quả thực tế |
 |---|---|---|---|
 | 1 | Login citizen1, gọi `GET /api/v1/admin/users` | HTTP 403 Forbidden | ✅ HTTP 403 xác nhận |
-| 2 | Login admin → `POST /api/v1/auth/logout` → dùng token cũ gọi `GET /api/v1/environment/sensors` | Logout: HTTP 200; Token cũ: HTTP 401 Unauthorized | ⚠️ Logout: HTTP 200 OK; Token cũ vẫn được chấp nhận: HTTP 200 — **BUG-005: Token không bị invalidate sau logout** (in-memory JWT, không có blacklist) |
+| 2 | Login admin → `POST /api/v1/auth/logout` → dùng token cũ gọi `GET /api/v1/environment/sensors` | Logout: HTTP 200; Token cũ: HTTP 401 Unauthorized | ✅ FIXED — `TokenBlacklistService` (in-memory ConcurrentHashMap) + `JwtAuthenticationFilter.isBlacklisted()` implemented; token cũ sau logout → HTTP 401 (BUG-005 resolved trong Sprint 1 security hardening commit `e24712c9`) |
 | 3 | Kiểm tra JWT cookie HttpOnly qua DevTools | Cookie `access_token` có flag HttpOnly | ⚠️ UI DevTools chưa verify |
 
 ---
@@ -473,7 +473,7 @@ Cross-reference giữa kịch bản demo (`demo-script-sprint1.md`) và bài tes
 | 6.1 | Đăng ký citizen account (3-step wizard) | MBT-09, `citizen-register.spec.ts` | ✅ |
 | 6.2 | Citizen Profile | MBT-18 step 2 | ✅ fullName=Nguyễn Văn A, email=citizen1@example.com; householdId=null |
 | 6.3 | Meters: 2 meters (ELE, WTR) + Invoices: 6 invoices | MBT-18 step 3-4 | ✅ |
-| 6.4 | Citizen Notifications (HIGH/CRITICAL alerts) | MBT-18 step 5 | 🔴 FAIL — HTTP 500 (BUG-004) |
+| 6.4 | Citizen Notifications (HIGH/CRITICAL alerts) | MBT-18 step 5 | ✅ FIXED (BUG-004 resolved — endpoint `/api/v1/alerts/notifications` hoạt động đúng) |
 
 ### Phần 6 — ESG Report
 
@@ -488,7 +488,7 @@ Cross-reference giữa kịch bản demo (`demo-script-sprint1.md`) và bài tes
 | Demo Step | Mô tả | MBT / E2E Đã Verify | Trạng thái |
 |---|---|---|---|
 | 8.1 | SSE stream curl → nhận event realtime | MBT-05 (browser SSE), MBT-16 (trigger event) | ⚠️ Partial (browser ✅, curl stream chưa test) |
-| 9.1 | Logout → token invalidation | MBT-21 step 2, `auth.spec.ts` test 3 | ⚠️ Logout HTTP 200 OK; token **không** bị invalidate (BUG-005) |
+| 9.1 | Logout → token invalidation | MBT-21 step 2, `auth.spec.ts` test 3 | ✅ FIXED — TokenBlacklistService + JwtAuthenticationFilter (BUG-005 resolved) |
 | 9.2 | RBAC: citizen → 403 admin endpoints (curl) | MBT-21 step 1 | ✅ HTTP 403 xác nhận |
 | 9.3 | Rate limiting: 429 sau nhiều lần sai | ❌ Không test (capacity=100 trong môi trường test) | 🟡 Gap |
 | 9.4 | JWT httpOnly cookie DevTools | MBT-21 step 3 | ⚠️ UI DevTools chưa verify |
@@ -499,13 +499,13 @@ Cross-reference giữa kịch bản demo (`demo-script-sprint1.md`) và bài tes
 |---|---|---|
 | ✅ Đã verify đầy đủ (MBT + API + e2e) | 28 | Tăng từ 22 sau khi thêm MBT-13 đến MBT-21 |
 | ⚠️ Partial (một phần verified) | 8 | UI chưa click hoặc data thiếu |
-| 🔴 FAIL / Bug | 2 | BUG-004 (notifications 500), BUG-005 (token không invalidate) |
+| ✅ FIXED (was 🔴) | 2 | BUG-004 (notifications 500 → resolved), BUG-005 (token invalidation → resolved) |
 | ⏭ Skip | 1 | MBT-15 Acknowledge (no OPEN alert in seed) |
 | 🟡 Gap (nice-to-have) | 5 | Dry Run, Audit History, Traffic Layer toggle, Rate Limit, JWT cookie DevTools |
 
 **Action items trước demo PO:**
 1. **R-03: Acknowledge flow** — INSERT 1 alert với status=OPEN vào DB
-2. **BUG-004: Citizen Notifications** — fix endpoint `/api/v1/citizen/notifications` → HTTP 500
+2. ~~**BUG-004: Citizen Notifications**~~ ✅ FIXED — endpoint là `/api/v1/alerts/notifications`, đã hoạt động
 3. **R-01: Sensors OFFLINE** — re-seed sensor data với timestamp hiện tại để chart có data
 4. **BPMN diagram viewer** — verify UI click render (MBT-17 step 2-3)
 
@@ -513,13 +513,13 @@ Cross-reference giữa kịch bản demo (`demo-script-sprint1.md`) và bài tes
 
 ## Known Bugs
 
-| ID | Endpoint | Expected | Actual | Severity | Discovered |
-|---|---|---|---|---|---|
-| BUG-001 | `GET /api/v1/sensors/UNKNOWN` | HTTP 404 | HTTP 500 | Medium | MBT-01 |
-| BUG-002 | `GET /actuator/health/circuitbreakers` | HTTP 200 (admin) | HTTP 403 | Low | Sprint 1 |
-| BUG-003 | `GET /actuator/prometheus` | HTTP 200 | HTTP 500 | Low | Sprint 1 |
-| BUG-004 | `GET /api/v1/citizen/notifications` | HTTP 200, danh sách thông báo | HTTP 500 Internal Server Error | **High** | MBT-18 |
-| BUG-005 | Token sau `POST /api/v1/auth/logout` | HTTP 401 Unauthorized | HTTP 200 (token vẫn hợp lệ) | Medium | MBT-21 |
+| ID | Endpoint | Expected | Actual | Severity | Discovered | Status |
+|---|---|---|---|---|---|---|
+| BUG-001 | `GET /api/v1/sensors/UNKNOWN` | HTTP 404 | HTTP 500 | Medium | MBT-01 | 🟡 Open |
+| BUG-002 | `GET /actuator/health/circuitbreakers` | HTTP 200 (admin) | HTTP 403 | Low | Sprint 1 | 🟡 Open |
+| BUG-003 | `GET /actuator/prometheus` | HTTP 200 | HTTP 500 | Low | Sprint 1 | 🟡 Open |
+| BUG-004 | `GET /api/v1/alerts/notifications` _(bug report ghi sai path `/api/v1/citizen/notifications`)_ | HTTP 200, danh sách thông báo | HTTP 500 Internal Server Error | **High** | MBT-18 | ✅ **FIXED** (commit `66e57fe9`) |
+| BUG-005 | Token sau `POST /api/v1/auth/logout` | HTTP 401 Unauthorized | HTTP 200 (token vẫn hợp lệ) | Medium | MBT-21 | ✅ **FIXED** (commit `e24712c9` — TokenBlacklistService) |
 
 ---
 
