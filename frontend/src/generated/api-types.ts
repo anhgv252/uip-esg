@@ -295,7 +295,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Logout â clear httpOnly cookie (stateless JWT; client must discard tokens) */
+        /** Logout â clear httpOnly cookie and invalidate token */
         post: operations["logout"];
         delete?: never;
         options?: never;
@@ -513,6 +513,22 @@ export interface paths {
         };
         /** Get congestion map as GeoJSON FeatureCollection */
         get: operations["getCongestionMap"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tenant/config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getTenantConfig"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1138,6 +1154,7 @@ export interface components {
         ErrorRecord: {
             /** Format: uuid */
             id?: string;
+            tenantId?: string;
             sourceModule?: string;
             kafkaTopic?: string;
             /** Format: int64 */
@@ -1169,6 +1186,7 @@ export interface components {
         AlertRule: {
             /** Format: uuid */
             id?: string;
+            tenantId?: string;
             ruleName?: string;
             module?: string;
             measureType?: string;
@@ -1187,34 +1205,34 @@ export interface components {
             totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            first?: boolean;
+            last?: boolean;
+            pageable?: components["schemas"]["PageableObject"];
+            /** Format: int32 */
+            numberOfElements?: number;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["ProcessInstanceDto"][];
             /** Format: int32 */
             number?: number;
             sort?: components["schemas"]["SortObject"];
-            first?: boolean;
-            last?: boolean;
-            /** Format: int32 */
-            numberOfElements?: number;
-            pageable?: components["schemas"]["PageableObject"];
             empty?: boolean;
         };
         PageableObject: {
-            /** Format: int64 */
-            offset?: number;
-            sort?: components["schemas"]["SortObject"];
             paged?: boolean;
             unpaged?: boolean;
             /** Format: int32 */
-            pageSize?: number;
-            /** Format: int32 */
             pageNumber?: number;
+            /** Format: int32 */
+            pageSize?: number;
+            /** Format: int64 */
+            offset?: number;
+            sort?: components["schemas"]["SortObject"];
         };
         SortObject: {
-            empty?: boolean;
             unsorted?: boolean;
             sorted?: boolean;
+            empty?: boolean;
         };
         ProcessDefinitionDto: {
             id?: string;
@@ -1231,17 +1249,17 @@ export interface components {
             totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            first?: boolean;
+            last?: boolean;
+            pageable?: components["schemas"]["PageableObject"];
+            /** Format: int32 */
+            numberOfElements?: number;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["TrafficIncidentDto"][];
             /** Format: int32 */
             number?: number;
             sort?: components["schemas"]["SortObject"];
-            first?: boolean;
-            last?: boolean;
-            /** Format: int32 */
-            numberOfElements?: number;
-            pageable?: components["schemas"]["PageableObject"];
             empty?: boolean;
         };
         TrafficCountDto: {
@@ -1275,6 +1293,21 @@ export interface components {
             description?: string;
             /** Format: double */
             avgSpeed?: number;
+        };
+        Branding: {
+            partnerName?: string;
+            primaryColor?: string;
+            logoUrl?: string;
+        };
+        FeatureFlag: {
+            enabled?: boolean;
+        };
+        TenantConfigResponse: {
+            tenantId?: string;
+            features?: {
+                [key: string]: components["schemas"]["FeatureFlag"];
+            };
+            branding?: components["schemas"]["Branding"];
         };
         SseEmitter: {
             /** Format: int64 */
@@ -1395,17 +1428,17 @@ export interface components {
             totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            first?: boolean;
+            last?: boolean;
+            pageable?: components["schemas"]["PageableObject"];
+            /** Format: int32 */
+            numberOfElements?: number;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["InvoiceDto"][];
             /** Format: int32 */
             number?: number;
             sort?: components["schemas"]["SortObject"];
-            first?: boolean;
-            last?: boolean;
-            /** Format: int32 */
-            numberOfElements?: number;
-            pageable?: components["schemas"]["PageableObject"];
             empty?: boolean;
         };
         ConsumptionHistoryDto: {
@@ -1428,17 +1461,17 @@ export interface components {
             totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            first?: boolean;
+            last?: boolean;
+            pageable?: components["schemas"]["PageableObject"];
+            /** Format: int32 */
+            numberOfElements?: number;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["AlertEventDto"][];
             /** Format: int32 */
             number?: number;
             sort?: components["schemas"]["SortObject"];
-            first?: boolean;
-            last?: boolean;
-            /** Format: int32 */
-            numberOfElements?: number;
-            pageable?: components["schemas"]["PageableObject"];
             empty?: boolean;
         };
         PageUserSummaryDto: {
@@ -1446,17 +1479,17 @@ export interface components {
             totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            first?: boolean;
+            last?: boolean;
+            pageable?: components["schemas"]["PageableObject"];
+            /** Format: int32 */
+            numberOfElements?: number;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["UserSummaryDto"][];
             /** Format: int32 */
             number?: number;
             sort?: components["schemas"]["SortObject"];
-            first?: boolean;
-            last?: boolean;
-            /** Format: int32 */
-            numberOfElements?: number;
-            pageable?: components["schemas"]["PageableObject"];
             empty?: boolean;
         };
         PageErrorRecord: {
@@ -1464,17 +1497,17 @@ export interface components {
             totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
+            first?: boolean;
+            last?: boolean;
+            pageable?: components["schemas"]["PageableObject"];
+            /** Format: int32 */
+            numberOfElements?: number;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["ErrorRecord"][];
             /** Format: int32 */
             number?: number;
             sort?: components["schemas"]["SortObject"];
-            first?: boolean;
-            last?: boolean;
-            /** Format: int32 */
-            numberOfElements?: number;
-            pageable?: components["schemas"]["PageableObject"];
             empty?: boolean;
         };
     };
@@ -2305,6 +2338,26 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["CongestionGeoJsonDto"];
+                };
+            };
+        };
+    };
+    getTenantConfig: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["TenantConfigResponse"];
                 };
             };
         };
