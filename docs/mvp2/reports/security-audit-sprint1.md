@@ -34,6 +34,7 @@
 | JWT token signature length validation | None | OK | JwtTokenProvider already has `expectedSignatureLengthB64Url()` check (JJWT 0.12.3 mitigation) |
 | JWT expiry configurable | None | OK | 15min access, 7-day refresh. Reasonable defaults |
 | Login rate limiting | None | OK | LoginRateLimitService with Bucket4j |
+| **BUG-005: Token still valid after logout** | **Medium** | **FIXED** | `TokenBlacklistService` (in-memory ConcurrentHashMap, auto-evict every 10 min) + `JwtAuthenticationFilter.isBlacklisted()` check on every request — commit `e24712c9` |
 
 ### A09 — Security Logging Failures
 | Finding | Severity | Status | Fix |
@@ -48,7 +49,7 @@
 |----------|-------|-------|-----------|
 | Critical | 0 | 0 | 0 |
 | High | 2 | 2 | 0 |
-| Medium | 4 | 3 | 1 (scope auth → Sprint 2) |
+| Medium | 5 | 4 | 1 (scope auth → Sprint 2) |
 | Low | 3 | 0 | 3 (dev-only, deferred) |
 
-**Overall:** Zero Critical findings. All High findings resolved in Sprint 1.
+**Overall:** Zero Critical findings. All High findings resolved. BUG-005 (token invalidation) fixed in Sprint 1.
