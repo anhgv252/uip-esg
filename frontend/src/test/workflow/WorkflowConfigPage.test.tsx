@@ -11,6 +11,7 @@ vi.mock('@/hooks/useWorkflowConfig', () => ({
   useCreateWorkflowConfig: vi.fn(),
   useUpdateWorkflowConfig: vi.fn(),
   useTestWorkflowConfig: vi.fn(),
+  useFireWorkflowTrigger: vi.fn(),
 }))
 
 import {
@@ -18,6 +19,7 @@ import {
   useCreateWorkflowConfig,
   useUpdateWorkflowConfig,
   useTestWorkflowConfig,
+  useFireWorkflowTrigger,
 } from '@/hooks/useWorkflowConfig'
 
 const CONFIGS = [
@@ -88,7 +90,7 @@ const CONFIGS = [
 
 function makeAdminCtx(): AuthContextValue {
   return {
-    user: { username: 'admin', role: 'ROLE_ADMIN' },
+    user: { username: 'admin', role: 'ROLE_ADMIN', tenantId: 'default', tenantPath: 'city', scopes: [], allowedBuildings: [] },
     isAuthenticated: true,
     isLoading: false,
     login: vi.fn(),
@@ -136,6 +138,13 @@ function stubHooks() {
     isSuccess: false,
     isError: false,
   } as unknown as ReturnType<typeof useTestWorkflowConfig>)
+
+  vi.mocked(useFireWorkflowTrigger).mockReturnValue({
+    mutate: vi.fn(),
+    isPending: false,
+    isSuccess: false,
+    isError: false,
+  } as unknown as ReturnType<typeof useFireWorkflowTrigger>)
 }
 
 describe('WorkflowConfigPage', () => {
@@ -273,7 +282,7 @@ describe('WorkflowConfigPage', () => {
   it('opens test dialog when test button is clicked', async () => {
     renderPage()
 
-    const testButtons = screen.getAllByRole('button', { name: /test trigger/i })
+    const testButtons = screen.getAllByRole('button', { name: /dry-run test/i })
     await userEvent.click(testButtons[0])
 
     await waitFor(() => expect(document.querySelector('[role="dialog"]')).toBeTruthy())

@@ -1,5 +1,6 @@
 package com.uip.backend.citizen.domain;
 
+import com.uip.backend.tenant.domain.TenantAware;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -10,14 +11,19 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "households", schema = "citizens")
+@EntityListeners(com.uip.backend.tenant.hibernate.TenantEntityListener.class)
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Household {
+public class Household implements TenantAware {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
+
+    @Builder.Default
+    @Column(name = "tenant_id", nullable = false)
+    private String tenantId = "default";
 
     @Column(name = "citizen_id", nullable = false)
     private UUID citizenId;

@@ -6,14 +6,18 @@ import React, {
   useRef,
   useState,
 } from 'react'
-import { tokenStore } from '@/api/client'
+import { tokenStore, tenantStore } from '@/api/client'
 import { authApi, type LoginRequest } from '@/api/auth'
 
-export type UserRole = 'ROLE_ADMIN' | 'ROLE_OPERATOR' | 'ROLE_CITIZEN'
+export type UserRole = 'ROLE_ADMIN' | 'ROLE_OPERATOR' | 'ROLE_CITIZEN' | 'ROLE_TENANT_ADMIN'
 
 export interface AuthUser {
   username: string
   role: UserRole
+  tenantId: string
+  tenantPath: string
+  scopes: string[]
+  allowedBuildings: string[]
 }
 
 export interface AuthContextValue {
@@ -49,6 +53,12 @@ function userFromToken(token: string): AuthUser | null {
   return {
     username: String(payload.sub),
     role: (roles[0] as UserRole) ?? 'ROLE_CITIZEN',
+    tenantId: String(payload.tenant_id ?? 'default'),
+    tenantPath: String(payload.tenant_path ?? 'city'),
+    scopes: Array.isArray(payload.scopes) ? (payload.scopes as string[]) : [],
+    allowedBuildings: Array.isArray(payload.allowed_buildings)
+      ? (payload.allowed_buildings as string[])
+      : [],
   }
 }
 
@@ -99,6 +109,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Sync tenantId to tenantStore for API interceptor
+  useEffect(() => {
+    tenantStore.set(user?.tenantId ?? null)
+  }, [user?.tenantId])
 
   const login = useCallback(
     async (req: LoginRequest) => {

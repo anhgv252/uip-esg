@@ -13,6 +13,7 @@ import {
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { theme } from '@/theme'
 import { AuthProvider } from '@/contexts/AuthContext'
+import { TenantConfigProvider } from '@/contexts/TenantConfigContext'
 import { routes } from '@/routes'
 
 const queryClient = new QueryClient({
@@ -39,11 +40,6 @@ function PageFallback() {
   )
 }
 
-/**
- * ThemedApp sits inside AuthProvider (and future TenantConfigProvider)
- * so theme can be overridden by tenant branding at runtime.
- * Sprint 2 will add TenantConfigProvider above ThemeProvider.
- */
 function ThemedApp() {
   return (
     <ThemeProvider theme={theme}>
@@ -59,7 +55,9 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <ThemedApp />
+        <TenantConfigProvider>
+          <ThemedApp />
+        </TenantConfigProvider>
       </AuthProvider>
     </QueryClientProvider>
   )

@@ -1,5 +1,6 @@
 package com.uip.backend.admin.domain;
 
+import com.uip.backend.tenant.domain.TenantAware;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -13,14 +14,18 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "error_records", schema = "error_mgmt")
+@EntityListeners(com.uip.backend.tenant.hibernate.TenantEntityListener.class)
 @Getter
 @Setter
 @NoArgsConstructor
-public class ErrorRecord {
+public class ErrorRecord implements TenantAware {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
+
+    @Column(name = "tenant_id", nullable = false)
+    private String tenantId = "default";
 
     @Column(name = "source_module", nullable = false, length = 30)
     private String sourceModule;

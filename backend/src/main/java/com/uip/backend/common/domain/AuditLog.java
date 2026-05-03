@@ -1,5 +1,6 @@
 package com.uip.backend.common.domain;
 
+import com.uip.backend.tenant.domain.TenantAware;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -8,10 +9,11 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "audit_log", schema = "public")
+@EntityListeners(com.uip.backend.tenant.hibernate.TenantEntityListener.class)
 @Getter @Setter
 @NoArgsConstructor @AllArgsConstructor
 @Builder
-public class AuditLog {
+public class AuditLog implements TenantAware {
 
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
@@ -28,7 +30,9 @@ public class AuditLog {
 
     private String resourceId;
 
-    private String tenantId;
+    @Builder.Default
+    @Column(name = "tenant_id", nullable = false)
+    private String tenantId = "default";
 
     @Column(nullable = false)
     private Instant timestamp;

@@ -51,6 +51,31 @@ public class JwtTokenProvider {
         return buildToken(userDetails.getUsername(), Map.of("roles", roles), jwtProperties.getExpirationMs());
     }
 
+    /**
+     * Extended access token with multi-tenancy claims.
+     * Used by AuthService.login() when AppUser entity is available.
+     *
+     * @param userDetails      spring security user
+     * @param tenantId         tenant identifier (fallback "default")
+     * @param scopes           permission scopes for the user
+     * @param allowedBuildings building IDs the user can access
+     */
+    public String generateAccessToken(UserDetails userDetails,
+                                      String tenantId,
+                                      List<String> scopes,
+                                      List<String> allowedBuildings) {
+        List<String> roles = userDetails.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .toList();
+        Map<String, Object> claims = new java.util.HashMap<>();
+        claims.put("roles", roles);
+        claims.put("tenant_id", tenantId != null ? tenantId : "default");
+        claims.put("tenant_path", "city." + (tenantId != null ? tenantId : "default"));
+        claims.put("scopes", scopes != null ? scopes : List.of());
+        claims.put("allowed_buildings", allowedBuildings != null ? allowedBuildings : List.of());
+        return buildToken(userDetails.getUsername(), claims, jwtProperties.getExpirationMs());
+    }
+
     public String generateRefreshToken(UserDetails userDetails) {
         return buildToken(userDetails.getUsername(), Map.of("type", "refresh"), jwtProperties.getRefreshExpirationMs());
     }
@@ -114,7 +139,10 @@ public class JwtTokenProvider {
         // treats a trailing extra char as padding (e.g. "sig+x" decodes to the
         // same bytes as "sig"), allowing tampered tokens to pass HMAC verification.
         // We reject any token whose signature part != the expected base64url length.
-        int lastDot = token == null ? -1 : token.lastIndexOf('.');
+        if (token == null) {
+            throw new MalformedJwtException("JWT token is null");
+        }
+        int lastDot = token.lastIndexOf('.');
         int expectedSigLen = expectedSignatureLengthB64Url();
         if (lastDot < 0 || (token.length() - lastDot - 1) != expectedSigLen) {
             throw new MalformedJwtException("JWT has invalid signature length");

@@ -1,5 +1,6 @@
 package com.uip.backend.environment.domain;
 
+import com.uip.backend.tenant.domain.TenantAware;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -10,14 +11,21 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "sensors", schema = "environment")
+@EntityListeners(com.uip.backend.tenant.hibernate.TenantEntityListener.class)
 @Getter
 @Setter
 @NoArgsConstructor
-public class Sensor {
+public class Sensor implements TenantAware {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
+
+    @Column(name = "tenant_id", nullable = false)
+    private String tenantId = "default";
+
+    @Column(name = "location_path", columnDefinition = "ltree")
+    private String locationPath;
 
     @Column(name = "sensor_id", nullable = false, unique = true, length = 100)
     private String sensorId;

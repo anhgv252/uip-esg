@@ -1,5 +1,6 @@
 package com.uip.backend.traffic.domain;
 
+import com.uip.backend.tenant.domain.TenantAware;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -10,14 +11,19 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "traffic_counts", schema = "traffic")
+@EntityListeners(com.uip.backend.tenant.hibernate.TenantEntityListener.class)
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class TrafficCount {
+public class TrafficCount implements TenantAware {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
+
+    @Builder.Default
+    @Column(name = "tenant_id", nullable = false)
+    private String tenantId = "default";
 
     @Column(name = "intersection_id", nullable = false)
     private String intersectionId;

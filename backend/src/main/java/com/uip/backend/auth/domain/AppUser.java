@@ -34,6 +34,12 @@ public class AppUser {
     @Enumerated(EnumType.STRING)
     private UserRole role = UserRole.ROLE_CITIZEN;
 
+    @Column(name = "tenant_id", nullable = false)
+    private String tenantId = "default";
+
+    @Column(name = "tenant_path")
+    private String tenantPath = "city.default";
+
     @Column(name = "is_active", nullable = false)
     private boolean active = true;
 
@@ -50,5 +56,16 @@ public class AppUser {
         this.email = email;
         this.passwordHash = passwordHash;
         this.role = role;
+        this.tenantId = "default";
+        this.tenantPath = "city.default";
+    }
+
+    public AppUser(String username, String email, String passwordHash, UserRole role, String tenantId, String tenantPath) {
+        this.username = username;
+        this.email = email;
+        this.passwordHash = passwordHash;
+        this.role = role;
+        this.tenantId = tenantId != null ? tenantId : "default";
+        this.tenantPath = tenantPath != null ? tenantPath : "city.default";
     }
 }

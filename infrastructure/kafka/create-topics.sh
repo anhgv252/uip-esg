@@ -36,5 +36,14 @@ create_topic "ngsi_ld_citizen" 3
 # Alert pipeline — Flink AlertDetectionJob → backend AlertEventKafkaConsumer + GenericKafkaTriggerService
 create_topic "UIP.flink.alert.detected.v1" 3
 
+# Alert events — internal alert storage topic
+create_topic "alert_events" 3
+
+# Workflow admin — TriggerConfigCacheInvalidator listens for config updates
+create_topic "UIP.admin.trigger-config.updated.v1" 1
+
+# Workflow DLQ — GenericKafkaTriggerService sends failed trigger events here
+create_topic "UIP.workflow.trigger.dlq.v1" 1 2592000000  # 30 days
+
 echo "=== All topics created successfully ==="
 kafka-topics --bootstrap-server "${BOOTSTRAP}" --list

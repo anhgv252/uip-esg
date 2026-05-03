@@ -1,5 +1,5 @@
 # MVP2 — Detail Implementation Plan
-**Cập nhật:** 2026-04-29 | **Thời gian:** Q2 2026 (12 tuần)
+**Cập nhật:** 2026-05-03 | **Thời gian:** Q2 2026 (12 tuần)
 **Sprint start:** 2026-04-28 | **Target delivery:** 2026-07-18
 **Team capacity:** ~55 SP/sprint (2 teams song song)
 
@@ -9,9 +9,9 @@
 
 | Phase | Sprint | Tuần | Dates | Focus | ADRs | SP | Status |
 |-------|--------|------|-------|-------|------|----|--------|
-| **Foundation** | MVP2-1 | 1–2 | 28 Apr – 09 May | Security P0 + QA Gaps + FE Security | — | 58 | 🔄 Active |
-| **Isolation** | MVP2-2 | 3–4 | 12 May – 23 May | Multi-Tenancy BE+FE (core only) | ADR-010, ADR-011, ADR-020, ADR-021 | 55 | ⏳ Planned |
-| **Performance** | MVP2-3 | 5–6 | 26 May – 06 Jun | Cache + Kafka + Monitoring + Partner Theme | ADR-014, ADR-015, ADR-022, ADR-023 | 58 | ⏳ Planned |
+| **Foundation** | MVP2-1 | 1–2 | 28 Apr – 09 May | Security P0 + QA Gaps + FE Security | — | 58 | ✅ Done |
+| **Isolation** | MVP2-2 | 3–4 | 12 May – 23 May | Multi-Tenancy BE+FE (core only) | ADR-010, ADR-011, ADR-020, ADR-021 | 55 | ✅ Done |
+| **Performance** | MVP2-3 | 5–6 | 26 May – 06 Jun | Cache + Kafka + Monitoring + Partner Theme | ADR-014, ADR-015, ADR-022, ADR-023 | 58 | 🔄 Next |
 | **Extensibility** | MVP2-4 | 7–8 | 09 Jun – 20 Jun | Partner + Tenant Admin BE API + Runbook | ADR-019, ADR-024 | 52 | ⏳ Planned |
 | **Product** | MVP2-5 | 9–10 | 23 Jun – 04 Jul | Mobile PWA + Tenant Admin Dashboard FE | ADR-010, ADR-019 | 55 | ⏳ Planned |
 | **Buffer/UAT** | MVP2-6 | 11–12 | 07 Jul – 18 Jul | Final UAT + Performance + Docs + Security Scan | — | — | ⏳ Buffer |

@@ -36,6 +36,7 @@ import {
 } from '@mui/icons-material'
 import LocationCityIcon from '@mui/icons-material/LocationCity'
 import { useAuth } from '@/hooks/useAuth'
+import { useTenantConfig } from '@/contexts/TenantConfigContext'
 
 const DRAWER_WIDTH = 240
 const DRAWER_COLLAPSED = 72
@@ -45,6 +46,8 @@ interface NavItem {
   path: string
   icon: React.ReactNode
   roles?: string[]
+  featureFlag?: string
+  scope?: string
 }
 
 const NAV_ITEMS: NavItem[] = [
@@ -73,10 +76,18 @@ const NAV_ITEMS: NavItem[] = [
     icon: <AdminIcon />,
     roles: ['ROLE_ADMIN'],
   },
+  {
+    label: 'Tenant Admin',
+    path: '/tenant-admin',
+    icon: <AdminIcon />,
+    roles: ['ROLE_TENANT_ADMIN'],
+    featureFlag: 'tenant_management',
+  },
 ]
 
 export default function AppShell() {
   const { user, logout } = useAuth()
+  const { isFeatureEnabled } = useTenantConfig()
   const navigate = useNavigate()
   const location = useLocation()
   const muiTheme = useTheme()
@@ -107,9 +118,11 @@ export default function AppShell() {
     flexDirection: 'column',
   }
 
-  const visibleItems = NAV_ITEMS.filter(
-    (item) => !item.roles || (user && item.roles.includes(user.role)),
-  )
+  const visibleItems = NAV_ITEMS.filter((item) => {
+    if (item.roles && (!user || !item.roles.includes(user.role))) return false
+    if (item.featureFlag && !isFeatureEnabled(item.featureFlag)) return false
+    return true
+  })
 
   const drawerContent = (
     <Box sx={sidebarSx}>

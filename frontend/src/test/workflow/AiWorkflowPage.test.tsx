@@ -54,7 +54,7 @@ const INSTANCES = [
 
 function makeAdminCtx(): AuthContextValue {
   return {
-    user: { username: 'admin', role: 'ROLE_ADMIN' },
+    user: { username: 'admin', role: 'ROLE_ADMIN', tenantId: 'default', tenantPath: 'city', scopes: [], allowedBuildings: [] },
     isAuthenticated: true,
     isLoading: false,
     login: vi.fn(),
@@ -64,7 +64,7 @@ function makeAdminCtx(): AuthContextValue {
 
 function makeOperatorCtx(): AuthContextValue {
   return {
-    user: { username: 'operator', role: 'ROLE_OPERATOR' },
+    user: { username: 'operator', role: 'ROLE_OPERATOR', tenantId: 'default', tenantPath: 'city', scopes: [], allowedBuildings: [] },
     isAuthenticated: true,
     isLoading: false,
     login: vi.fn(),

@@ -1,5 +1,6 @@
 package com.uip.backend.esg.config;
 
+import com.uip.backend.tenant.context.TenantContextTaskDecorator;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.EnableAsync;
@@ -18,6 +19,7 @@ public class AsyncConfig {
         executor.setMaxPoolSize(4);
         executor.setQueueCapacity(10);
         executor.setThreadNamePrefix("esg-report-");
+        executor.setTaskDecorator(new TenantContextTaskDecorator());
         executor.initialize();
         return executor;
     }

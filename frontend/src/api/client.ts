@@ -24,7 +24,18 @@ export const tokenStore = {
   clear: () => {
     _accessToken = null
     _refreshToken = null
+    _tenantId = null
   },
+}
+
+// In-memory tenant context for request headers
+let _tenantId: string | null = null
+
+export const tenantStore = {
+  set: (id: string | null) => {
+    _tenantId = id
+  },
+  get: () => _tenantId,
 }
 
 // Attach Bearer token to every request
@@ -32,6 +43,15 @@ apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   const token = tokenStore.get()
   if (token) {
     config.headers['Authorization'] = `Bearer ${token}`
+  }
+  return config
+})
+
+// Attach tenant context header
+apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
+  const tid = tenantStore.get()
+  if (tid) {
+    config.headers['X-Tenant-Id'] = tid
   }
   return config
 })
