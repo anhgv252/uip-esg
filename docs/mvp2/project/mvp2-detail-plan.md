@@ -2249,7 +2249,7 @@ backend/src/main/java/com/uip/backend/tenant/service/InviteService.java
 backend/src/main/java/com/uip/backend/tenant/api/InviteController.java   ← POST /api/v1/auth/invite/accept (public)
 backend/src/main/java/com/uip/backend/tenant/api/dto/AcceptInviteRequest.java
 backend/src/main/java/com/uip/backend/common/service/EmailService.java   ← SMTP
-backend/src/main/resources/db/migration/V17__create_invite_tokens.sql
+backend/src/main/resources/db/migration/V20__create_invite_tokens.sql
 ```
 
 ---
@@ -2269,7 +2269,7 @@ Aggregate: `SELECT count(*) FROM environment.sensor_readings WHERE tenant_id=? A
 
 **Files cần tạo:**
 ```
-backend/src/main/resources/db/migration/V18__create_tenant_config_table.sql
+backend/src/main/resources/db/migration/V21__create_tenant_config_kv_table.sql
 backend/src/main/java/com/uip/backend/tenant/domain/TenantConfigEntry.java
 backend/src/main/java/com/uip/backend/tenant/repository/TenantConfigRepository.java
 backend/src/main/java/com/uip/backend/tenant/service/TenantConfigCrudService.java
@@ -2309,7 +2309,7 @@ backend/src/main/java/com/uip/backend/common/config/PartnerBeanRegistrar.java
 - [ ] Frontend: `partner-features.ts` map đầy đủ, lint pass
 - [ ] Tenant Admin 6 API endpoints functional (moved from Sprint 5)
 - [ ] User invite flow: generate token → email → accept → login
-- [ ] V17 invite_tokens + V18 tenant_config migrations chạy thành công
+- [ ] V20 invite_tokens + V21 tenant_config_kv migrations chạy thành công
 
 ---
 
