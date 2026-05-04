@@ -6,27 +6,30 @@ import { getEsgSummary, getEsgEnergy, getEsgCarbon } from '../api/esg';
 import EsgKpiCard from '../components/esg/EsgKpiCard';
 import EsgBarChart from '../components/esg/EsgBarChart';
 import ReportGenerationPanel from '../components/esg/ReportGenerationPanel';
+import { useAuth } from '../hooks/useAuth';
 
 type ChartView = 'energy' | 'carbon';
 
 export default function EsgPage() {
   const [chartView, setChartView] = useState<ChartView>('energy');
+  const { user } = useAuth();
+  const tenantId = user?.tenantId ?? 'default';
 
   const { data: summary, isLoading: summaryLoading } = useQuery({
-    queryKey: ['esg-summary'],
+    queryKey: ['esg-summary', tenantId],
     queryFn: () => getEsgSummary(),
     staleTime: 5 * 60_000,
   });
 
   const { data: energyData = [] } = useQuery({
-    queryKey: ['esg-energy'],
+    queryKey: ['esg-energy', tenantId],
     queryFn: () => getEsgEnergy(),
     enabled: chartView === 'energy',
     staleTime: 5 * 60_000,
   });
 
   const { data: carbonData = [] } = useQuery({
-    queryKey: ['esg-carbon'],
+    queryKey: ['esg-carbon', tenantId],
     queryFn: () => getEsgCarbon(),
     enabled: chartView === 'carbon',
     staleTime: 5 * 60_000,

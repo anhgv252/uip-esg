@@ -29,6 +29,8 @@ import static org.mockito.Mockito.*;
 @DisplayName("EsgReportGenerator")
 class EsgReportGeneratorTest {
 
+    private static final String TENANT_ID = "hcm";
+
     @Mock
     private EsgMetricRepository esgMetricRepository;
 
@@ -54,12 +56,12 @@ class EsgReportGeneratorTest {
     @DisplayName("generateAsync: creates XLSX file and marks report DONE")
     void generateAsync_happyPath_statusDone() {
         UUID id = UUID.randomUUID();
-        EsgReport report = buildReport(id, 2025, 1);
+        EsgReport report = buildReport(id, TENANT_ID, 2025, 1);
 
         when(esgReportRepository.findById(id)).thenReturn(Optional.of(report));
         when(esgReportRepository.save(any())).thenReturn(report);
-        when(esgMetricRepository.sumByTypeAndRange(anyString(), any(), any())).thenReturn(100.0);
-        when(esgMetricRepository.findByTypeAndRange(anyString(), any(), any()))
+        when(esgMetricRepository.sumByTypeAndRange(eq(TENANT_ID), anyString(), any(), any())).thenReturn(100.0);
+        when(esgMetricRepository.findByTypeAndRange(eq(TENANT_ID), anyString(), any(), any()))
                 .thenReturn(List.of());
 
         generator.generateAsync(id);
@@ -67,7 +69,6 @@ class EsgReportGeneratorTest {
         assertThat(report.getStatus()).isEqualTo("DONE");
         assertThat(report.getFilePath()).isNotNull().endsWith(".xlsx");
         assertThat(report.getGeneratedAt()).isNotNull();
-        // save called twice: once to set GENERATING, once at the end
         verify(esgReportRepository, times(2)).save(report);
     }
 
@@ -75,19 +76,19 @@ class EsgReportGeneratorTest {
     @DisplayName("generateAsync: with metric data populates detail sheets")
     void generateAsync_withMetrics_populatesDetailSheets() {
         UUID id = UUID.randomUUID();
-        EsgReport report = buildReport(id, 2025, 2);
+        EsgReport report = buildReport(id, TENANT_ID, 2025, 2);
 
         EsgMetric m1 = buildMetric("ENERGY", "BLDG-01", "D1", 42.5);
         EsgMetric m2 = buildMetric("ENERGY", null, null, 10.0);
 
         when(esgReportRepository.findById(id)).thenReturn(Optional.of(report));
         when(esgReportRepository.save(any())).thenReturn(report);
-        when(esgMetricRepository.sumByTypeAndRange(anyString(), any(), any())).thenReturn(null);
-        when(esgMetricRepository.findByTypeAndRange(eq("ENERGY"), any(), any()))
+        when(esgMetricRepository.sumByTypeAndRange(eq(TENANT_ID), anyString(), any(), any())).thenReturn(null);
+        when(esgMetricRepository.findByTypeAndRange(eq(TENANT_ID), eq("ENERGY"), any(), any()))
                 .thenReturn(List.of(m1, m2));
-        when(esgMetricRepository.findByTypeAndRange(eq("WATER"), any(), any()))
+        when(esgMetricRepository.findByTypeAndRange(eq(TENANT_ID), eq("WATER"), any(), any()))
                 .thenReturn(List.of());
-        when(esgMetricRepository.findByTypeAndRange(eq("CARBON"), any(), any()))
+        when(esgMetricRepository.findByTypeAndRange(eq(TENANT_ID), eq("CARBON"), any(), any()))
                 .thenReturn(List.of());
 
         generator.generateAsync(id);
@@ -99,12 +100,12 @@ class EsgReportGeneratorTest {
     @DisplayName("generateAsync: null metric sums renders N/A gracefully")
     void generateAsync_nullSums_rendersNA() {
         UUID id = UUID.randomUUID();
-        EsgReport report = buildReport(id, 2025, 4);
+        EsgReport report = buildReport(id, TENANT_ID, 2025, 4);
 
         when(esgReportRepository.findById(id)).thenReturn(Optional.of(report));
         when(esgReportRepository.save(any())).thenReturn(report);
-        when(esgMetricRepository.sumByTypeAndRange(anyString(), any(), any())).thenReturn(null);
-        when(esgMetricRepository.findByTypeAndRange(anyString(), any(), any()))
+        when(esgMetricRepository.sumByTypeAndRange(eq(TENANT_ID), anyString(), any(), any())).thenReturn(null);
+        when(esgMetricRepository.findByTypeAndRange(eq(TENANT_ID), anyString(), any(), any()))
                 .thenReturn(List.of());
 
         generator.generateAsync(id);
@@ -132,11 +133,11 @@ class EsgReportGeneratorTest {
     @DisplayName("generateAsync: repository failure during build → status FAILED")
     void generateAsync_repositoryFailure_statusFailed() {
         UUID id = UUID.randomUUID();
-        EsgReport report = buildReport(id, 2025, 3);
+        EsgReport report = buildReport(id, TENANT_ID, 2025, 3);
 
         when(esgReportRepository.findById(id)).thenReturn(Optional.of(report));
         when(esgReportRepository.save(any())).thenReturn(report);
-        when(esgMetricRepository.sumByTypeAndRange(anyString(), any(), any()))
+        when(esgMetricRepository.sumByTypeAndRange(eq(TENANT_ID), anyString(), any(), any()))
                 .thenThrow(new RuntimeException("DB connection refused"));
 
         generator.generateAsync(id);
@@ -153,21 +154,20 @@ class EsgReportGeneratorTest {
     @DisplayName("generateAsync: Q1 range starts Jan 1 and ends Mar 31")
     void generateAsync_q1Range_correctBoundaries() {
         UUID id = UUID.randomUUID();
-        EsgReport report = buildReport(id, 2025, 1);
+        EsgReport report = buildReport(id, TENANT_ID, 2025, 1);
 
         when(esgReportRepository.findById(id)).thenReturn(Optional.of(report));
         when(esgReportRepository.save(any())).thenReturn(report);
-        when(esgMetricRepository.sumByTypeAndRange(anyString(), any(), any())).thenReturn(0.0);
-        when(esgMetricRepository.findByTypeAndRange(anyString(), any(), any()))
+        when(esgMetricRepository.sumByTypeAndRange(eq(TENANT_ID), anyString(), any(), any())).thenReturn(0.0);
+        when(esgMetricRepository.findByTypeAndRange(eq(TENANT_ID), anyString(), any(), any()))
                 .thenReturn(List.of());
 
         generator.generateAsync(id);
 
-        // Captures the 'from' instant for the first sumByTypeAndRange call (ENERGY)
         var fromCaptor = org.mockito.ArgumentCaptor.forClass(Instant.class);
         var toCaptor   = org.mockito.ArgumentCaptor.forClass(Instant.class);
         verify(esgMetricRepository, atLeastOnce())
-                .sumByTypeAndRange(anyString(), fromCaptor.capture(), toCaptor.capture());
+                .sumByTypeAndRange(eq(TENANT_ID), anyString(), fromCaptor.capture(), toCaptor.capture());
 
         Instant from = fromCaptor.getAllValues().get(0);
         Instant to   = toCaptor.getAllValues().get(0);
@@ -179,12 +179,12 @@ class EsgReportGeneratorTest {
     @DisplayName("generateAsync: Q4 range starts Oct 1 and ends Jan 1 next year")
     void generateAsync_q4Range_correctBoundaries() {
         UUID id = UUID.randomUUID();
-        EsgReport report = buildReport(id, 2024, 4);
+        EsgReport report = buildReport(id, TENANT_ID, 2024, 4);
 
         when(esgReportRepository.findById(id)).thenReturn(Optional.of(report));
         when(esgReportRepository.save(any())).thenReturn(report);
-        when(esgMetricRepository.sumByTypeAndRange(anyString(), any(), any())).thenReturn(0.0);
-        when(esgMetricRepository.findByTypeAndRange(anyString(), any(), any()))
+        when(esgMetricRepository.sumByTypeAndRange(eq(TENANT_ID), anyString(), any(), any())).thenReturn(0.0);
+        when(esgMetricRepository.findByTypeAndRange(eq(TENANT_ID), anyString(), any(), any()))
                 .thenReturn(List.of());
 
         generator.generateAsync(id);
@@ -192,7 +192,7 @@ class EsgReportGeneratorTest {
         var fromCaptor = org.mockito.ArgumentCaptor.forClass(Instant.class);
         var toCaptor   = org.mockito.ArgumentCaptor.forClass(Instant.class);
         verify(esgMetricRepository, atLeastOnce())
-                .sumByTypeAndRange(anyString(), fromCaptor.capture(), toCaptor.capture());
+                .sumByTypeAndRange(eq(TENANT_ID), anyString(), fromCaptor.capture(), toCaptor.capture());
 
         Instant from = fromCaptor.getAllValues().get(0);
         Instant to   = toCaptor.getAllValues().get(0);
@@ -201,12 +201,37 @@ class EsgReportGeneratorTest {
     }
 
     // -------------------------------------------------------------------------
+    // Tenant isolation
+    // -------------------------------------------------------------------------
+
+    @Test
+    @DisplayName("generateAsync: queries use tenantId from report entity")
+    void generateAsync_queriesUseReportTenantId() {
+        UUID id = UUID.randomUUID();
+        EsgReport report = buildReport(id, "tenant-x", 2025, 1);
+
+        when(esgReportRepository.findById(id)).thenReturn(Optional.of(report));
+        when(esgReportRepository.save(any())).thenReturn(report);
+        when(esgMetricRepository.sumByTypeAndRange(eq("tenant-x"), anyString(), any(), any())).thenReturn(50.0);
+        when(esgMetricRepository.findByTypeAndRange(eq("tenant-x"), anyString(), any(), any()))
+                .thenReturn(List.of());
+
+        generator.generateAsync(id);
+
+        verify(esgMetricRepository, atLeastOnce())
+                .sumByTypeAndRange(eq("tenant-x"), anyString(), any(), any());
+        verify(esgMetricRepository, atLeastOnce())
+                .findByTypeAndRange(eq("tenant-x"), anyString(), any(), any());
+    }
+
+    // -------------------------------------------------------------------------
     // Helpers
     // -------------------------------------------------------------------------
 
-    private EsgReport buildReport(UUID id, int year, int quarter) {
+    private EsgReport buildReport(UUID id, String tenantId, int year, int quarter) {
         EsgReport r = new EsgReport();
         r.setId(id);
+        r.setTenantId(tenantId);
         r.setYear(year);
         r.setQuarter(quarter);
         r.setPeriodType("QUARTERLY");

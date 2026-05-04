@@ -13,7 +13,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
-import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import com.uip.backend.esg.dto.EsgAnomalyDto;
 
@@ -36,15 +35,15 @@ public class EsgService {
 
     // ─── Summary ──────────────────────────────────────────────────────────────
 
-    public EsgSummaryDto getSummary(String periodType, int year, int quarter) {
+    public EsgSummaryDto getSummary(String tenantId, String periodType, int year, int quarter) {
         Instant[] range = periodType.equalsIgnoreCase("ANNUAL")
                 ? yearRange(year)
                 : quarterRange(year, quarter);
 
-        Double energy = metricRepository.sumByTypeAndRange("ENERGY", range[0], range[1]);
-        Double water  = metricRepository.sumByTypeAndRange("WATER",  range[0], range[1]);
-        Double carbon = metricRepository.sumByTypeAndRange("CARBON", range[0], range[1]);
-        Double waste  = metricRepository.sumByTypeAndRange("WASTE",  range[0], range[1]);
+        Double energy = metricRepository.sumByTypeAndRange(tenantId, "ENERGY", range[0], range[1]);
+        Double water  = metricRepository.sumByTypeAndRange(tenantId, "WATER",  range[0], range[1]);
+        Double carbon = metricRepository.sumByTypeAndRange(tenantId, "CARBON", range[0], range[1]);
+        Double waste  = metricRepository.sumByTypeAndRange(tenantId, "WASTE",  range[0], range[1]);
 
         return EsgSummaryDto.builder()
                 .period(periodType)
@@ -59,27 +58,28 @@ public class EsgService {
 
     // ─── Energy & Carbon ──────────────────────────────────────────────────────
 
-    public List<EsgMetricDto> getEnergyData(Instant from, Instant to, String buildingId) {
+    public List<EsgMetricDto> getEnergyData(String tenantId, Instant from, Instant to, String buildingId) {
         Instant effectiveTo   = to   != null ? to   : Instant.now();
         Instant effectiveFrom = from != null ? from : effectiveTo.minus(30, ChronoUnit.DAYS);
         List<EsgMetric> metrics = buildingId != null
-                ? metricRepository.findByTypeAndBuilding("ENERGY", buildingId, effectiveFrom, effectiveTo)
-                : metricRepository.findByTypeAndRange("ENERGY", effectiveFrom, effectiveTo);
+                ? metricRepository.findByTypeAndBuilding(tenantId, "ENERGY", buildingId, effectiveFrom, effectiveTo)
+                : metricRepository.findByTypeAndRange(tenantId, "ENERGY", effectiveFrom, effectiveTo);
         return metrics.stream().map(this::toDto).toList();
     }
 
-    public List<EsgMetricDto> getCarbonData(Instant from, Instant to) {
+    public List<EsgMetricDto> getCarbonData(String tenantId, Instant from, Instant to) {
         Instant effectiveTo   = to   != null ? to   : Instant.now();
         Instant effectiveFrom = from != null ? from : effectiveTo.minus(30, ChronoUnit.DAYS);
-        return metricRepository.findByTypeAndRange("CARBON", effectiveFrom, effectiveTo)
+        return metricRepository.findByTypeAndRange(tenantId, "CARBON", effectiveFrom, effectiveTo)
                 .stream().map(this::toDto).toList();
     }
 
     // ─── Report generation ────────────────────────────────────────────────────
 
     @Transactional
-    public EsgReportDto triggerReportGeneration(String periodType, int year, int quarter) {
+    public EsgReportDto triggerReportGeneration(String tenantId, String periodType, int year, int quarter) {
         EsgReport report = new EsgReport();
+        report.setTenantId(tenantId);
         report.setPeriodType(periodType.toUpperCase());
         report.setYear(year);
         report.setQuarter(quarter);
@@ -101,13 +101,13 @@ public class EsgService {
         return toReportDto(saved);
     }
 
-    public EsgReportDto getReportStatus(UUID reportId) {
+    public EsgReportDto getReportStatus(String tenantId, UUID reportId) {
         EsgReport report = reportRepository.findById(reportId)
                 .orElseThrow(() -> new EntityNotFoundException("Report not found: " + reportId));
         return toReportDto(report);
     }
 
-    public EsgReport getReportForDownload(UUID reportId) {
+    public EsgReport getReportForDownload(String tenantId, UUID reportId) {
         EsgReport report = reportRepository.findById(reportId)
                 .orElseThrow(() -> new EntityNotFoundException("Report not found: " + reportId));
         if (!"DONE".equals(report.getStatus())) {
@@ -120,17 +120,17 @@ public class EsgService {
 
     private static final double ANOMALY_THRESHOLD_RATIO = 1.3;
 
-    public List<EsgAnomalyDto> detectUtilityAnomalies() {
+    public List<EsgAnomalyDto> detectUtilityAnomalies(String tenantId) {
         Instant now   = Instant.now();
         Instant from  = now.minus(30, ChronoUnit.DAYS);
         List<EsgAnomalyDto> anomalies = new ArrayList<>();
 
         for (String type : List.of("ENERGY", "WATER")) {
-            Double current = metricRepository.sumByTypeAndRange(type, from, now);
+            Double current = metricRepository.sumByTypeAndRange(tenantId, type, from, now);
             if (current == null || current == 0) continue;
 
             Instant histFrom = from.minus(30, ChronoUnit.DAYS);
-            Double historical = metricRepository.sumByTypeAndRange(type, histFrom, from);
+            Double historical = metricRepository.sumByTypeAndRange(tenantId, type, histFrom, from);
             if (historical == null || historical == 0) continue;
 
             if (current > historical * ANOMALY_THRESHOLD_RATIO) {
@@ -141,17 +141,17 @@ public class EsgService {
         return anomalies;
     }
 
-    public List<EsgAnomalyDto> detectEsgAnomalies() {
+    public List<EsgAnomalyDto> detectEsgAnomalies(String tenantId) {
         Instant now   = Instant.now();
         Instant from  = now.minus(30, ChronoUnit.DAYS);
         List<EsgAnomalyDto> anomalies = new ArrayList<>();
 
         for (String type : List.of("ENERGY", "WATER", "CARBON", "WASTE")) {
-            Double current = metricRepository.sumByTypeAndRange(type, from, now);
+            Double current = metricRepository.sumByTypeAndRange(tenantId, type, from, now);
             if (current == null || current == 0) continue;
 
             Instant histFrom = from.minus(30, ChronoUnit.DAYS);
-            Double historical = metricRepository.sumByTypeAndRange(type, histFrom, from);
+            Double historical = metricRepository.sumByTypeAndRange(tenantId, type, histFrom, from);
             if (historical == null || historical == 0) continue;
 
             if (current > historical * ANOMALY_THRESHOLD_RATIO) {

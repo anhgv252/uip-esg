@@ -47,7 +47,7 @@ public class EsgReportGenerator {
             report.setStatus("DONE");
             report.setFilePath(filePath);
             report.setGeneratedAt(Instant.now());
-            log.info("ESG report generated: reportId={} file={}", reportId, filePath);
+            log.info("ESG report generated: reportId={} tenant={} file={}", reportId, report.getTenantId(), filePath);
         } catch (Exception e) {
             report.setStatus("FAILED");
             log.error("ESG report generation failed: reportId={}", reportId, e);
@@ -57,6 +57,7 @@ public class EsgReportGenerator {
     }
 
     private String buildReport(EsgReport report) throws IOException {
+        String tenantId = report.getTenantId();
         Path dir = Paths.get(outputDir);
         Files.createDirectories(dir);
 
@@ -87,9 +88,9 @@ public class EsgReportGenerator {
                 createCell(header, i, cols[i], headerStyle);
             }
 
-            Double energy = esgMetricRepository.sumByTypeAndRange("ENERGY", range[0], range[1]);
-            Double water  = esgMetricRepository.sumByTypeAndRange("WATER",  range[0], range[1]);
-            Double carbon = esgMetricRepository.sumByTypeAndRange("CARBON", range[0], range[1]);
+            Double energy = esgMetricRepository.sumByTypeAndRange(tenantId, "ENERGY", range[0], range[1]);
+            Double water  = esgMetricRepository.sumByTypeAndRange(tenantId, "WATER",  range[0], range[1]);
+            Double carbon = esgMetricRepository.sumByTypeAndRange(tenantId, "CARBON", range[0], range[1]);
 
             addMetricRow(summarySheet, 4, "Total Energy Consumption", energy, "kWh");
             addMetricRow(summarySheet, 5, "Total Water Consumption",  water,  "m³");
@@ -99,9 +100,9 @@ public class EsgReportGenerator {
             for (int i = 0; i < 4; i++) summarySheet.autoSizeColumn(i);
 
             // Energy detail sheet
-            buildDetailSheet(wb, "Energy Data", "ENERGY", "kWh", range);
-            buildDetailSheet(wb, "Water Data",  "WATER",  "m³",  range);
-            buildDetailSheet(wb, "Carbon Data", "CARBON", "tCO₂e", range);
+            buildDetailSheet(wb, "Energy Data", tenantId, "ENERGY", "kWh", range);
+            buildDetailSheet(wb, "Water Data",  tenantId, "WATER",  "m³",  range);
+            buildDetailSheet(wb, "Carbon Data", tenantId, "CARBON", "tCO₂e", range);
 
             wb.write(out);
         }
@@ -109,8 +110,8 @@ public class EsgReportGenerator {
         return outputPath.toString();
     }
 
-    private void buildDetailSheet(Workbook wb, String sheetName, String metricType,
-                                   String unit, Instant[] range) {
+    private void buildDetailSheet(Workbook wb, String sheetName, String tenantId,
+                                   String metricType, String unit, Instant[] range) {
         Sheet sheet = wb.createSheet(sheetName);
         CellStyle headerStyle = createHeaderStyle(wb);
 
@@ -118,7 +119,7 @@ public class EsgReportGenerator {
         String[] cols = {"Source ID", "Timestamp", "Value (" + unit + ")", "Building", "District"};
         for (int i = 0; i < cols.length; i++) createCell(header, i, cols[i], headerStyle);
 
-        var metrics = esgMetricRepository.findByTypeAndRange(metricType, range[0], range[1]);
+        var metrics = esgMetricRepository.findByTypeAndRange(tenantId, metricType, range[0], range[1]);
         int rowNum = 1;
         for (var m : metrics) {
             Row row = sheet.createRow(rowNum++);

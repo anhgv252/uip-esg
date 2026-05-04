@@ -295,7 +295,7 @@ class GenericTriggerIntegrationTest {
                             mockDecision("CREATE_MAINTENANCE_TICKET", "MEDIUM")));
 
             EsgAnomalyDto anomaly = new EsgAnomalyDto("energy", 450.0, 200.0, "BLDG-001", null);
-            when(esgService.detectUtilityAnomalies()).thenReturn(List.of(anomaly));
+            when(esgService.detectUtilityAnomalies(anyString())).thenReturn(List.of(anomaly));
 
             // Act — trigger scheduled check
             scheduledTriggerService.checkScheduledTriggers();
@@ -316,7 +316,7 @@ class GenericTriggerIntegrationTest {
                             mockDecision("INVESTIGATE_SPIKE", "MEDIUM")));
 
             EsgAnomalyDto anomaly = new EsgAnomalyDto("carbon_emission", 120.0, 80.0, null, "2026-Q1");
-            when(esgService.detectEsgAnomalies()).thenReturn(List.of(anomaly));
+            when(esgService.detectEsgAnomalies(anyString())).thenReturn(List.of(anomaly));
 
             scheduledTriggerService.checkScheduledTriggers();
 
