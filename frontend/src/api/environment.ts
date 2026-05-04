@@ -127,23 +127,23 @@ function mapAqi(reading: AqiApiResponse): AqiResponse {
   };
 }
 
-export const getSensors = () =>
-  apiClient.get<SensorApiResponse[]>('/environment/sensors').then((r) => r.data.map(mapSensor));
+export const getSensors = (tenantId?: string) =>
+  apiClient.get<SensorApiResponse[]>('/environment/sensors', { params: { tenantId } }).then((r) => r.data.map(mapSensor));
 
-export const getSensorReadings = (sensorId: number, from?: string, to?: string) =>
+export const getSensorReadings = (sensorId: number, from?: string, to?: string, tenantId?: string) =>
   apiClient
     .get<SensorReading[]>(`/environment/sensors/${sensorId}/readings`, {
-      params: { from, to },
+      params: { from, to, tenantId },
     })
     .then((r) => r.data);
 
-export const getCurrentAqi = () =>
-  apiClient.get<AqiApiResponse[]>('/environment/aqi/current').then((r) => r.data.map(mapAqi));
+export const getCurrentAqi = (tenantId?: string) =>
+  apiClient.get<AqiApiResponse[]>('/environment/aqi/current', { params: { tenantId } }).then((r) => r.data.map(mapAqi));
 
-export const getAqiHistory = (district: string, period = '24h') =>
+export const getAqiHistory = (district: string, period = '24h', tenantId?: string) =>
   apiClient
     .get<AqiApiResponse[]>('/environment/aqi/history', {
-      params: { district, period },
+      params: { district, period, tenantId },
     })
     .then((r) => r.data.map((item) => ({
       sensorId: item.sensorId,

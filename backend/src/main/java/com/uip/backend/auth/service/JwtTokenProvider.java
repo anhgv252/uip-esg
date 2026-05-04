@@ -118,6 +118,15 @@ public class JwtTokenProvider {
         }
     }
 
+    public List<String> extractScopes(String token) {
+        Claims claims = parseClaims(token);
+        Object scopes = claims.get("scopes", List.class);
+        if (scopes instanceof List<?> list) {
+            return list.stream().map(Object::toString).toList();
+        }
+        return List.of();
+    }
+
     private boolean isTokenExpired(String token) {
         return parseClaims(token).getExpiration().before(new Date());
     }

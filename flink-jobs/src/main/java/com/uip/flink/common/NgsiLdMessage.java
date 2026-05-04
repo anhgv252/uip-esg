@@ -46,6 +46,10 @@ public class NgsiLdMessage implements Serializable {
         return measurements != null ? measurements.getValue() : Map.of();
     }
 
+    public String getTenantId() {
+        return meta != null ? meta.getTenantId() : null;
+    }
+
     @Data
     @NoArgsConstructor
     @JsonIgnoreProperties(ignoreUnknown = true)
@@ -60,5 +64,6 @@ public class NgsiLdMessage implements Serializable {
     public static class Meta implements Serializable {
         private String source;
         private String sensorType;
+        private String tenantId;
     }
 }

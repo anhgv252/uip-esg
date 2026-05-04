@@ -51,9 +51,9 @@ export interface EsgReport {
   generatedAt: string | null;
 }
 
-export const getEsgSummary = (year?: number, quarter?: number) =>
+export const getEsgSummary = (year?: number, quarter?: number, tenantId?: string) =>
   apiClient
-    .get<EsgSummary>('/esg/summary', { params: { year, quarter } })
+    .get<EsgSummary>('/esg/summary', { params: { year, quarter, tenantId } })
     .then((r) => r.data);
 
 function mapMetricEntry(raw: EsgMetricApiEntry): EsgMetricEntry {
@@ -66,23 +66,23 @@ function mapMetricEntry(raw: EsgMetricApiEntry): EsgMetricEntry {
   };
 }
 
-export const getEsgEnergy = (from?: string, to?: string) =>
+export const getEsgEnergy = (from?: string, to?: string, tenantId?: string) =>
   apiClient
-    .get<EsgMetricApiEntry[]>('/esg/energy', { params: { from, to } })
+    .get<EsgMetricApiEntry[]>('/esg/energy', { params: { from, to, tenantId } })
     .then((r) => r.data.map(mapMetricEntry));
 
-export const getEsgCarbon = (from?: string, to?: string) =>
+export const getEsgCarbon = (from?: string, to?: string, tenantId?: string) =>
   apiClient
-    .get<EsgMetricApiEntry[]>('/esg/carbon', { params: { from, to } })
+    .get<EsgMetricApiEntry[]>('/esg/carbon', { params: { from, to, tenantId } })
     .then((r) => r.data.map(mapMetricEntry));
 
-export const triggerReportGeneration = (year: number, quarter: number, period = 'quarterly') =>
+export const triggerReportGeneration = (year: number, quarter: number, period = 'quarterly', tenantId?: string) =>
   apiClient
-    .post<EsgReport>('/esg/reports/generate', null, { params: { year, quarter, period } })
+    .post<EsgReport>('/esg/reports/generate', null, { params: { year, quarter, period, tenantId } })
     .then((r) => r.data);
 
-export const getReportStatus = (id: string) =>
-  apiClient.get<EsgReport>(`/esg/reports/${id}/status`).then((r) => r.data);
+export const getReportStatus = (id: string, tenantId?: string) =>
+  apiClient.get<EsgReport>(`/esg/reports/${id}/status`, { params: { tenantId } }).then((r) => r.data);
 
 export const downloadReport = (id: string) =>
   apiClient

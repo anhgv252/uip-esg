@@ -1,6 +1,7 @@
 package com.uip.backend.esg.service;
 
 import com.uip.backend.esg.api.dto.EsgSummaryDto;
+import com.uip.backend.esg.common.CacheKeyBuilder;
 import com.uip.backend.esg.domain.EsgReport;
 import com.uip.backend.esg.repository.EsgMetricRepository;
 import com.uip.backend.esg.repository.EsgReportRepository;
@@ -27,6 +28,7 @@ class EsgServiceTest {
     @Mock private EsgMetricRepository  metricRepository;
     @Mock private EsgReportRepository  reportRepository;
     @Mock private EsgReportGenerator   reportGenerator;
+    @Mock private CacheKeyBuilder      cacheKeyBuilder;
 
     @InjectMocks private EsgService esgService;
 

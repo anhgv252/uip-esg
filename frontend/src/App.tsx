@@ -1,4 +1,4 @@
-import { Suspense } from 'react'
+import { Suspense, useMemo } from 'react'
 import {
   createBrowserRouter,
   RouterProvider,
@@ -11,9 +11,9 @@ import {
   Box,
 } from '@mui/material'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { theme } from '@/theme'
+import { createPartnerTheme } from '@/theme'
 import { AuthProvider } from '@/contexts/AuthContext'
-import { TenantConfigProvider } from '@/contexts/TenantConfigContext'
+import { TenantConfigProvider, useTenantConfig } from '@/contexts/TenantConfigContext'
 import { routes } from '@/routes'
 
 const queryClient = new QueryClient({
@@ -41,8 +41,14 @@ function PageFallback() {
 }
 
 function ThemedApp() {
+  const { config } = useTenantConfig()
+  const muiTheme = useMemo(
+    () => createPartnerTheme(config?.branding),
+    [config?.branding],
+  )
+
   return (
-    <ThemeProvider theme={theme}>
+    <ThemeProvider theme={muiTheme}>
       <CssBaseline />
       <Suspense fallback={<PageFallback />}>
         <RouterProvider router={router} />

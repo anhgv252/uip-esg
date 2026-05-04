@@ -1,4 +1,6 @@
-import { createTheme, alpha } from '@mui/material/styles'
+import { createTheme, alpha, lighten, darken } from '@mui/material/styles'
+import { defaultPalette, baseTypography, baseShape, baseComponents } from './baseTheme'
+import { meetsWcagAA } from './contrastCheck'
 
 declare module '@mui/material/styles' {
   interface Palette {
@@ -21,80 +23,63 @@ declare module '@mui/material/styles' {
   }
 }
 
-const SIDEBAR_BG = '#0A1929'
-const SIDEBAR_TEXT = '#B2BAC2'
-const PRIMARY = '#1976D2'
+export interface PartnerThemeConfig {
+  primaryColor?: string
+  secondaryColor?: string
+  sidebarBg?: string
+  partnerLogoUrl?: string
+  partnerName?: string
+}
 
-export const theme = createTheme({
-  palette: {
-    mode: 'light',
-    primary: {
-      main: PRIMARY,
-      light: '#42A5F5',
-      dark: '#1565C0',
-      contrastText: '#FFFFFF',
-    },
-    secondary: {
-      main: '#009688',
-      light: '#4DB6AC',
-      dark: '#00796B',
-    },
-    error: {
-      main: '#D32F2F',
-    },
-    warning: {
-      main: '#ED6C02',
-    },
-    success: {
-      main: '#2E7D32',
-    },
-    background: {
-      default: '#F5F7FA',
-      paper: '#FFFFFF',
-    },
-    sidebar: {
-      background: SIDEBAR_BG,
-      text: SIDEBAR_TEXT,
-      activeItem: '#FFFFFF',
-      activeBg: alpha(PRIMARY, 0.25),
-      hover: alpha('#FFFFFF', 0.06),
-    },
-  },
+export function createPartnerTheme(config?: PartnerThemeConfig) {
+  const primary = config?.primaryColor ?? defaultPalette.primary.main
+  const sidebarBg = config?.sidebarBg ?? defaultPalette.sidebar.background
 
-  typography: {
-    fontFamily: '"Inter", "Roboto", "Helvetica", "Arial", sans-serif',
-    h4: { fontWeight: 700 },
-    h5: { fontWeight: 600 },
-    h6: { fontWeight: 600 },
-    subtitle1: { fontWeight: 500 },
-  },
+  // WCAG AA contrast check — warn in console if failing
+  if (config?.primaryColor) {
+    if (!meetsWcagAA(primary, '#FFFFFF')) {
+      console.warn(
+        `[UIP Theme] primaryColor "${primary}" fails WCAG AA contrast against white (buttons). ` +
+        'Consider choosing a darker shade.',
+      )
+    }
+    if (!meetsWcagAA('#FFFFFF', sidebarBg, true)) {
+      console.warn(
+        `[UIP Theme] sidebarBg "${sidebarBg}" fails WCAG AA contrast for sidebar text. ` +
+        'Consider choosing a darker background.',
+      )
+    }
+  }
 
-  shape: {
-    borderRadius: 8,
-  },
-
-  components: {
-    MuiButton: {
-      styleOverrides: {
-        root: {
-          textTransform: 'none',
-          fontWeight: 600,
-        },
+  return createTheme({
+    palette: {
+      mode: 'light',
+      primary: {
+        main: primary,
+        light: lighten(primary, 0.3),
+        dark: darken(primary, 0.2),
+        contrastText: '#FFFFFF',
+      },
+      secondary: config?.secondaryColor
+        ? { main: config.secondaryColor, light: lighten(config.secondaryColor, 0.3), dark: darken(config.secondaryColor, 0.2) }
+        : defaultPalette.secondary,
+      error: defaultPalette.error,
+      warning: defaultPalette.warning,
+      success: defaultPalette.success,
+      background: defaultPalette.background,
+      sidebar: {
+        background: sidebarBg,
+        text: defaultPalette.sidebar.text,
+        activeItem: defaultPalette.sidebar.activeItem,
+        activeBg: alpha(primary, 0.25),
+        hover: alpha('#FFFFFF', 0.06),
       },
     },
-    MuiCard: {
-      styleOverrides: {
-        root: {
-          boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
-        },
-      },
-    },
-    MuiAppBar: {
-      styleOverrides: {
-        root: {
-          boxShadow: '0 1px 3px rgba(0,0,0,0.12)',
-        },
-      },
-    },
-  },
-})
+    typography: baseTypography,
+    shape: baseShape,
+    components: baseComponents,
+  })
+}
+
+// Default theme — backward compatible
+export const theme = createPartnerTheme()

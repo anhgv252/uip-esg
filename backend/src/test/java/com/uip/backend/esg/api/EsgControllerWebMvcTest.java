@@ -178,8 +178,8 @@ class EsgControllerWebMvcTest {
     // ─── POST /reports/generate ───────────────────────────────────────────────
 
     @Test
-    @WithMockUser(roles = "OPERATOR")
-    @DisplayName("POST /esg/reports/generate — OPERATOR → 202 Accepted with tenantId")
+    @WithMockUser(username = "operator", authorities = {"ROLE_OPERATOR", "esg:write"})
+    @DisplayName("POST /esg/reports/generate — OPERATOR with esg:write → 202 Accepted with tenantId")
     void generateReport_asOperator_returns202() throws Exception {
         UUID reportId = UUID.randomUUID();
         EsgReportDto dto = EsgReportDto.builder()

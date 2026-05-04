@@ -11,8 +11,8 @@
 |-------|--------|------|-------|-------|------|----|--------|
 | **Foundation** | MVP2-1 | 1–2 | 28 Apr – 09 May | Security P0 + QA Gaps + FE Security | — | 58 | ✅ Done |
 | **Isolation** | MVP2-2 | 3–4 | 12 May – 23 May | Multi-Tenancy BE+FE (core only) | ADR-010, ADR-011, ADR-020, ADR-021 | 55 | ✅ Done |
-| **Performance** | MVP2-3 | 5–6 | 26 May – 06 Jun | Cache + Kafka + Monitoring + Partner Theme | ADR-014, ADR-015, ADR-022, ADR-023 | 58 | 🔄 Next |
-| **Extensibility** | MVP2-4 | 7–8 | 09 Jun – 20 Jun | Partner + Tenant Admin BE API + Runbook | ADR-019, ADR-024 | 52 | ⏳ Planned |
+| **Performance** | MVP2-3 | 5–6 | 26 May – 06 Jun | Cache + Kafka + Monitoring + Partner Theme | ADR-014, ADR-015, ADR-022, ADR-023 | 58 | ✅ Done |
+| **Extensibility** | MVP2-4 | 7–8 | 09 Jun – 20 Jun | Partner + Tenant Admin BE API + Runbook | ADR-019, ADR-024 | 52 | 🔄 Next |
 | **Product** | MVP2-5 | 9–10 | 23 Jun – 04 Jul | Mobile PWA + Tenant Admin Dashboard FE | ADR-010, ADR-019 | 55 | ⏳ Planned |
 | **Buffer/UAT** | MVP2-6 | 11–12 | 07 Jul – 18 Jul | Final UAT + Performance + Docs + Security Scan | — | — | ⏳ Buffer |
 
@@ -368,7 +368,7 @@ V14 migration ✅ Done (MVP2-20)
 
 ---
 
-## SPRINT MVP2-1: Security P0 + QA Gaps
+## SPRINT MVP2-1: Security P0 + QA Gaps ✅ DONE
 **Tuần 1–2 | 2026-04-28 → 2026-05-09 | ~58 SP**
 **ADRs driving this sprint:** Không có ADR mới — đây là sprint hardening MVP1 existing code
 
@@ -753,7 +753,7 @@ QueryClientProvider > AuthProvider > TenantConfigProvider > ThemedApp (ThemeProv
 
 ---
 
-## SPRINT MVP2-2: Multi-Tenancy Backend + Frontend Tenant Context
+## SPRINT MVP2-2: Multi-Tenancy Backend + Frontend Tenant Context ✅ DONE
 **Tuần 3–4 | 2026-05-12 → 2026-05-23 | ~55 SP** (rebalanced từ 67 SP)
 **ADRs driving this sprint:** [ADR-010](../architecture/ADR-010-multi-tenant-strategy.md) · [ADR-011](../architecture/ADR-011-monorepo-module-extraction.md) · [ADR-020](../architecture/ADR-020-non-http-tenant-propagation.md) · [ADR-021](../architecture/ADR-021-t1-force-rls-compat.md)
 
@@ -1552,7 +1552,7 @@ frontend/src/test/useScope.test.ts
 
 ---
 
-## SPRINT MVP2-3: Cache + Kafka Security + Monitoring + Partner Theme Foundation
+## SPRINT MVP2-3: Cache + Kafka Security + Monitoring + Partner Theme Foundation ✅ DONE
 **Tuần 5–6 | 2026-05-26 → 2026-06-06 | ~58 SP** (nhận DevOps từ Sprint 2)
 **ADRs driving this sprint:** [ADR-015](../architecture/ADR-015-caching-read-heavy-performance.md) · [ADR-014](../architecture/ADR-014-telemetry-enrichment-pattern.md) · [ADR-011](../architecture/ADR-011-monorepo-module-extraction.md) · [ADR-019](../architecture/ADR-019-partner-customization-architecture.md) · [ADR-022](../architecture/ADR-022-cache-warming-strategy.md) · [ADR-023](../architecture/ADR-023-rls-migration-strategy.md)
 
@@ -2473,9 +2473,9 @@ frontend/src/theme/partnerThemes/citizen-first.stories.tsx
 
 | Date | Checkpoint | Success Criteria |
 |------|-----------|-----------------|
-| **2026-05-09** | Sprint 1 done | 12 test gaps covered; OWASP audit 0 Critical; OpenAPI CI gate green; FE provider tree reordered |
-| **2026-05-23** | Sprint 2 done | Tenant isolation tests pass; JWT 4 claims; T1 deployment compat; CI/CD <20 min |
-| **2026-06-06** | Sprint 3 done | ESG cache hit <5ms; Kafka SASL auth; Monitoring + Grafana live; Jaeger traces working |
+| **2026-05-09** | Sprint 1 done ✅ | 12 test gaps covered; OWASP audit 0 Critical; OpenAPI CI gate green; FE provider tree reordered |
+| **2026-05-23** | Sprint 2 done ✅ | Tenant isolation tests pass; JWT 4 claims; T1 deployment compat; CI/CD <20 min |
+| **2026-06-06** | Sprint 3 done ✅ | ESG cache hit <5ms; Kafka SASL auth; Monitoring + Grafana live; Jaeger traces working |
 | **2026-06-20** | Sprint 4 done | Partner scaffold compiles; Tenant Admin 6 API functional; Runbook reviewed |
 | **2026-07-04** | Sprint 5 done | PWA installable; Tenant Admin Dashboard FE functional |
 | **2026-07-18** | **MVP2 DONE** | Tier 1 UAT sign-off; production deployment ready |

@@ -28,7 +28,7 @@ export function useTrafficIncidents(status?: string) {
 export function useCongestionMap() {
   return useQuery({
     queryKey: ['congestion-map'],
-    queryFn: getCongestionMap,
+    queryFn: () => getCongestionMap(),
     refetchInterval: 60_000,
   })
 }

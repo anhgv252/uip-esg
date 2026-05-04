@@ -11,10 +11,12 @@ import {
   InputLabel,
   Select,
   MenuItem,
+  Tooltip,
 } from '@mui/material';
 import DownloadIcon from '@mui/icons-material/Download';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { triggerReportGeneration, getReportStatus, downloadReport } from '../../api/esg';
+import { useScope } from '../../hooks/useScope';
 
 const CURRENT_YEAR = new Date().getFullYear();
 const QUARTERS = [1, 2, 3, 4];
@@ -24,6 +26,7 @@ export function ReportGenerationPanel() {
   const [selectedYear, setSelectedYear] = useState(CURRENT_YEAR);
   const [selectedQuarter, setSelectedQuarter] = useState(Math.ceil((new Date().getMonth() + 1) / 3));
   const [activeReportId, setActiveReportId] = useState<string | null>(null);
+  const canWrite = useScope('esg:write');
 
   const qc = useQueryClient();
 
@@ -101,13 +104,17 @@ export function ReportGenerationPanel() {
           </Select>
         </FormControl>
 
-        <Button
-          variant="contained"
-          onClick={() => triggerMutation.mutate()}
-          disabled={isGenerating || triggerMutation.isPending}
-        >
-          Generate Report
-        </Button>
+        <Tooltip title={!canWrite ? 'You need esg:write scope' : ''}>
+          <span>
+            <Button
+              variant="contained"
+              onClick={() => triggerMutation.mutate()}
+              disabled={isGenerating || triggerMutation.isPending || !canWrite}
+            >
+              Generate Report
+            </Button>
+          </span>
+        </Tooltip>
 
         {isDone && (
           <Button

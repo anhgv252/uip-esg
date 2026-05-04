@@ -25,13 +25,13 @@ export default function EnvironmentPage() {
 
   const { data: sensors = [], isLoading: sensorsLoading } = useQuery({
     queryKey: ['sensors'],
-    queryFn: getSensors,
+    queryFn: () => getSensors(),
     refetchInterval: 60_000,
   });
 
   const { data: currentAqi = [], isLoading: aqiLoading } = useQuery({
     queryKey: ['aqi-current'],
-    queryFn: getCurrentAqi,
+    queryFn: () => getCurrentAqi(),
     refetchInterval: 30_000,
   });
 

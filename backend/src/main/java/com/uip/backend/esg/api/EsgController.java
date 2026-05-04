@@ -65,7 +65,7 @@ public class EsgController {
 
     @PostMapping("/reports/generate")
     @Operation(summary = "Trigger async ESG report generation")
-    @PreAuthorize("hasAnyRole('OPERATOR', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('OPERATOR', 'ADMIN') and hasAuthority('esg:write')")
     public ResponseEntity<EsgReportDto> generateReport(
             @RequestParam(defaultValue = "quarterly") String period,
             @RequestParam(defaultValue = "2026")      int year,

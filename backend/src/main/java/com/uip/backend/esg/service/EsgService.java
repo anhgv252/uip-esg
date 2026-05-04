@@ -3,12 +3,16 @@ package com.uip.backend.esg.service;
 import com.uip.backend.esg.api.dto.EsgMetricDto;
 import com.uip.backend.esg.api.dto.EsgReportDto;
 import com.uip.backend.esg.api.dto.EsgSummaryDto;
+import com.uip.backend.esg.common.CacheKeyBuilder;
+import com.uip.backend.esg.config.CacheConfig;
 import com.uip.backend.esg.domain.EsgMetric;
 import com.uip.backend.esg.domain.EsgReport;
 import com.uip.backend.esg.repository.EsgMetricRepository;
 import com.uip.backend.esg.repository.EsgReportRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -32,9 +36,12 @@ public class EsgService {
     private final EsgMetricRepository  metricRepository;
     private final EsgReportRepository  reportRepository;
     private final EsgReportGenerator   reportGenerator;
+    private final CacheKeyBuilder      cacheKeyBuilder;
 
     // ─── Summary ──────────────────────────────────────────────────────────────
 
+    @Cacheable(value = CacheConfig.CACHE_DASHBOARD,
+            key = "@cacheKeyBuilder.dashboardKey(#tenantId, #periodType, #year, #quarter)")
     public EsgSummaryDto getSummary(String tenantId, String periodType, int year, int quarter) {
         Instant[] range = periodType.equalsIgnoreCase("ANNUAL")
                 ? yearRange(year)
@@ -58,25 +65,31 @@ public class EsgService {
 
     // ─── Energy & Carbon ──────────────────────────────────────────────────────
 
+    @Cacheable(value = CacheConfig.CACHE_DASHBOARD,
+            key = "@cacheKeyBuilder.energyKey(#tenantId, #from, #to, #buildingId)")
     public List<EsgMetricDto> getEnergyData(String tenantId, Instant from, Instant to, String buildingId) {
         Instant effectiveTo   = to   != null ? to   : Instant.now();
         Instant effectiveFrom = from != null ? from : effectiveTo.minus(30, ChronoUnit.DAYS);
         List<EsgMetric> metrics = buildingId != null
                 ? metricRepository.findByTypeAndBuilding(tenantId, "ENERGY", buildingId, effectiveFrom, effectiveTo)
                 : metricRepository.findByTypeAndRange(tenantId, "ENERGY", effectiveFrom, effectiveTo);
-        return metrics.stream().map(this::toDto).toList();
+        return new ArrayList<>(metrics.stream().map(this::toDto).toList());
     }
 
+    @Cacheable(value = CacheConfig.CACHE_DASHBOARD,
+            key = "@cacheKeyBuilder.carbonKey(#tenantId, #from, #to)")
     public List<EsgMetricDto> getCarbonData(String tenantId, Instant from, Instant to) {
         Instant effectiveTo   = to   != null ? to   : Instant.now();
         Instant effectiveFrom = from != null ? from : effectiveTo.minus(30, ChronoUnit.DAYS);
-        return metricRepository.findByTypeAndRange(tenantId, "CARBON", effectiveFrom, effectiveTo)
-                .stream().map(this::toDto).toList();
+        return new ArrayList<>(metricRepository.findByTypeAndRange(tenantId, "CARBON", effectiveFrom, effectiveTo)
+                .stream().map(this::toDto).toList());
     }
 
     // ─── Report generation ────────────────────────────────────────────────────
 
     @Transactional
+    @CacheEvict(value = CacheConfig.CACHE_DASHBOARD,
+            key = "@cacheKeyBuilder.dashboardKey(#tenantId, #periodType, #year, #quarter)")
     public EsgReportDto triggerReportGeneration(String tenantId, String periodType, int year, int quarter) {
         EsgReport report = new EsgReport();
         report.setTenantId(tenantId);

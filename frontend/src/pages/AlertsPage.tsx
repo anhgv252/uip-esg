@@ -30,6 +30,7 @@ import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward'
 import { formatDistanceToNow, format } from 'date-fns'
 import type { AlertEvent } from '@/api/alerts'
 import { useAlerts, useAcknowledgeAlert, useEscalateAlert } from '@/hooks/useAlertManagement'
+import { useScope } from '@/hooks/useScope'
 
 const SEVERITY_COLORS = {
   LOW: '#4caf50',
@@ -147,6 +148,7 @@ export default function AlertsPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [page, setPage] = useState(0)
   const [filters, setFilters] = useState({ status: '', severity: '' })
+  const canAck = useScope('alert:ack')
 
   const { data, isLoading, error } = useAlerts({
     status: filters.status || undefined,
@@ -196,9 +198,13 @@ export default function AlertsPage() {
           {['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'].map((s) => <MenuItem key={s} value={s}>{s}</MenuItem>)}
         </TextField>
         {selected.size > 0 && (
-          <Button variant="outlined" size="small" onClick={handleBulkAck} startIcon={<CheckCircleIcon />}>
-            Acknowledge selected ({selected.size})
-          </Button>
+          <Tooltip title={!canAck ? 'You need alert:ack scope' : ''}>
+            <span>
+              <Button variant="outlined" size="small" onClick={handleBulkAck} startIcon={<CheckCircleIcon />} disabled={!canAck}>
+                Acknowledge selected ({selected.size})
+              </Button>
+            </span>
+          </Tooltip>
         )}
       </Box>
 
@@ -264,10 +270,12 @@ export default function AlertsPage() {
                 <TableCell onClick={(e) => e.stopPropagation()}>
                   <Box display="flex" gap={0.5}>
                     {alert.status === 'OPEN' && (
-                      <Tooltip title="Acknowledge">
-                        <IconButton size="small" color="success" onClick={() => handleAck(String(alert.id))}>
-                          <CheckCircleIcon fontSize="small" />
-                        </IconButton>
+                      <Tooltip title={!canAck ? 'You need alert:ack scope' : 'Acknowledge'}>
+                        <span>
+                          <IconButton size="small" color="success" onClick={() => handleAck(String(alert.id))} disabled={!canAck}>
+                            <CheckCircleIcon fontSize="small" />
+                          </IconButton>
+                        </span>
                       </Tooltip>
                     )}
                     {(alert.status === 'OPEN' || alert.status === 'ACKNOWLEDGED') && (

@@ -53,13 +53,14 @@ export const getAlerts = (params?: {
   to?: string;
   page?: number;
   size?: number;
+  tenantId?: string;
 }) => apiClient.get<AlertEventsPage>('/alerts', { params }).then((r) => r.data);
 
-export const acknowledgeAlert = (id: string, note?: string) =>
-  apiClient.put<AlertEvent>(`/alerts/${id}/acknowledge`, { note }).then((r) => r.data);
+export const acknowledgeAlert = (id: string, note?: string, tenantId?: string) =>
+  apiClient.put<AlertEvent>(`/alerts/${id}/acknowledge`, { note, tenantId }).then((r) => r.data);
 
-export const escalateAlert = (id: string, note?: string) =>
-  apiClient.put<AlertEvent>(`/alerts/${id}/escalate`, { note }).then((r) => r.data);
+export const escalateAlert = (id: string, note?: string, tenantId?: string) =>
+  apiClient.put<AlertEvent>(`/alerts/${id}/escalate`, { note, tenantId }).then((r) => r.data);
 
 export const getCitizenNotifications = (params?: { page?: number; size?: number }) =>
   apiClient.get<AlertEventsPage>('/alerts/notifications', { params }).then((r) => r.data);

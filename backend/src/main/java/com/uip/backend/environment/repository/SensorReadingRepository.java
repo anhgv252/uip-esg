@@ -38,11 +38,11 @@ public interface SensorReadingRepository extends JpaRepository<SensorReading, Se
      * Thay vì sort 1M+ rows, query này index-seek trực tiếp đến latest row per sensor.
      */
     @Query(value = """
-        SELECT sr.id, sr.sensor_id, sr.timestamp, sr.aqi, sr.pm25, sr.pm10,
+        SELECT sr.id, sr.sensor_id, sr.timestamp, sr.tenant_id, sr.aqi, sr.pm25, sr.pm10,
                sr.o3, sr.no2, sr.so2, sr.co, sr.temperature, sr.humidity, sr.raw_payload
         FROM environment.sensors s
         CROSS JOIN LATERAL (
-            SELECT id, sensor_id, timestamp, aqi, pm25, pm10, o3, no2, so2, co,
+            SELECT id, sensor_id, timestamp, tenant_id, aqi, pm25, pm10, o3, no2, so2, co,
                    temperature, humidity, raw_payload
             FROM environment.sensor_readings r
             WHERE r.sensor_id = s.sensor_id

@@ -178,6 +178,19 @@ springdoc:
   swagger-ui:
     operationsSorter: method
 
+uip:
+  capabilities:
+    multi-tenancy: true
+    redis-cache: true
+    clickhouse: false
+    kong-gateway: false
+    keycloak: false
+    edge-computing: false
+    multi-region: false
+    iot-ingestion-external: false
+    alert-external: false
+    analytics-external: false
+
 logging:
   level:
     com.uip: INFO

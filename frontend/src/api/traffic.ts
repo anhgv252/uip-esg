@@ -48,6 +48,7 @@ export const getTrafficCounts = (params?: {
   intersection?: string
   from?: string
   to?: string
+  tenantId?: string
 }) =>
   apiClient
     .get<TrafficCountDto[]>('/traffic/counts', { params })
@@ -57,13 +58,14 @@ export const getTrafficIncidents = (params?: {
   status?: string
   page?: number
   size?: number
+  tenantId?: string
 }) =>
   apiClient
     .get<TrafficIncidentPage>('/traffic/incidents', { params })
     .then((r) => r.data)
 
-export const getCongestionMap = () =>
-  apiClient.get<CongestionGeoJsonDto>('/traffic/congestion-map').then((r) => r.data)
+export const getCongestionMap = (tenantId?: string) =>
+  apiClient.get<CongestionGeoJsonDto>('/traffic/congestion-map', { params: { tenantId } }).then((r) => r.data)
 
 export const updateIncidentStatus = (id: string, status: string) =>
   apiClient

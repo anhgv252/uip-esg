@@ -295,7 +295,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Logout â clear httpOnly cookie and invalidate token */
+        /** Logout — clear httpOnly cookie and invalidate token */
         post: operations["logout"];
         delete?: never;
         options?: never;
@@ -347,7 +347,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Test trigger with sample payload â dry run, no process started */
+        /** Test trigger with sample payload — dry run, no process started */
         post: operations["testTrigger"];
         delete?: never;
         options?: never;
@@ -696,7 +696,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** AQI history â optionally filtered by district and period (24h/7d/30d) */
+        /** AQI history — optionally filtered by district and period (24h/7d/30d) */
         get: operations["getAqiHistory"];
         put?: never;
         post?: never;
@@ -1201,15 +1201,15 @@ export interface components {
             createdAt?: string;
         };
         PageProcessInstanceDto: {
+            /** Format: int32 */
+            totalPages?: number;
             /** Format: int64 */
             totalElements?: number;
             /** Format: int32 */
-            totalPages?: number;
+            numberOfElements?: number;
+            pageable?: components["schemas"]["PageableObject"];
             first?: boolean;
             last?: boolean;
-            pageable?: components["schemas"]["PageableObject"];
-            /** Format: int32 */
-            numberOfElements?: number;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["ProcessInstanceDto"][];
@@ -1219,19 +1219,19 @@ export interface components {
             empty?: boolean;
         };
         PageableObject: {
-            paged?: boolean;
-            unpaged?: boolean;
             /** Format: int32 */
             pageNumber?: number;
             /** Format: int32 */
             pageSize?: number;
+            paged?: boolean;
+            unpaged?: boolean;
             /** Format: int64 */
             offset?: number;
             sort?: components["schemas"]["SortObject"];
         };
         SortObject: {
-            unsorted?: boolean;
             sorted?: boolean;
+            unsorted?: boolean;
             empty?: boolean;
         };
         ProcessDefinitionDto: {
@@ -1245,15 +1245,15 @@ export interface components {
             suspended?: boolean;
         };
         PageTrafficIncidentDto: {
+            /** Format: int32 */
+            totalPages?: number;
             /** Format: int64 */
             totalElements?: number;
             /** Format: int32 */
-            totalPages?: number;
+            numberOfElements?: number;
+            pageable?: components["schemas"]["PageableObject"];
             first?: boolean;
             last?: boolean;
-            pageable?: components["schemas"]["PageableObject"];
-            /** Format: int32 */
-            numberOfElements?: number;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["TrafficIncidentDto"][];
@@ -1424,15 +1424,15 @@ export interface components {
             paidAt?: string;
         };
         PageInvoiceDto: {
+            /** Format: int32 */
+            totalPages?: number;
             /** Format: int64 */
             totalElements?: number;
             /** Format: int32 */
-            totalPages?: number;
+            numberOfElements?: number;
+            pageable?: components["schemas"]["PageableObject"];
             first?: boolean;
             last?: boolean;
-            pageable?: components["schemas"]["PageableObject"];
-            /** Format: int32 */
-            numberOfElements?: number;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["InvoiceDto"][];
@@ -1457,15 +1457,15 @@ export interface components {
             district?: string;
         };
         PageAlertEventDto: {
+            /** Format: int32 */
+            totalPages?: number;
             /** Format: int64 */
             totalElements?: number;
             /** Format: int32 */
-            totalPages?: number;
+            numberOfElements?: number;
+            pageable?: components["schemas"]["PageableObject"];
             first?: boolean;
             last?: boolean;
-            pageable?: components["schemas"]["PageableObject"];
-            /** Format: int32 */
-            numberOfElements?: number;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["AlertEventDto"][];
@@ -1475,15 +1475,15 @@ export interface components {
             empty?: boolean;
         };
         PageUserSummaryDto: {
+            /** Format: int32 */
+            totalPages?: number;
             /** Format: int64 */
             totalElements?: number;
             /** Format: int32 */
-            totalPages?: number;
+            numberOfElements?: number;
+            pageable?: components["schemas"]["PageableObject"];
             first?: boolean;
             last?: boolean;
-            pageable?: components["schemas"]["PageableObject"];
-            /** Format: int32 */
-            numberOfElements?: number;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["UserSummaryDto"][];
@@ -1493,15 +1493,15 @@ export interface components {
             empty?: boolean;
         };
         PageErrorRecord: {
+            /** Format: int32 */
+            totalPages?: number;
             /** Format: int64 */
             totalElements?: number;
             /** Format: int32 */
-            totalPages?: number;
+            numberOfElements?: number;
+            pageable?: components["schemas"]["PageableObject"];
             first?: boolean;
             last?: boolean;
-            pageable?: components["schemas"]["PageableObject"];
-            /** Format: int32 */
-            numberOfElements?: number;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["ErrorRecord"][];
