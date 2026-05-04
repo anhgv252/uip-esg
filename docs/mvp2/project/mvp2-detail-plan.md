@@ -593,9 +593,9 @@ backend/src/main/resources/db/migration/V15__create_audit_log_table.sql
 ```
 
 **Acceptance Criteria:**
-- [ ] `AuditLog` entity: id, actor, action, resourceType, resourceId, tenantId, timestamp, details(jsonb)
-- [ ] `AuditLogService.logAction(actor, action, resourceType, resourceId, details)` hoạt động
-- [ ] Block GAP-07 test — phải xong trước MVP2-03c
+- [x] `AuditLog` entity: id, actor, action, resourceType, resourceId, tenantId, timestamp, details(jsonb)
+- [x] `AuditLogService.logAction(actor, action, resourceType, resourceId, details)` hoạt động
+- [x] Block GAP-07 test — phải xong trước MVP2-03c
 
 ---
 
@@ -742,14 +742,14 @@ QueryClientProvider > AuthProvider > TenantConfigProvider > ThemedApp (ThemeProv
 
 ### Sprint MVP2-1 DoD
 
-- [ ] JaCoCo ≥80% trên critical paths (alert, cache, ai-workflow)
-- [ ] Zero P0 security findings trong OWASP audit
-- [ ] OpenAPI CI gate pass trong GitHub Actions
-- [ ] Tất cả 12 test gaps (GAP-01 đến GAP-12) có test coverage
-- [ ] CI pipeline xanh: build + test + openapi-check
-- [ ] AuditLog entity + service sẵn sàng (block GAP-07 test)
-- [ ] Actuator endpoints bị lock cho internal-only
-- [ ] FE: App.tsx provider tree đúng thứ tự, TypeScript build pass
+- [ ] JaCoCo ≥80% trên critical paths (alert, cache, ai-workflow) ⚠️ _hiện 75%, CI chưa enforce_
+- [ ] Zero P0 security findings trong OWASP audit ⚠️ _chưa chạy OWASP scan_
+- [x] OpenAPI CI gate pass trong GitHub Actions
+- [ ] Tất cả 12 test gaps (GAP-01 đến GAP-12) có test coverage ⚠️ _9/12: GAP-06, GAP-08 listener, GAP-07 CB onError còn thiếu_
+- [ ] CI pipeline xanh: build + test + openapi-check ⚠️ _openapi-check có, coverage gate chưa chạy trong CI_
+- [x] AuditLog entity + service sẵn sàng (block GAP-07 test)
+- [ ] Actuator endpoints bị lock cho internal-only ⚠️ _RBAC đúng nhưng thiếu IP restriction / separate management port_
+- [x] FE: App.tsx provider tree đúng thứ tự, TypeScript build pass
 
 ---
 
@@ -833,11 +833,11 @@ backend/src/test/java/com/uip/backend/common/TenantContextFilterTest.java
 ```
 
 **Acceptance Criteria:**
-- [ ] JWT claim `tenant_id` → TenantContext.set() → SET LOCAL trong PostgreSQL session
-- [ ] ThreadLocal bị clear sau request (trong finally block)
-- [ ] Request không có `tenant_id` trong JWT → 401 (không phải NPE)
-- [ ] Test: concurrent requests với 2 tenant khác nhau → không cross-contaminate
-- [ ] Async context (CompletableFuture, @Async): TenantContext propagate đúng
+- [x] JWT claim `tenant_id` → TenantContext.set() → SET LOCAL trong PostgreSQL session
+- [x] ThreadLocal bị clear sau request (trong finally block)
+- [x] Request không có `tenant_id` trong JWT → 401 (không phải NPE)
+- [x] Test: concurrent requests với 2 tenant khác nhau → không cross-contaminate
+- [x] Async context (CompletableFuture, @Async): TenantContext propagate đúng
 
 ---
 
@@ -1299,10 +1299,10 @@ backend/src/main/resources/db/migration/V16__add_tenant_to_app_users.sql   ← t
 ```
 
 **Acceptance Criteria:**
-- [ ] JWT chứa: `sub`, `roles`, `tenant_id`, `tenant_path`, `scopes`, `allowed_buildings`
-- [ ] `AppUser` có `tenantId` column, default `'default'` (backward compat)
-- [ ] `UserRole` enum thêm `ROLE_TENANT_ADMIN`
-- [ ] Existing JWT tokens (chỉ có sub+roles) vẫn validate được (graceful degradation)
+- [x] JWT chứa: `sub`, `roles`, `tenant_id`, `tenant_path`, `scopes`, `allowed_buildings`
+- [x] `AppUser` có `tenantId` column, default `'default'` (backward compat)
+- [x] `UserRole` enum thêm `ROLE_TENANT_ADMIN`
+- [x] Existing JWT tokens (chỉ có sub+roles) vẫn validate được (graceful degradation)
 
 ---
 
@@ -1535,20 +1535,20 @@ frontend/src/test/useScope.test.ts
 
 ### Sprint MVP2-2 DoD
 
-- [ ] Tenant A query → không thấy data Tenant B (BE integration test pass)
-- [ ] JWT token sau login có `tenant_id`, `tenant_path`, `scopes`, `allowed_buildings`
-- [ ] Frontend: `useAuth().user.tenantId` trả đúng giá trị từ JWT
-- [ ] Frontend: nav item bị ẩn khi feature flag disabled (test với mock config)
-- [ ] `GET /api/v1/tenant/config` trả đúng config của tenant đang đăng nhập
-- [ ] K8s Helm deploy thành công trên k3s local
-- [ ] CI/CD pipeline: push → staging deploy <20 phút
-- [ ] V15 backfill complete — existing data có tenant_id='default'
-- [ ] T1 deployment (`multi-tenancy: false`) chạy đúng, RLS không block queries
-- [ ] Async methods propagate TenantContext đúng
-- [ ] CORS dynamic cho multi-tenant domains
-- [ ] FE: App.tsx provider tree đúng thứ tự, React Query keys có tenantId
-- [ ] FE: TenantConfig Error Boundary hoạt động, không crash khi API fail
-- [ ] FE: TypeScript tenant types centralized trong `types/tenant.ts`
+- [x] Tenant A query → không thấy data Tenant B (BE integration test pass)
+- [x] JWT token sau login có `tenant_id`, `tenant_path`, `scopes`, `allowed_buildings`
+- [x] Frontend: `useAuth().user.tenantId` trả đúng giá trị từ JWT
+- [x] Frontend: nav item bị ẩn khi feature flag disabled (test với mock config)
+- [x] `GET /api/v1/tenant/config` trả đúng config của tenant đang đăng nhập
+- [ ] K8s Helm deploy thành công trên k3s local ⚠️ _chưa verify_
+- [ ] CI/CD pipeline: push → staging deploy <20 phút ⚠️ _chưa verify_
+- [ ] V15 backfill complete — existing data có tenant_id='default' ⚠️ _backfill ở V14, plan numbering lệch_
+- [ ] T1 deployment (`multi-tenancy: false`) chạy đúng, RLS không block queries ⚠️ _flag tồn tại, nhưng không có T1 profile riêng_
+- [x] Async methods propagate TenantContext đúng
+- [ ] CORS dynamic cho multi-tenant domains ⚠️ _static 1 origin, không dynamic per-tenant_
+- [x] FE: App.tsx provider tree đúng thứ tự, React Query keys có tenantId
+- [x] FE: TenantConfig Error Boundary hoạt động, không crash khi API fail
+- [ ] FE: TypeScript tenant types centralized trong `types/tenant.ts` ❌ _file không tồn tại_
 
 ---
 
@@ -1597,10 +1597,10 @@ backend/src/main/java/com/uip/backend/esg/
 - `getTrendData(tenantId, sensorId, from, to)` → `esg-trend` (TTL 30s)
 
 **Acceptance Criteria:**
-- [ ] Cache key chứa `tenant_id` — bắt buộc, fail build nếu không có
-- [ ] `@CacheEvict` khi ESG data được recalculate (Kafka event → cache clear)
-- [ ] Không có string format inline ở caller — phải dùng CacheKeyBuilder
-- [ ] Performance test: dashboard API call 2 → cache hit, response <5ms (trước: ~200ms)
+- [x] Cache key chứa `tenant_id` — bắt buộc, fail build nếu không có
+- [x] `@CacheEvict` khi ESG data được recalculate (Kafka event → cache clear)
+- [x] Không có string format inline ở caller — phải dùng CacheKeyBuilder
+- [ ] Performance test: dashboard API call 2 → cache hit, response <5ms (trước: ~200ms) ⚠️ _chưa có k6 test_
 
 ---
 
@@ -1693,9 +1693,9 @@ uip:
 ```
 
 **Acceptance Criteria:**
-- [ ] `CapabilityProperties` được inject vào bất kỳ component cần kiểm tra flag
-- [ ] Application start với flag mặc định → không có NPE / missing property warning
-- [ ] Test: toggle flag trong test → behavior thay đổi đúng
+- [x] `CapabilityProperties` được inject vào bất kỳ component cần kiểm tra flag
+- [x] Application start với flag mặc định → không có NPE / missing property warning
+- [x] Test: toggle flag trong test → behavior thay đổi đúng
 
 ---
 
@@ -1759,10 +1759,10 @@ backend/src/main/resources/application.yml ← OTEL config
 ```
 
 **Acceptance Criteria:**
-- [ ] HTTP request → trace ID propagate qua: REST → Service → Repository → DB
-- [ ] `traceId` trong error response (MVP2-04) match với Jaeger UI
-- [ ] Async calls (Kafka publish, @Async) carry context
-- [ ] Jaeger UI: `http://localhost:16686` accessible local dev
+- [x] HTTP request → trace ID propagate qua: REST → Service → Repository → DB
+- [x] `traceId` trong error response (MVP2-04) match với Jaeger UI
+- [x] Async calls (Kafka publish, @Async) carry context
+- [ ] Jaeger UI: `http://localhost:16686` accessible local dev ⚠️ _chưa verify_
 
 ---
 
@@ -1848,11 +1848,11 @@ function ThemedApp() {
 ```
 
 **Acceptance Criteria:**
-- [ ] Tenant config có `branding.primaryColor="#2E7D32"` → sidebar và buttons đổi sang green
-- [ ] Tenant không có branding config → theme mặc định UIP blue, không crash
-- [ ] Theme update khi `config` thay đổi (không cần page reload)
-- [ ] Partner logo: nếu có `logoUrl` → thay "UIP Smart City" text trong sidebar
-- [ ] `createPartnerTheme()` no-arg → output giống `theme` hiện tại (regression pass)
+- [x] Tenant config có `branding.primaryColor="#2E7D32"` → sidebar và buttons đổi sang green
+- [x] Tenant không có branding config → theme mặc định UIP blue, không crash
+- [x] Theme update khi `config` thay đổi (không cần page reload)
+- [x] Partner logo: nếu có `logoUrl` → thay "UIP Smart City" text trong sidebar
+- [x] `createPartnerTheme()` no-arg → output giống `theme` hiện tại (regression pass)
 
 ---
 
@@ -1886,10 +1886,10 @@ const canAcknowledge = useScope('alert:ack')
 ```
 
 **Acceptance Criteria:**
-- [ ] User với `scopes: ["esg:read"]` → "Generate ESG Report" button disabled
-- [ ] User với `scopes: ["esg:read","esg:write"]` → button enabled
-- [ ] T1 legacy user không có `scopes` field → `useScope()` trả `false` → button disabled (secure default)
-- [ ] Thêm `esg:write` và `alert:ack` vào JWT của ROLE_OPERATOR và ROLE_ADMIN tại Backend
+- [x] User với `scopes: ["esg:read"]` → "Generate ESG Report" button disabled
+- [x] User với `scopes: ["esg:read","esg:write"]` → button enabled
+- [x] T1 legacy user không có `scopes` field → `useScope()` trả `false` → button disabled (secure default)
+- [x] Thêm `esg:write` và `alert:ack` vào JWT của ROLE_OPERATOR và ROLE_ADMIN tại Backend
 
 ---
 
@@ -2016,18 +2016,18 @@ frontend/src/theme/contrastCheck.ts   ← meetsWcagAA(fg, bg): boolean
 
 ### Sprint MVP2-3 DoD
 
-- [ ] ESG dashboard API: cache hit response <5ms (test với k6)
-- [ ] Kafka: SASL auth required, anonymous connections rejected
-- [ ] Tracing: trace ID trong tất cả error responses
-- [ ] Coverage gate ≥80% green trong CI
-- [ ] Capability flags: application start với full config không warning
-- [ ] Frontend: `createPartnerTheme('#2E7D32')` → theme xanh lá, không crash
-- [ ] Frontend: "Generate ESG Report" button disabled khi thiếu `esg:write` scope
-- [ ] Frontend: `useTenantConfig()` đã được mount trong App.tsx provider tree
-- [ ] EsgService tất cả methods có tenantId param (refactor complete)
-- [ ] Prometheus 5 alert rules active, Grafana dashboards live (moved from Sprint 2)
-- [ ] PostgreSQL backup restore drill documented (moved from Sprint 2)
-- [ ] Error topic consumer log structured warning cho telemetry errors
+- [ ] ESG dashboard API: cache hit response <5ms (test với k6) ⚠️ _cache implemented nhưng chưa có k6 benchmark_
+- [ ] Kafka: SASL auth required, anonymous connections rejected ❌ _chưa implement, PLAINTEXT trên tất cả listeners_
+- [x] Tracing: trace ID trong tất cả error responses
+- [ ] Coverage gate ≥80% green trong CI ⚠️ _gate 75%, chưa chạy trong CI_
+- [x] Capability flags: application start với full config không warning
+- [x] Frontend: `createPartnerTheme('#2E7D32')` → theme xanh lá, không crash
+- [x] Frontend: "Generate ESG Report" button disabled khi thiếu `esg:write` scope
+- [x] Frontend: `useTenantConfig()` đã được mount trong App.tsx provider tree
+- [x] EsgService tất cả methods có tenantId param (refactor complete)
+- [ ] Prometheus 5 alert rules active, Grafana dashboards live (moved from Sprint 2) ⚠️ _chưa verify_
+- [ ] PostgreSQL backup restore drill documented (moved from Sprint 2) ⚠️ _chưa có runbook_
+- [x] Error topic consumer log structured warning cho telemetry errors
 
 ---
 
