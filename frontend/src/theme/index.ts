@@ -1,6 +1,9 @@
 import { createTheme, alpha, lighten, darken } from '@mui/material/styles'
 import { defaultPalette, baseTypography, baseShape, baseComponents } from './baseTheme'
 import { meetsWcagAA } from './contrastCheck'
+import { type PartnerThemeConfig } from '@/types/tenant'
+
+export type { PartnerThemeConfig }
 
 declare module '@mui/material/styles' {
   interface Palette {
@@ -23,13 +26,6 @@ declare module '@mui/material/styles' {
   }
 }
 
-export interface PartnerThemeConfig {
-  primaryColor?: string
-  secondaryColor?: string
-  sidebarBg?: string
-  partnerLogoUrl?: string
-  partnerName?: string
-}
 
 export function createPartnerTheme(config?: PartnerThemeConfig) {
   const primary = config?.primaryColor ?? defaultPalette.primary.main

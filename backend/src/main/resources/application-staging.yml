@@ -1,0 +1,54 @@
+# Staging profile — overrides dev defaults.
+# Activate: SPRING_PROFILES_ACTIVE=staging
+# Kafka SASL_PLAINTEXT enforced; anonymous connections rejected.
+
+spring:
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:kafka:9094}
+    properties:
+      security.protocol: SASL_PLAINTEXT
+      sasl.mechanism: PLAIN
+      sasl.jaas.config: >
+        org.apache.kafka.common.security.plain.PlainLoginModule required
+        username="${KAFKA_USERNAME:uip-backend}"
+        password="${KAFKA_PASSWORD:changeme}";
+    producer:
+      properties:
+        security.protocol: SASL_PLAINTEXT
+        sasl.mechanism: PLAIN
+        sasl.jaas.config: >
+          org.apache.kafka.common.security.plain.PlainLoginModule required
+          username="${KAFKA_USERNAME:uip-backend}"
+          password="${KAFKA_PASSWORD:changeme}";
+    consumer:
+      properties:
+        security.protocol: SASL_PLAINTEXT
+        sasl.mechanism: PLAIN
+        sasl.jaas.config: >
+          org.apache.kafka.common.security.plain.PlainLoginModule required
+          username="${KAFKA_USERNAME:uip-backend}"
+          password="${KAFKA_PASSWORD:changeme}";
+
+# Staging DB — expects separate RDS/Cloud SQL instance
+  datasource:
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+
+# Staging Redis
+  data:
+    redis:
+      host: ${REDIS_HOST:redis}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+
+uip:
+  capabilities:
+    multi-tenancy: true
+    redis-cache: true
+    kong-gateway: true
+
+logging:
+  level:
+    root: WARN
+    com.uip: INFO

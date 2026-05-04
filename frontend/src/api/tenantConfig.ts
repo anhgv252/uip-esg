@@ -1,14 +1,7 @@
 import { apiClient } from './client'
+import { type TenantConfig } from '@/types/tenant'
 
-export interface TenantConfig {
-  tenantId: string
-  features: Record<string, { enabled: boolean }>
-  branding: {
-    partnerName: string
-    primaryColor: string
-    logoUrl: string | null
-  }
-}
+export type { TenantConfig }
 
 export const tenantConfigApi = {
   getConfig: () =>

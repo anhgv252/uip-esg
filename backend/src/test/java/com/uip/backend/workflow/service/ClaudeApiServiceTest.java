@@ -234,6 +234,26 @@ class ClaudeApiServiceTest {
         assertThat(result.getConfidence()).isEqualTo(0.88);
     }
 
+    // ─── Case GAP-08 ─────────────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("GAP-08: prompt template file missing → IOException → returns fallback decision")
+    void analyzeAsync_promptTemplateMissing_usesFallback() throws Exception {
+        // Arrange: use a scenario key that has no corresponding .txt file in classpath
+        String missingScenario = "nonExistentScenario_gap08";
+        AIDecision fallback = buildDecision("FALLBACK", 0.0, "LOW");
+        when(fallbackService.getFallbackDecision(eq(missingScenario), any())).thenReturn(fallback);
+
+        // Act: loadPromptTemplate will throw IOException (ClassPathResource not found)
+        //      analyzeAsync catches all exceptions and returns fallback
+        AIDecision result = claudeApiService.analyzeAsync(missingScenario, CONTEXT).get();
+
+        // Assert: fallback returned, RestTemplate never called
+        assertThat(result.getDecision()).isEqualTo("FALLBACK");
+        verifyNoInteractions(claudeRestTemplate);
+        verify(fallbackService).getFallbackDecision(eq(missingScenario), any());
+    }
+
     // ─── Helpers ─────────────────────────────────────────────────────────────
 
     private void mockRestTemplateResponse(String text) {

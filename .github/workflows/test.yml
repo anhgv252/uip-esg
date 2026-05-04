@@ -45,9 +45,9 @@ jobs:
           java-version: '17'
           distribution: temurin
           cache: gradle
-      - name: Run backend tests
+      - name: Run backend tests with coverage gate
         working-directory: backend
-        run: ./gradlew test --no-daemon
+        run: ./gradlew test jacocoTestCoverageVerification --no-daemon
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4

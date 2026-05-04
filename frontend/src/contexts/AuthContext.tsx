@@ -8,17 +8,9 @@ import React, {
 } from 'react'
 import { tokenStore, tenantStore } from '@/api/client'
 import { authApi, type LoginRequest } from '@/api/auth'
+import { type UserRole, type AuthUser } from '@/types/tenant'
 
-export type UserRole = 'ROLE_ADMIN' | 'ROLE_OPERATOR' | 'ROLE_CITIZEN' | 'ROLE_TENANT_ADMIN'
-
-export interface AuthUser {
-  username: string
-  role: UserRole
-  tenantId: string
-  tenantPath: string
-  scopes: string[]
-  allowedBuildings: string[]
-}
+export type { UserRole, AuthUser }
 
 export interface AuthContextValue {
   user: AuthUser | null

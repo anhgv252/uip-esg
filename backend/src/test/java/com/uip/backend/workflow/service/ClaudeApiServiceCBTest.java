@@ -174,6 +174,41 @@ class ClaudeApiServiceCBTest {
                 .isNotEqualTo(CircuitBreaker.State.OPEN);
     }
 
+    // --- GAP-07: onError callback failure rate threshold --------------------------
+
+    @Test
+    @DisplayName("GAP-07: CB records each failure — failure rate >= threshold triggers OPEN")
+    void circuitBreaker_failureRateThresholdReached_opensCircuit() {
+        // Given — CB configured with minimumNumberOfCalls=5, failureRateThreshold=50%
+        // Need at least 5 calls, >50% failures → OPEN
+        when(claudeRestTemplate.exchange(anyString(), any(), any(), eq(ClaudeApiResponse.class)))
+                .thenThrow(new RestClientException("connection refused"));
+
+        int onErrorCount = 0;
+        for (int i = 0; i < 5; i++) {
+            try {
+                circuitBreaker.executeSupplier(() -> claudeRestTemplate.exchange(
+                        "http://test", HttpMethod.POST, null, ClaudeApiResponse.class));
+            } catch (Exception ignored) {
+                onErrorCount++;
+            }
+        }
+
+        // Then — all 5 calls failed (100% > 50% threshold) → CB opens
+        assertThat(onErrorCount).as("Each failure should be recorded by CB").isEqualTo(5);
+        assertThat(circuitBreaker.getState())
+                .as("CB must be OPEN after failure rate exceeds threshold")
+                .isEqualTo(CircuitBreaker.State.OPEN);
+
+        // Metrics confirm failure count
+        assertThat(circuitBreaker.getMetrics().getNumberOfFailedCalls())
+                .as("CB metrics must record all failed calls")
+                .isEqualTo(5);
+        assertThat(circuitBreaker.getMetrics().getFailureRate())
+                .as("Failure rate must be 100%")
+                .isEqualTo(100.0f);
+    }
+
     // --- Helpers ------------------------------------------------------------------
 
     private void mockRestTemplateResponse(String text) {

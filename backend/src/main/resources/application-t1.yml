@@ -1,0 +1,20 @@
+# T1 deployment profile — single-tenant, no RLS, minimal infrastructure.
+# Activate: SPRING_PROFILES_ACTIVE=t1
+# Use for single-city deployments that do not need multi-tenancy overhead.
+
+uip:
+  capabilities:
+    # T1: RLS and tenant isolation disabled — single tenant only
+    multi-tenancy: false
+    redis-cache: false
+    kong-gateway: false
+    keycloak: false
+    iot-ingestion-external: false
+    alert-external: false
+
+spring:
+  # T1 can use in-process caching (Caffeine) instead of Redis
+  cache:
+    type: caffeine
+    caffeine:
+      spec: maximumSize=500,expireAfterWrite=300s

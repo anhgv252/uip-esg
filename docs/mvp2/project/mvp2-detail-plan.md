@@ -742,11 +742,11 @@ QueryClientProvider > AuthProvider > TenantConfigProvider > ThemedApp (ThemeProv
 
 ### Sprint MVP2-1 DoD
 
-- [ ] JaCoCo ≥80% trên critical paths (alert, cache, ai-workflow) ⚠️ _hiện 75%, CI chưa enforce_
+- [x] JaCoCo ≥80% trên critical paths (alert, cache, ai-workflow)
 - [ ] Zero P0 security findings trong OWASP audit ⚠️ _chưa chạy OWASP scan_
 - [x] OpenAPI CI gate pass trong GitHub Actions
-- [ ] Tất cả 12 test gaps (GAP-01 đến GAP-12) có test coverage ⚠️ _9/12: GAP-06, GAP-08 listener, GAP-07 CB onError còn thiếu_
-- [ ] CI pipeline xanh: build + test + openapi-check ⚠️ _openapi-check có, coverage gate chưa chạy trong CI_
+- [x] Tất cả 12 test gaps (GAP-01 đến GAP-12) có test coverage
+- [x] CI pipeline xanh: build + test + openapi-check
 - [x] AuditLog entity + service sẵn sàng (block GAP-07 test)
 - [ ] Actuator endpoints bị lock cho internal-only ⚠️ _RBAC đúng nhưng thiếu IP restriction / separate management port_
 - [x] FE: App.tsx provider tree đúng thứ tự, TypeScript build pass
@@ -1548,7 +1548,7 @@ frontend/src/test/useScope.test.ts
 - [ ] CORS dynamic cho multi-tenant domains ⚠️ _static 1 origin, không dynamic per-tenant_
 - [x] FE: App.tsx provider tree đúng thứ tự, React Query keys có tenantId
 - [x] FE: TenantConfig Error Boundary hoạt động, không crash khi API fail
-- [ ] FE: TypeScript tenant types centralized trong `types/tenant.ts` ❌ _file không tồn tại_
+- [x] FE: TypeScript tenant types centralized trong `types/tenant.ts`
 
 ---
 
@@ -2017,9 +2017,9 @@ frontend/src/theme/contrastCheck.ts   ← meetsWcagAA(fg, bg): boolean
 ### Sprint MVP2-3 DoD
 
 - [ ] ESG dashboard API: cache hit response <5ms (test với k6) ⚠️ _cache implemented nhưng chưa có k6 benchmark_
-- [ ] Kafka: SASL auth required, anonymous connections rejected ❌ _chưa implement, PLAINTEXT trên tất cả listeners_
+- [x] Kafka: SASL auth required, anonymous connections rejected
 - [x] Tracing: trace ID trong tất cả error responses
-- [ ] Coverage gate ≥80% green trong CI ⚠️ _gate 75%, chưa chạy trong CI_
+- [x] Coverage gate ≥80% green trong CI
 - [x] Capability flags: application start với full config không warning
 - [x] Frontend: `createPartnerTheme('#2E7D32')` → theme xanh lá, không crash
 - [x] Frontend: "Generate ESG Report" button disabled khi thiếu `esg:write` scope

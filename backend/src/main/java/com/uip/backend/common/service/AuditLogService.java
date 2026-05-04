@@ -5,6 +5,7 @@ import com.uip.backend.common.repository.AuditLogRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
@@ -17,17 +18,17 @@ public class AuditLogService {
 
     private final AuditLogRepository auditLogRepository;
 
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void logAction(String actor, String action, String resourceType, String resourceId) {
         logAction(actor, action, resourceType, resourceId, null, null);
     }
 
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void logAction(String actor, String action, String resourceType, String resourceId, String tenantId) {
         logAction(actor, action, resourceType, resourceId, tenantId, null);
     }
 
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void logAction(String actor, String action, String resourceType,
                           String resourceId, String tenantId, Map<String, Object> details) {
         AuditLog auditLog = AuditLog.builder()
