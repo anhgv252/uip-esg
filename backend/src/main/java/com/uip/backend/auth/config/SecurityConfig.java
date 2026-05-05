@@ -79,6 +79,7 @@ public class SecurityConfig {
                 .requestMatchers(AntPathRequestMatcher.antMatcher(HttpMethod.POST, "/api/v1/citizen/register")).permitAll()
                 .requestMatchers(AntPathRequestMatcher.antMatcher(HttpMethod.GET, "/api/v1/citizen/buildings")).permitAll()
                 .requestMatchers(AntPathRequestMatcher.antMatcher(HttpMethod.GET, "/api/v1/citizen/buildings/by-district")).permitAll()
+                .requestMatchers(AntPathRequestMatcher.antMatcher("/api/v1/admin/tenants/**")).hasAnyRole("ADMIN", "TENANT_ADMIN")
                 .requestMatchers(AntPathRequestMatcher.antMatcher("/api/v1/admin/**")).hasRole("ADMIN")
                 .requestMatchers(AntPathRequestMatcher.antMatcher("/api/v1/wf-config/**")).hasRole("ADMIN")
                 .requestMatchers(AntPathRequestMatcher.antMatcher(HttpMethod.GET, "/api/v1/notifications/stream")).authenticated()

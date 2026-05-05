@@ -129,6 +129,18 @@ public class EsgService {
         return report;
     }
 
+    public byte[] exportReport(EsgReport report, String format) {
+        return reportGenerator.exportReport(report, format);
+    }
+
+    public String getReportContentType(String format) {
+        return reportGenerator.resolveAdapter(format).getContentType();
+    }
+
+    public String getReportFileExtension(String format) {
+        return reportGenerator.resolveAdapter(format).getFileExtension();
+    }
+
     // ─── Anomaly Detection (M03/M04 scheduler) ─────────────────────────────────
 
     private static final double ANOMALY_THRESHOLD_RATIO = 1.3;

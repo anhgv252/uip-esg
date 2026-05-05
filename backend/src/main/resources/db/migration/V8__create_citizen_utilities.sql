@@ -49,7 +49,12 @@ CREATE INDEX IF NOT EXISTS idx_consumption_meter_id ON citizens.consumption_reco
 CREATE INDEX IF NOT EXISTS idx_consumption_recorded_at ON citizens.consumption_records(recorded_at DESC);
 
 -- Create hypertable for time-series consumption data (TimescaleDB)
-SELECT create_hypertable('citizens.consumption_records', 'recorded_at', if_not_exists => TRUE);
+-- Gracefully skips when TimescaleDB extension is not available (e.g. plain Postgres in testcontainers)
+DO $$ BEGIN
+    PERFORM create_hypertable('citizens.consumption_records', 'recorded_at', if_not_exists => TRUE);
+EXCEPTION WHEN undefined_function THEN
+    RAISE NOTICE 'TimescaleDB not available — skipping create_hypertable';
+END $$;
 
 -- Seed meters for test citizens
 INSERT INTO citizens.meters (citizen_id, meter_code, meter_type, registered_at)

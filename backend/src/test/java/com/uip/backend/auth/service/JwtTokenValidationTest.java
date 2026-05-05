@@ -172,4 +172,88 @@ class JwtTokenValidationTest {
 
         assertThat(tokenProvider.isTokenValid(token, otherUser)).isFalse();
     }
+
+    // ─── Null / malformed token ──────────────────────────────────────────────
+
+    @Test
+    @DisplayName("null token: extractUsername throws exception")
+    void nullToken_throws() {
+        assertThatThrownBy(() -> tokenProvider.extractUsername(null))
+                .isInstanceOf(Exception.class);
+    }
+
+    @Test
+    @DisplayName("token with only dots: isTokenValid returns false")
+    void dotsOnly_isInvalid() {
+        assertThat(tokenProvider.isTokenValid("...", userDetails)).isFalse();
+    }
+
+    // ─── Refresh token abuse ─────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("refresh token cannot be used as access token")
+    void refreshToken_notValidAsAccess() {
+        String refresh = tokenProvider.generateRefreshToken(userDetails);
+        assertThat(tokenProvider.isTokenValid(refresh, userDetails)).isFalse();
+    }
+
+    @Test
+    @DisplayName("access token cannot be used as refresh token")
+    void accessToken_notValidAsRefresh() {
+        String access = tokenProvider.generateAccessToken(userDetails);
+        assertThat(tokenProvider.isRefreshTokenValid(access, userDetails)).isFalse();
+    }
+
+    // ─── Multi-tenant claims ─────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("multi-tenant token contains tenant_id, scopes, allowed_buildings")
+    void multiTenantClaims() {
+        String token = tokenProvider.generateAccessToken(
+                userDetails, "hcm", List.of("esg:read", "esg:write"), List.of("BLD-01"));
+
+        assertThat(tokenProvider.extractUsername(token)).isEqualTo("operator");
+        assertThat(tokenProvider.isTokenValid(token, userDetails)).isTrue();
+    }
+
+    @Test
+    @DisplayName("multi-tenant token with null tenantId defaults to 'default'")
+    void nullTenant_defaults() {
+        String token = tokenProvider.generateAccessToken(
+                userDetails, null, null, null);
+
+        assertThat(tokenProvider.isTokenValid(token, userDetails)).isTrue();
+    }
+
+    // ─── extractScopes ───────────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("extractScopes returns scopes from multi-tenant token")
+    void extractScopes_returnsScopes() {
+        String token = tokenProvider.generateAccessToken(
+                userDetails, "hcm", List.of("esg:read", "alert:ack"), List.of());
+
+        List<String> scopes = tokenProvider.extractScopes(token);
+        assertThat(scopes).containsExactly("esg:read", "alert:ack");
+    }
+
+    @Test
+    @DisplayName("extractScopes returns empty list for legacy token without scopes")
+    void extractScopes_legacy_returnsEmpty() {
+        String token = tokenProvider.generateAccessToken(userDetails);
+
+        List<String> scopes = tokenProvider.extractScopes(token);
+        assertThat(scopes).isEmpty();
+    }
+
+    // ─── extractExpirationMs ─────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("extractExpirationMs returns future timestamp")
+    void extractExpiration_returnsFuture() {
+        String token = tokenProvider.generateAccessToken(userDetails);
+
+        long expMs = tokenProvider.extractExpirationMs(token);
+        assertThat(expMs).isGreaterThan(System.currentTimeMillis());
+    }
 }

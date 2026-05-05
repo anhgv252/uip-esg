@@ -1,8 +1,10 @@
 package com.uip.backend.esg.service;
 
 import com.uip.backend.esg.domain.EsgReport;
+import com.uip.backend.esg.export.*;
 import com.uip.backend.esg.repository.EsgMetricRepository;
 import com.uip.backend.esg.repository.EsgReportRepository;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.*;
@@ -20,7 +22,8 @@ import java.nio.file.Paths;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
-import java.util.UUID;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -29,6 +32,62 @@ public class EsgReportGenerator {
 
     private final EsgMetricRepository esgMetricRepository;
     private final EsgReportRepository esgReportRepository;
+    private final List<EsgReportExportPort> exportPorts;
+
+    private Map<String, EsgReportExportPort> adapterMap;
+
+    @PostConstruct
+    void initAdapters() {
+        Map<String, List<EsgReportExportPort>> grouped = exportPorts.stream()
+                .collect(Collectors.groupingBy(EsgReportExportPort::getFormatId));
+        Map<String, EsgReportExportPort> map = new HashMap<>();
+        grouped.forEach((formatId, ports) -> {
+            if (ports.size() > 1) {
+                throw new DuplicateExportFormatException(formatId,
+                        ports.get(0).getClass().getSimpleName(),
+                        ports.get(1).getClass().getSimpleName());
+            }
+            map.put(formatId, ports.get(0));
+        });
+        this.adapterMap = Map.copyOf(map);
+        log.info("ESG export adapters registered: {}", adapterMap.keySet());
+    }
+
+    public EsgReportExportPort resolveAdapter(String format) {
+        String f = (format != null && !format.isBlank()) ? format.toLowerCase() : "xlsx";
+        EsgReportExportPort adapter = adapterMap.get(f);
+        if (adapter == null) {
+            throw new IllegalArgumentException("Unsupported export format: " + f + ". Supported: " + adapterMap.keySet());
+        }
+        return adapter;
+    }
+
+    public byte[] exportReport(EsgReport report, String format) {
+        EsgReportExportPort adapter = resolveAdapter(format);
+        Instant[] range = quarterRange(report.getYear(), report.getQuarter());
+        String tenantId = report.getTenantId();
+
+        Double energy = esgMetricRepository.sumByTypeAndRange(tenantId, "ENERGY", range[0], range[1]);
+        Double water  = esgMetricRepository.sumByTypeAndRange(tenantId, "WATER",  range[0], range[1]);
+        Double carbon = esgMetricRepository.sumByTypeAndRange(tenantId, "CARBON", range[0], range[1]);
+
+        EsgReportData data = EsgReportData.builder()
+                .reportId(report.getId())
+                .tenantId(tenantId)
+                .year(report.getYear())
+                .quarter(report.getQuarter())
+                .from(range[0])
+                .to(range[1])
+                .energyTotal(energy)
+                .waterTotal(water)
+                .carbonTotal(carbon)
+                .energyMetrics(esgMetricRepository.findByTypeAndRange(tenantId, "ENERGY", range[0], range[1]))
+                .waterMetrics(esgMetricRepository.findByTypeAndRange(tenantId, "WATER", range[0], range[1]))
+                .carbonMetrics(esgMetricRepository.findByTypeAndRange(tenantId, "CARBON", range[0], range[1]))
+                .build();
+
+        return adapter.export(data);
+    }
 
     @Value("${esg.report.output-dir:${java.io.tmpdir}/uip-reports}")
     private String outputDir;

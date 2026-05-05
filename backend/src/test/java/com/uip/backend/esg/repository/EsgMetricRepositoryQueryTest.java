@@ -6,11 +6,19 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.boot.test.mock.mockito.SpyBean;
+import org.springframework.data.redis.connection.RedisConnection;
+import org.springframework.data.redis.connection.RedisConnectionFactory;
+import org.springframework.data.redis.connection.ReactiveRedisConnectionFactory;
+import org.springframework.data.redis.connection.RedisConnectionFactory;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.listener.RedisMessageListenerContainer;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.transaction.annotation.Transactional;
 import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.time.Instant;
@@ -18,17 +26,23 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 
 /**
  * Integration tests for {@link EsgMetricRepository} JPQL queries.
- * <p>
- * Verifies that all three queries ({@code findByTypeAndRange}, {@code findByTypeAndBuilding},
- * {@code sumByTypeAndRange}) correctly filter by {@code tenantId}, enforcing tenant isolation at the
- * repository layer (BT-22b).
- * <p>
- * Skipped automatically when Docker is unavailable via {@code @Testcontainers(disabledWithoutDocker=true)}.
+ * Verifies tenant isolation at the repository layer (BT-22b).
+ * Skipped automatically when Docker is unavailable via @Testcontainers(disabledWithoutDocker=true).
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
+@SpringBootTest(
+    webEnvironment = SpringBootTest.WebEnvironment.NONE,
+    properties = {
+        "spring.autoconfigure.exclude=" +
+            "org.camunda.bpm.spring.boot.starter.rest.CamundaBpmRestJerseyAutoConfiguration," +
+            "org.camunda.bpm.spring.boot.starter.webapp.CamundaBpmWebappSecurityAutoConfiguration," +
+            "org.springframework.boot.actuate.autoconfigure.data.redis.RedisReactiveHealthContributorAutoConfiguration," +
+            "org.springframework.boot.actuate.autoconfigure.data.redis.RedisHealthContributorAutoConfiguration"
+    }
+)
 @Testcontainers(disabledWithoutDocker = true)
 @Transactional
 @DisplayName("EsgMetricRepository — JPQL tenant isolation")
@@ -36,7 +50,6 @@ class EsgMetricRepositoryQueryTest {
 
     private static final AtomicLong ID_SEQ = new AtomicLong(System.currentTimeMillis());
 
-    @Container
     static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:15-alpine")
             .withDatabaseName("uip_test")
             .withUsername("uip")
@@ -44,6 +57,8 @@ class EsgMetricRepositoryQueryTest {
 
     @DynamicPropertySource
     static void overrideProps(DynamicPropertyRegistry registry) {
+        postgres.start();
+
         registry.add("spring.datasource.url", postgres::getJdbcUrl);
         registry.add("spring.datasource.username", postgres::getUsername);
         registry.add("spring.datasource.password", postgres::getPassword);
@@ -53,19 +68,36 @@ class EsgMetricRepositoryQueryTest {
         registry.add("spring.kafka.bootstrap-servers", () -> "localhost:9999");
         registry.add("spring.data.redis.host", () -> "localhost");
         registry.add("spring.data.redis.port", () -> "6399");
-        registry.add("spring.data.redis.password", () -> "testredis");
         registry.add("security.jwt.secret",
                 () -> java.util.Base64.getEncoder().encodeToString(
                         "uip-integration-test-secret-32b!".getBytes()));
         registry.add("spring.flyway.locations", () -> "classpath:db/migration");
     }
 
-    // ─── Repository under test ───────────────────────────────────────────────
+    // Mock external infrastructure — only PostgreSQL is running via Testcontainers
+    // RedisConnectionFactory must return a mock connection so RedisMessageListenerContainer lifecycle doesn't NPE
+    @MockBean
+    @SuppressWarnings("unused")
+    RedisConnectionFactory redisConnectionFactory;
+
+    @MockBean
+    @SuppressWarnings("unused")
+    ReactiveRedisConnectionFactory reactiveRedisConnectionFactory;
+
+    @MockBean
+    @SuppressWarnings("unused")
+    StringRedisTemplate redisTemplate;
+
+    @MockBean
+    @SuppressWarnings("unused")
+    RedisMessageListenerContainer redisMessageListenerContainer;
+
+    @MockBean
+    @SuppressWarnings("unused")
+    KafkaTemplate<String, Object> kafkaTemplate;
 
     @Autowired
     EsgMetricRepository repository;
-
-    // ─── Tests ───────────────────────────────────────────────────────────────
 
     private static final String TENANT_A = "hcm";
     private static final String TENANT_B = "hanoi";
@@ -131,8 +163,6 @@ class EsgMetricRepositoryQueryTest {
         Double sum = repository.sumByTypeAndRange("nonexistent-tenant", "WATER", T1, T3);
         assertThat(sum).isNull();
     }
-
-    // ─── Builder ────────────────────────────────────────────────────────────
 
     private EsgMetric metric(String tenantId, String type, Instant timestamp, Double value, String buildingId) {
         EsgMetric m = new EsgMetric();

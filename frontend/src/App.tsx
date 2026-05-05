@@ -12,9 +12,26 @@ import {
 } from '@mui/material'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createPartnerTheme } from '@/theme'
+import type { PartnerThemeConfig } from '@/types/tenant'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { TenantConfigProvider, useTenantConfig } from '@/contexts/TenantConfigContext'
 import { routes } from '@/routes'
+
+/**
+ * Maps TenantBranding from the API to PartnerThemeConfig for createPartnerTheme.
+ * Keeps the mapping explicit so field name mismatches (e.g. logoUrl vs partnerLogoUrl)
+ * are handled in one place.
+ */
+function brandingToThemeConfig(
+  branding: { primaryColor: string; partnerName: string; logoUrl: string | null } | undefined,
+): PartnerThemeConfig | undefined {
+  if (!branding) return undefined
+  return {
+    primaryColor: branding.primaryColor,
+    partnerName: branding.partnerName,
+    partnerLogoUrl: branding.logoUrl ?? undefined,
+  }
+}
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -43,7 +60,7 @@ function PageFallback() {
 function ThemedApp() {
   const { config } = useTenantConfig()
   const muiTheme = useMemo(
-    () => createPartnerTheme(config?.branding),
+    () => createPartnerTheme(brandingToThemeConfig(config?.branding)),
     [config?.branding],
   )
 

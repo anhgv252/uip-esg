@@ -32,6 +32,13 @@ spring:
     serialization:
       write-dates-as-timestamps: false
 
+  mail:
+    host: ${MAIL_HOST:localhost}
+    port: ${MAIL_PORT:1025}
+    properties:
+      mail.smtp.auth: false
+      mail.smtp.starttls.enable: false
+
   jpa:
     hibernate:
       ddl-auto: validate
@@ -131,6 +138,10 @@ claude:
     url: https://api.anthropic.com/v1/messages
     timeout-seconds: 10
 
+app:
+  invite:
+    base-url: ${INVITE_BASE_URL:http://localhost:3000}
+
 resilience4j:
   circuitbreaker:
     instances:
@@ -218,6 +229,8 @@ spring:
   config:
     activate:
       on-profile: test
+  cache:
+    type: simple
   datasource:
     hikari:
       maximum-pool-size: 5

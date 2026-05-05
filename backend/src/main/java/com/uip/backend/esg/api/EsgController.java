@@ -84,17 +84,30 @@ public class EsgController {
     }
 
     @GetMapping("/reports/{id}/download")
-    @Operation(summary = "Download ESG report XLSX")
+    @Operation(summary = "Download ESG report (XLSX or CSV)")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<Resource> downloadReport(@PathVariable UUID id) {
+    public ResponseEntity<?> downloadReport(
+            @PathVariable UUID id,
+            @RequestParam(defaultValue = "xlsx") String format) {
         String tenantId = TenantContext.getCurrentTenant();
         EsgReport report = esgService.getReportForDownload(tenantId, id);
-        Resource resource = new PathResource(Paths.get(report.getFilePath()));
+
+        if ("xlsx".equalsIgnoreCase(format) && report.getFilePath() != null) {
+            Resource resource = new PathResource(Paths.get(report.getFilePath()));
+            return ResponseEntity.ok()
+                    .contentType(MediaType.parseMediaType(
+                            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                    .header(HttpHeaders.CONTENT_DISPOSITION,
+                            "attachment; filename=\"esg-report-%s.xlsx\"".formatted(id))
+                    .body(resource);
+        }
+
+        byte[] data = esgService.exportReport(report, format);
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType(
-                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                        esgService.getReportContentType(format)))
                 .header(HttpHeaders.CONTENT_DISPOSITION,
-                        "attachment; filename=\"esg-report-%s.xlsx\"".formatted(id))
-                .body(resource);
+                        "attachment; filename=\"esg-report-%s.%s\"".formatted(id, esgService.getReportFileExtension(format)))
+                .body(data);
     }
 }
