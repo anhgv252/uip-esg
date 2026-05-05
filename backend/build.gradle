@@ -154,8 +154,8 @@ bootJar {
 // ─── OWASP Dependency-Check ───────────────────────────────────────────────────
 
 dependencyCheck {
-    format = 'HTML'
-    outputDir = 'build/reports/dependency-check'
+    formats = ['HTML']
+    outputDirectory = 'build/reports/dependency-check'
     failBuildOnCVSS = 7.0
     analyzers {
         assemblyEnabled = false
@@ -165,8 +165,7 @@ dependencyCheck {
 // ─── SpotBugs + FindSecBugs ───────────────────────────────────────────────────
 
 spotbugs {
-    effort = 'MAX'
-    reportLevel = 'HIGH'
+    effort = com.github.spotbugs.snom.Effort.MAX
     ignoreFailures = false
 }
 
