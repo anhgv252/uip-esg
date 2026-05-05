@@ -14,8 +14,9 @@
 3. [Scale Kafka Partitions](#3-scale-kafka-partitions)
 4. [Add New Tenant](#4-add-new-tenant)
 5. [Rotate Vault Secrets](#5-rotate-vault-secrets)
-6. [Restore PostgreSQL from Backup](#6-restore-postgresql-from-backup)
-7. [Health Checks Reference](#7-health-checks-reference)
+6. [Add New Secret to Vault](#6-add-new-secret-to-vault)
+7. [Restore PostgreSQL from Backup](#7-restore-postgresql-from-backup)
+8. [Health Checks Reference](#8-health-checks-reference)
 
 ---
 
@@ -307,7 +308,46 @@ kubectl rollout restart deployment/uip-backend -n uip-prod
 
 ---
 
-## 6. Restore PostgreSQL from Backup
+## 6. Add New Secret to Vault
+
+Dùng khi cần thêm credential/API key mới vào Vault (ví dụ: tích hợp external service mới).
+
+### Thêm secret mới (không restart required)
+
+```bash
+# 1. Write secret vào Vault KV store
+vault kv put secret/uip/<service-name> \
+  api_key=<value> \
+  endpoint=<url>
+
+# 2. Verify secret được lưu
+vault kv get secret/uip/<service-name>
+
+# 3. Update Vault policy nếu backend cần đọc secret mới
+# Sửa infra/vault/vault-policy-backend.hcl và apply:
+vault policy write backend-policy infra/vault/vault-policy-backend.hcl
+
+# 4. Thêm env reference vào application.yml (nếu Spring Cloud Vault):
+# ${vault:secret/uip/<service-name>.api_key}
+
+# 5. Rolling restart để app pick up secret (Vault Agent Injector tự refresh)
+# Nếu dùng env injection: cần restart
+kubectl rollout restart deployment/uip-backend -n uip-prod
+# Nếu dùng Vault Agent Injector + dynamic secrets: không cần restart
+```
+
+### Secret không cần restart (zero-downtime)
+
+Secret rotation KHÔNG cần restart khi:
+- Vault Agent Injector được cấu hình (`infra/vault/vault-agent-config.hcl`)
+- `VAULT_ENABLED=true` trong pod environment
+- `SecretRotationListener` đã active (log: `[VAULT] Secret rotation listener active`)
+
+Xác nhận: `kubectl logs -n uip-prod -l app=uip-backend | grep "VAULT"`
+
+---
+
+## 7. Restore PostgreSQL from Backup
 
 **Target RTO: < 1 giờ**  
 **RPO:** 1 giờ (hourly WAL archiving)
@@ -362,7 +402,7 @@ kubectl patch svc uip-backend-active -n uip-prod \
 
 ---
 
-## 7. Health Checks Reference
+## 8. Health Checks Reference
 
 | Endpoint | Expected | Failure Action |
 |----------|---------|---------------|

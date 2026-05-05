@@ -1,0 +1,12 @@
+replicaCount: 1
+autoscaling:
+  enabled: false
+image:
+  tag: "dev"
+postgresql:
+  host: "localhost"
+redis:
+  host: "localhost"
+kafka:
+  bootstrapServers: "localhost:9092"
+  saslEnabled: false

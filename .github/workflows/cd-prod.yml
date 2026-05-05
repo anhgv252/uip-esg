@@ -1,0 +1,131 @@
+name: Deploy to Production
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}/uip-backend
+
+jobs:
+  build-push:
+    name: Build Production Image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image_tag: ${{ steps.meta.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: backend
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy-staging-verify:
+    name: Verify on Staging First
+    runs-on: ubuntu-latest
+    needs: build-push
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Helm
+        uses: azure/setup-helm@v3
+      - name: Configure kubectl (staging)
+        run: echo "${{ secrets.STAGING_KUBECONFIG }}" | base64 -d > /tmp/kubeconfig
+      - name: Deploy to staging
+        run: |
+          helm upgrade --install uip-backend-blue ./infra/helm/uip-backend \
+            -f infra/helm/values/values-staging.yaml \
+            --set image.tag=${{ needs.build-push.outputs.image_tag }} \
+            -n uip-staging --wait --timeout=5m
+        env:
+          KUBECONFIG: /tmp/kubeconfig
+      - name: Run staging acceptance tests
+        run: |
+          kubectl port-forward svc/uip-backend-blue 8081:8080 -n uip-staging &
+          sleep 10
+          curl -f http://localhost:8081/actuator/health
+        env:
+          KUBECONFIG: /tmp/kubeconfig
+
+  deploy-prod:
+    name: Deploy to Production (Blue-Green)
+    runs-on: ubuntu-latest
+    needs: [build-push, deploy-staging-verify]
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Helm
+        uses: azure/setup-helm@v3
+      - name: Configure kubectl (prod)
+        run: echo "${{ secrets.PROD_KUBECONFIG }}" | base64 -d > /tmp/kubeconfig
+      - name: Determine inactive slot
+        id: slot
+        run: |
+          ACTIVE=$(kubectl get svc uip-backend-active -n uip-prod \
+            -o jsonpath='{.spec.selector.slot}' 2>/dev/null || echo "blue")
+          INACTIVE=$([ "$ACTIVE" = "blue" ] && echo "green" || echo "blue")
+          echo "active=$ACTIVE" >> $GITHUB_OUTPUT
+          echo "inactive=$INACTIVE" >> $GITHUB_OUTPUT
+        env:
+          KUBECONFIG: /tmp/kubeconfig
+      - name: Deploy to inactive slot
+        run: |
+          helm upgrade --install uip-backend-${{ steps.slot.outputs.inactive }} \
+            ./infra/helm/uip-backend \
+            -f infra/helm/values/values-prod.yaml \
+            --set image.tag=${{ needs.build-push.outputs.image_tag }} \
+            --set slot=${{ steps.slot.outputs.inactive }} \
+            -n uip-prod --wait --timeout=10m
+        env:
+          KUBECONFIG: /tmp/kubeconfig
+      - name: Smoke test new slot
+        run: |
+          kubectl port-forward svc/uip-backend-${{ steps.slot.outputs.inactive }} 8082:8080 -n uip-prod &
+          sleep 10
+          curl -f http://localhost:8082/actuator/health
+        env:
+          KUBECONFIG: /tmp/kubeconfig
+      - name: Switch production traffic
+        run: |
+          kubectl patch svc uip-backend-active -n uip-prod \
+            -p '{"spec":{"selector":{"slot":"${{ steps.slot.outputs.inactive }}"}}}'
+          echo "Traffic switched to slot: ${{ steps.slot.outputs.inactive }}"
+        env:
+          KUBECONFIG: /tmp/kubeconfig
+      - name: Tag release in git
+        run: |
+          git tag -a "deployed-${{ github.ref_name }}" -m "Production deploy ${{ github.ref_name }}"
+          git push origin "deployed-${{ github.ref_name }}" || true
+      - name: Notify Slack
+        if: always()
+        uses: slackapi/slack-github-action@v1.26.0
+        with:
+          payload: |
+            {
+              "text": "${{ job.status == 'success' && '🚀' || '🔥' }} Production deploy ${{ github.ref_name }}: ${{ job.status }}"
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}

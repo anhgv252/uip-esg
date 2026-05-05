@@ -1,0 +1,35 @@
+global:
+  slack_api_url: "${SLACK_WEBHOOK_URL}"
+  resolve_timeout: 5m
+
+route:
+  receiver: slack-default
+  group_by: [alertname, severity]
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  routes:
+    - match:
+        severity: critical
+      receiver: slack-critical
+      continue: true
+
+receivers:
+  - name: slack-default
+    slack_configs:
+      - channel: '#uip-alerts'
+        title: '[{{ .Status | toUpper }}] {{ .GroupLabels.alertname }}'
+        text: '{{ range .Alerts }}{{ .Annotations.summary }}{{ end }}'
+        send_resolved: true
+
+  - name: slack-critical
+    slack_configs:
+      - channel: '#uip-p0-pager'
+        title: ':rotating_light: CRITICAL: {{ .GroupLabels.alertname }}'
+        text: |
+          {{ range .Alerts }}
+          *Summary:* {{ .Annotations.summary }}
+          *Description:* {{ .Annotations.description }}
+          *Runbook:* {{ .Annotations.runbook }}
+          {{ end }}
+        send_resolved: true

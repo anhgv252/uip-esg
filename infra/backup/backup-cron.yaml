@@ -1,0 +1,51 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: pgbackrest-backup
+  namespace: uip-prod
+spec:
+  schedule: "0 3 * * *"
+  timeZone: "Asia/Ho_Chi_Minh"
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: pgbackrest
+              image: pgbackrest/pgbackrest:2.51
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  pgbackrest --stanza=uip-prod backup --type=diff
+                  echo "Backup completed at $(date)"
+              env:
+                - name: PGPASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: uip-db-secret
+                      key: password
+                - name: S3_BUCKET_NAME
+                  valueFrom:
+                    secretKeyRef:
+                      name: uip-backup-secret
+                      key: s3-bucket
+                - name: S3_ACCESS_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: uip-backup-secret
+                      key: s3-access-key
+                - name: S3_SECRET_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: uip-backup-secret
+                      key: s3-secret-key
+              volumeMounts:
+                - name: pgbackrest-config
+                  mountPath: /etc/pgbackrest
+          volumes:
+            - name: pgbackrest-config
+              configMap:
+                name: pgbackrest-config

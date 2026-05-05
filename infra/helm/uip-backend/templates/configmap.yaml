@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: uip-backend-config
+data:
+  SPRING_PROFILES_ACTIVE: "prod"
+  VAULT_ENABLED: "true"
+  KAFKA_SECURITY_PROTOCOL: {{ if .Values.kafka.saslEnabled }}"SASL_SSL"{{ else }}"PLAINTEXT"{{ end }}
+  SPRING_CACHE_TYPE: "redis"

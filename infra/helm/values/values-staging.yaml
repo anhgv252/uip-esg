@@ -1,0 +1,15 @@
+replicaCount: 2
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 4
+image:
+  tag: "staging-latest"
+postgresql:
+  host: "postgresql-staging"
+  database: "uip_staging"
+kafka:
+  bootstrapServers: "kafka-staging:9094"
+  saslEnabled: true
+ingress:
+  host: "api-staging.uip.vn"

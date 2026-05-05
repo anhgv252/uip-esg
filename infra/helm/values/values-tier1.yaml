@@ -1,0 +1,13 @@
+# T1 customer — single-tenant deployment, no RLS overhead
+replicaCount: 1
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 2
+postgresql:
+  pvcSize: "20Gi"
+extraEnv:
+  - name: UIP_CAPABILITIES_MULTI_TENANCY
+    value: "false"
+  - name: SPRING_PROFILES_ACTIVE
+    value: "prod,t1"

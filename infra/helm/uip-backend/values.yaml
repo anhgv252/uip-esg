@@ -1,0 +1,63 @@
+replicaCount: 2
+slot: blue
+
+image:
+  repository: ghcr.io/uip/uip-backend
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+service:
+  type: ClusterIP
+  port: 8080
+
+ingress:
+  enabled: true
+  className: "nginx"
+  host: "api.uip.vn"
+  tls: true
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 512Mi
+  limits:
+    cpu: 1000m
+    memory: 1024Mi
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 6
+  targetCPUUtilizationPercentage: 70
+
+livenessProbe:
+  httpGet:
+    path: /actuator/health/liveness
+    port: 8080
+  initialDelaySeconds: 60
+  periodSeconds: 10
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /actuator/health/readiness
+    port: 8080
+  initialDelaySeconds: 30
+  periodSeconds: 5
+  failureThreshold: 3
+
+postgresql:
+  host: "postgresql"
+  port: 5432
+  database: "uip_prod"
+  pvcSize: "50Gi"
+
+redis:
+  host: "redis"
+  port: 6379
+
+kafka:
+  bootstrapServers: "kafka:9092"
+  saslEnabled: false
+
+extraEnv: []
