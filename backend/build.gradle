@@ -3,6 +3,8 @@ plugins {
     id 'org.springframework.boot' version '3.2.4'
     id 'io.spring.dependency-management' version '1.1.4'
     id 'jacoco'
+    id 'org.owasp.dependencycheck' version '12.1.0'
+    id 'com.github.spotbugs' version '6.0.7'
 }
 
 group = 'com.uip'
@@ -84,6 +86,10 @@ dependencies {
     testImplementation 'com.tngtech.archunit:archunit-junit5:1.3.0'
     // Awaitility — async process completion in integration tests
     testImplementation 'org.awaitility:awaitility:4.2.1'
+
+    // SpotBugs + FindSecBugs — security-focused static analysis
+    spotbugs 'com.github.spotbugs:spotbugs:4.8.3'
+    spotbugsPlugins 'com.h3xstream.findsecbugs:findsecbugs-plugin:1.12.0'
 }
 
 dependencyManagement {
@@ -143,4 +149,37 @@ jacocoTestCoverageVerification {
 bootJar {
     archiveFileName = 'app.jar'
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+
+// ─── OWASP Dependency-Check ───────────────────────────────────────────────────
+
+dependencyCheck {
+    format = 'HTML'
+    outputDir = 'build/reports/dependency-check'
+    failBuildOnCVSS = 7.0
+    analyzers {
+        assemblyEnabled = false
+    }
+}
+
+// ─── SpotBugs + FindSecBugs ───────────────────────────────────────────────────
+
+spotbugs {
+    effort = 'MAX'
+    reportLevel = 'HIGH'
+    ignoreFailures = false
+}
+
+spotbugsMain {
+    reports {
+        html.required = true
+        xml.required = false
+    }
+}
+
+spotbugsTest {
+    reports {
+        html.required = true
+        xml.required = false
+    }
 }
