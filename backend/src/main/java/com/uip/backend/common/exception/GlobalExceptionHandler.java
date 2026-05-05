@@ -98,6 +98,14 @@ public class GlobalExceptionHandler {
         return detail;
     }
 
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ProblemDetail handleIllegalArgument(IllegalArgumentException ex, HttpServletRequest request) {
+        ProblemDetail detail = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+        detail.setType(URI.create("/errors/bad-request"));
+        enrich(detail, request);
+        return detail;
+    }
+
     @ExceptionHandler(IllegalStateException.class)
     public ProblemDetail handleIllegalState(IllegalStateException ex, HttpServletRequest request) {
         log.warn("IllegalStateException: {}", ex.getMessage());

@@ -45,6 +45,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
             );
             return;
         }
+        response.setHeader("X-RateLimit-Remaining", String.valueOf(rateLimiter.getAvailableTokens(tenantId)));
         chain.doFilter(request, response);
     }
 }

@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
+import java.sql.Timestamp;
 import java.time.Instant;
 
 @Repository
@@ -19,8 +20,8 @@ public class TenantUsageCrossSchemaRepository {
      */
     public long countSensorReadings(String tenantId, Instant start, Instant end) {
         Long count = jdbcTemplate.queryForObject(
-                "SELECT count(*) FROM environment.sensor_readings WHERE tenant_id = ? AND recorded_at >= ? AND recorded_at < ?",
-                Long.class, tenantId, start, end);
+                "SELECT count(*) FROM environment.sensor_readings WHERE tenant_id = ? AND \"timestamp\" >= ? AND \"timestamp\" < ?",
+                Long.class, tenantId, Timestamp.from(start), Timestamp.from(end));
         return count != null ? count : 0;
     }
 }

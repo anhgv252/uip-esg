@@ -6,7 +6,8 @@ COMPOSE_FILE     = -f docker-compose.yml
 COMPOSE_UAT_FILE = -f docker-compose.yml -f docker-compose.uat.yml
 
 .PHONY: help up down logs ps migrate test-mqtt test-pipeline \
-        uat-up uat-down uat-logs uat-ps uat-test uat-clean seed-uat clean
+        uat-up uat-down uat-logs uat-ps uat-test uat-clean seed-uat clean \
+        regression-test regression-test-group
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | \
@@ -92,6 +93,16 @@ uat-test: ## Run smoke tests against UAT stack (10 smoke test cases)
 	@echo ""
 	@echo "Quick manual verification:"
 	@echo "  curl -s http://localhost:8080/api/v1/health | python3 -m json.tool"
+
+regression-test: ## Run full API regression suite (Sprint 1-4 features, 14 groups)
+	@echo "Running API regression tests against http://localhost:8080 ..."
+	@BASE_URL=http://localhost:8080 python3 ../scripts/api_regression_test.py
+	@echo ""
+	@echo "Run specific group: make regression-test-group GROUP=esg"
+
+regression-test-group: ## Run one regression group: make regression-test-group GROUP=esg
+	@echo "Running regression group '$(GROUP)'..."
+	@BASE_URL=http://localhost:8080 python3 ../scripts/api_regression_test.py --group $(GROUP)
 
 uat-clean: ## Remove UAT containers AND volumes (full reset — data will be lost)
 	@echo "WARNING: This will destroy all UAT data. Press Ctrl+C to cancel..."
