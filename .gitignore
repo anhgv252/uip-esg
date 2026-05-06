@@ -15,6 +15,7 @@ yarn-error.log*
 .env.*
 !.env.example
 !.env.uat.example
+!.env.security.example
 
 # Backend (Gradle / Java)
 backend/.gradle/

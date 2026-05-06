@@ -7,7 +7,8 @@ COMPOSE_UAT_FILE = -f docker-compose.yml -f docker-compose.uat.yml
 
 .PHONY: help up down logs ps migrate test-mqtt test-pipeline \
         uat-up uat-down uat-logs uat-ps uat-test uat-clean seed-uat clean \
-        regression-test regression-test-group
+        regression-test regression-test-group \
+        security-scan security-report security-open
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | \
@@ -108,6 +109,45 @@ uat-clean: ## Remove UAT containers AND volumes (full reset — data will be los
 	@echo "WARNING: This will destroy all UAT data. Press Ctrl+C to cancel..."
 	@sleep 5
 	$(COMPOSE_UAT) $(COMPOSE_UAT_FILE) down -v --remove-orphans
+
+# ─── Security ─────────────────────────────────────────────────────────────────
+#
+# Cần file infrastructure/.env.security (gitignored) với nội dung:
+#   NVD_API_KEY=<your-key>   # https://nvd.nist.gov/developers/request-an-api-key
+#
+# Tạo lần đầu: cp .env.security.example .env.security  rồi điền API key vào.
+
+-include .env.security
+export NVD_API_KEY
+
+security-scan: ## Run OWASP Dependency-Check CVE scan (cần NVD_API_KEY trong .env.security)
+	@test -n "$(NVD_API_KEY)" || { \
+		echo ""; \
+		echo "ERROR: NVD_API_KEY chưa được set."; \
+		echo "  1. Lấy key miễn phí: https://nvd.nist.gov/developers/request-an-api-key"; \
+		echo "  2. cp infrastructure/.env.security.example infrastructure/.env.security"; \
+		echo "  3. Điền NVD_API_KEY vào infrastructure/.env.security"; \
+		echo ""; \
+		exit 1; \
+	}
+	@echo "Running OWASP Dependency-Check scan..."
+	@cd ../backend && NVD_API_KEY=$(NVD_API_KEY) ./gradlew dependencyCheckAnalyze --no-daemon
+	@echo ""
+	@echo "=== Scan complete ==="
+	@echo "  HTML report: backend/build/reports/dependency-check/dependency-check-report.html"
+	@echo ""
+	@echo "  CRITICAL + HIGH CVEs:"
+	@cd ../backend && grep -o '"severity":"[^"]*"' \
+		build/reports/dependency-check/dependency-check-report.json 2>/dev/null | \
+		sort | uniq -c | sort -rn || echo "  (chạy make security-report để xem chi tiết)"
+
+security-report: ## Mở HTML report trong browser (sau khi đã chạy security-scan)
+	@test -f ../backend/build/reports/dependency-check/dependency-check-report.html || { \
+		echo "ERROR: Report chưa có. Chạy 'make security-scan' trước."; exit 1; \
+	}
+	@open ../backend/build/reports/dependency-check/dependency-check-report.html
+
+security-open: security-report ## Alias của security-report
 
 # ─── Cleanup ──────────────────────────────────────────────────────────────────
 
