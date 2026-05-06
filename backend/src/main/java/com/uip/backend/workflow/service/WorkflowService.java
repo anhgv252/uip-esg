@@ -44,7 +44,7 @@ public class WorkflowService {
     }
 
     public Page<ProcessInstanceDto> listInstances(String status, Pageable pageable) {
-        log.info("Fetching process instances with status: {}", status);
+        log.info("Fetching process instances with status: {}", sanitizeLog(status));
         
         if ("ACTIVE".equalsIgnoreCase(status)) {
             List<ProcessInstance> instances = runtimeService.createProcessInstanceQuery()
@@ -91,7 +91,7 @@ public class WorkflowService {
     }
 
     public ProcessInstanceDto startProcess(String processKey, Map<String, Object> variables) {
-        log.info("Starting process: {} with variables: {}", processKey, variables.keySet());
+        log.info("Starting process: {} with {} variables", sanitizeLog(processKey), variables.size());
         try {
             ProcessInstance instance = runtimeService.startProcessInstanceByKey(processKey, variables);
             log.info("Process started with instance ID: {}", instance.getId());
@@ -110,11 +110,11 @@ public class WorkflowService {
     }
 
     public Map<String, Object> getInstanceVariables(String instanceId) {
-        log.info("Fetching variables for process instance: {}", instanceId);
+        log.info("Fetching variables for process instance: {}", sanitizeLog(instanceId));
         try {
             return runtimeService.getVariables(instanceId);
         } catch (ProcessEngineException e) {
-            log.debug("Instance {} not in runtime, checking history", instanceId);
+            log.debug("Instance {} not in runtime, checking history", sanitizeLog(instanceId));
             List<org.camunda.bpm.engine.history.HistoricVariableInstance> vars =
                     historyService.createHistoricVariableInstanceQuery()
                             .processInstanceId(instanceId)
@@ -128,7 +128,7 @@ public class WorkflowService {
     }
 
     public String getProcessDefinitionXml(String definitionId) {
-        log.info("Fetching BPMN XML for definition: {}", definitionId);
+        log.info("Fetching BPMN XML for definition: {}", sanitizeLog(definitionId));
         try {
             org.camunda.bpm.engine.repository.ProcessDefinition definition =
                     repositoryService.getProcessDefinition(definitionId);
@@ -138,6 +138,11 @@ public class WorkflowService {
         } catch (Exception e) {
             throw new WorkflowNotFoundException("Process definition not found: " + definitionId);
         }
+    }
+
+    private static String sanitizeLog(String input) {
+        if (input == null) return "null";
+        return input.replaceAll("[\r\n\t]", "_");
     }
 
     private ProcessDefinitionDto toDto(ProcessDefinition def) {
@@ -167,13 +172,17 @@ public class WorkflowService {
             if (hpi != null && hpi.getStartTime() != null) {
                 startTime = LocalDateTime.ofInstant(hpi.getStartTime().toInstant(), ZoneId.systemDefault());
             }
-        } catch (Exception ignored) {}
+        } catch (Exception e) {
+            log.debug("Could not fetch historic start time for process {}: {}", instance.getId(), e.getMessage());
+        }
 
         String processDefinitionKey = null;
         try {
             ProcessDefinition def = repositoryService.getProcessDefinition(instance.getProcessDefinitionId());
             processDefinitionKey = def.getKey();
-        } catch (Exception ignored) {}
+        } catch (Exception e) {
+            log.debug("Could not fetch process definition key for {}: {}", instance.getProcessDefinitionId(), e.getMessage());
+        }
 
         return ProcessInstanceDto.builder()
                 .id(instance.getId())

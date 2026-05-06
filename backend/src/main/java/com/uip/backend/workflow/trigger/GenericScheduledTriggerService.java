@@ -72,8 +72,8 @@ public class GenericScheduledTriggerService {
                 map.put(comp.getName(), val);
             }
             return map;
-        } catch (Exception e) {
-            log.warn("Cannot convert to map: {}", obj.getClass().getSimpleName());
+        } catch (ReflectiveOperationException e) {
+            log.warn("Cannot convert to map: {} — {}", obj.getClass().getSimpleName(), e.getMessage());
             return Map.of();
         }
     }

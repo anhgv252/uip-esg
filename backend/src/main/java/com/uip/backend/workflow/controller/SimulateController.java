@@ -64,11 +64,11 @@ public class SimulateController {
             ProcessInstanceDto instance = workflowService.startProcess("aiC01_aqiCitizenAlert", variables);
             processInstanceId = instance.getId();
 
-            log.info("IoT simulation: AQI={} from sensor {} in district {} → alert process started: {}",
-                    value, sensorId, district, processInstanceId);
+            log.info("IoT simulation: AQI={} from sensor {} in district {} \u2192 alert process started: {}",
+                    value, sanitizeLog(sensorId), sanitizeLog(district), sanitizeLog(processInstanceId));
         } else {
-            log.info("IoT simulation: AQI={} from sensor {} in district {} — below threshold ({}), no alert",
-                    value, sensorId, district, AQI_ALERT_THRESHOLD);
+            log.info("IoT simulation: AQI={} from sensor {} in district {} \u2014 below threshold ({}), no alert",
+                    value, sanitizeLog(sensorId), sanitizeLog(district), AQI_ALERT_THRESHOLD);
         }
 
         Map<String, Object> result = new HashMap<>();
@@ -82,5 +82,10 @@ public class SimulateController {
         result.put("processInstanceId", processInstanceId);
 
         return ResponseEntity.ok(result);
+    }
+
+    private static String sanitizeLog(String input) {
+        if (input == null) return "null";
+        return input.replaceAll("[\r\n\t]", "_");
     }
 }

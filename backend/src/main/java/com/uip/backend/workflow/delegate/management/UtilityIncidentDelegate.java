@@ -1,5 +1,6 @@
 package com.uip.backend.workflow.delegate.management;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.camunda.bpm.engine.delegate.DelegateExecution;
@@ -18,6 +19,7 @@ import java.util.UUID;
 public class UtilityIncidentDelegate implements JavaDelegate {
 
     @Override
+    @SuppressFBWarnings(value = "VA_FORMAT_STRING_USES_NEWLINE", justification = "\\n is intentional — report text is stored in Camunda variables/DB, not printed to OS stdout where %n would be appropriate")
     public void execute(DelegateExecution execution) throws Exception {
         String metricType = (String) execution.getVariable("metricType");
         Object anomalyValue = execution.getVariable("anomalyValue");

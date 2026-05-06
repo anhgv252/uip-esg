@@ -53,7 +53,9 @@ public class InviteService {
         inviteTokenRepository.save(token);
 
         emailService.sendInviteEmail(request.email(), token.getToken().toString());
-        log.info("Invite created: tenant={} email={} role={} by={}", tenantId, request.email(), request.role(), invitedBy);
+        log.info("Invite created: tenant={} email={} role={} by={}",
+                sanitizeLog(tenantId), sanitizeLog(request.email()),
+                sanitizeLog(request.role()), sanitizeLog(invitedBy));
     }
 
     @Transactional
@@ -95,5 +97,10 @@ public class InviteService {
         if (recentCount >= MAX_INVITES_PER_HOUR) {
             throw new IllegalStateException("Invite rate limit exceeded for tenant: " + tenantId);
         }
+    }
+
+    private static String sanitizeLog(String input) {
+        if (input == null) return "null";
+        return input.replaceAll("[\r\n\t]", "_");
     }
 }

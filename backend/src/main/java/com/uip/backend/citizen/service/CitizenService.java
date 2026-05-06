@@ -19,7 +19,9 @@ import java.util.UUID;
 @RequiredArgsConstructor
 @Slf4j
 public class CitizenService {
-    
+
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+
     private final CitizenAccountRepository citizenRepository;
     private final HouseholdRepository householdRepository;
     private final BuildingRepository buildingRepository;
@@ -127,13 +129,18 @@ public class CitizenService {
      */
     @Transactional(readOnly = true)
     public List<BuildingDto> getBuildingsByDistrict(String district) {
-        log.info("Fetching buildings for district: {}", district);
+        log.info("Fetching buildings for district: {}", sanitizeLog(district));
         return buildingRepository.findByDistrict(district).stream()
             .map(this::mapToBuildingDto)
             .toList();
     }
-    
+
     // Helper methods
+
+    private static String sanitizeLog(String input) {
+        if (input == null) return "null";
+        return input.replaceAll("[\r\n\t]", "_");
+    }
     
     /**
      * Generate username from email (format: email prefix + random 4 digits)
@@ -144,8 +151,7 @@ public class CitizenService {
         
         // Ensure uniqueness by appending random suffix if needed
         if (citizenRepository.existsByUsername(username)) {
-            SecureRandom random = new SecureRandom();
-            username = username + random.nextInt(10000);
+            username = username + SECURE_RANDOM.nextInt(10000);
         }
         
         return username;

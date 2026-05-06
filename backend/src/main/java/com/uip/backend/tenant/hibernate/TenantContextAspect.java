@@ -25,7 +25,9 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class TenantContextAspect {
 
-    private static final String SET_TENANT_SQL = "SET LOCAL app.tenant_id = '%s'";
+    // Uses set_config() with a PreparedStatement parameter — eliminates SQL injection risk.
+    // Third argument `true` scopes the setting to the current transaction (equivalent to SET LOCAL).
+    private static final String SET_TENANT_SQL = "SELECT set_config('app.tenant_id', ?, true)";
 
     private final EntityManager entityManager;
 
@@ -36,15 +38,12 @@ public class TenantContextAspect {
             tenantId = TenantContext.getDefaultTenant();
         }
 
-        // Sanitize: replace single quotes to prevent SQL injection
-        String sanitizedTenantId = tenantId.replace("'", "''");
-
-        String sql = String.format(SET_TENANT_SQL, sanitizedTenantId);
-
+        final String resolvedTenantId = tenantId;
         entityManager.unwrap(Session.class).doWork(connection -> {
-            try (var statement = connection.createStatement()) {
-                statement.execute(sql);
-                log.debug("SET LOCAL app.tenant_id = '{}'", sanitizedTenantId);
+            try (var ps = connection.prepareStatement(SET_TENANT_SQL)) {
+                ps.setString(1, resolvedTenantId);
+                ps.execute();
+                log.debug("SET LOCAL app.tenant_id = '{}'", resolvedTenantId);
             }
         });
     }

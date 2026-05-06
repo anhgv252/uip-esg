@@ -31,7 +31,10 @@ public class TrafficService {
      */
     @Transactional(readOnly = true)
     public List<TrafficCountDto> getTrafficCounts(String intersectionId, LocalDateTime from, LocalDateTime to) {
-        log.info("Fetching traffic counts for intersection {} from {} to {}", intersectionId, from, to);
+        log.info("Fetching traffic counts for intersection {} from {} to {}",
+                sanitizeLog(intersectionId),
+                sanitizeLog(String.valueOf(from)),
+                sanitizeLog(String.valueOf(to)));
         List<TrafficCount> counts = countRepository.findByIntersectionAndTimeRange(intersectionId, from, to);
         return counts.stream()
             .map(this::mapToCountDto)
@@ -43,7 +46,7 @@ public class TrafficService {
      */
     @Transactional(readOnly = true)
     public Page<TrafficIncidentDto> getIncidents(String status, Pageable pageable) {
-        log.info("Fetching incidents with status: {}", status);
+        log.info("Fetching incidents with status: {}", sanitizeLog(status));
         Page<TrafficIncident> incidents = incidentRepository.findByStatus(status, pageable);
         return incidents.map(this::mapToIncidentDto);
     }
@@ -85,7 +88,8 @@ public class TrafficService {
      */
     @Transactional
     public TrafficIncidentDto updateIncidentStatus(UUID incidentId, String newStatus) {
-        log.info("Updating incident {} status to {}", incidentId, newStatus);
+        log.info("Updating incident {} status to {}",
+                sanitizeLog(String.valueOf(incidentId)), sanitizeLog(newStatus));
         TrafficIncident incident = incidentRepository.findById(incidentId)
             .orElseThrow(() -> new IllegalArgumentException("Incident not found: " + incidentId));
         
@@ -198,6 +202,11 @@ public class TrafficService {
     }
     
     // DTOs mapping helpers
+    private static String sanitizeLog(String input) {
+        if (input == null) return "null";
+        return input.replaceAll("[\r\n\t]", "_");
+    }
+
     private TrafficIncidentDto mapToIncidentDto(TrafficIncident incident) {
         return TrafficIncidentDto.builder()
             .id(incident.getId())

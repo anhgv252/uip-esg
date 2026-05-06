@@ -43,7 +43,8 @@ public class TenantAdminService {
         if (hasRole(auth, "ROLE_TENANT_ADMIN")) {
             String jwtTenantId = TenantContext.getCurrentTenant();
             if (!jwtTenantId.equals(pathTenantId)) {
-                log.warn("TENANT_ADMIN {} attempted path={}, serving own tenant", jwtTenantId, pathTenantId);
+                log.warn("TENANT_ADMIN {} attempted path={}, serving own tenant",
+                        sanitizeLog(jwtTenantId), sanitizeLog(pathTenantId));
             }
             return jwtTenantId;
         }
@@ -86,7 +87,8 @@ public class TenantAdminService {
             throw new AccessDeniedException("User does not belong to tenant: " + tenantId);
         }
         user.setRole(UserRole.valueOf(newRole));
-        log.info("User role updated: userId={} tenant={} newRole={}", userId, tenantId, newRole);
+        log.info("User role updated: userId={} tenant={} newRole={}",
+                sanitizeLog(String.valueOf(userId)), sanitizeLog(tenantId), sanitizeLog(newRole));
     }
 
     @Transactional(readOnly = true)
@@ -126,12 +128,18 @@ public class TenantAdminService {
                         .updatedAt(Instant.now())
                         .build());
         tenantConfigRepository.save(entry);
-        log.info("Tenant config updated: tenant={} key={} by={}", tenantId, configKey, updatedBy);
+        log.info("Tenant config updated: tenant={} key={} by={}",
+                sanitizeLog(tenantId), sanitizeLog(configKey), sanitizeLog(updatedBy));
     }
 
     private boolean hasRole(Authentication auth, String role) {
         return auth.getAuthorities().stream()
                 .map(GrantedAuthority::getAuthority)
                 .anyMatch(role::equals);
+    }
+
+    private static String sanitizeLog(String input) {
+        if (input == null) return "null";
+        return input.replaceAll("[\r\n\t]", "_");
     }
 }

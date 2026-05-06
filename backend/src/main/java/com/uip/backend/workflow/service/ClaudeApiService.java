@@ -93,9 +93,9 @@ public class ClaudeApiService {
             ResponseEntity<ClaudeApiResponse> response = circuitBreaker.executeSupplier(() ->
                 claudeRestTemplate.exchange(apiUrl, HttpMethod.POST, entity, ClaudeApiResponse.class));
 
-            if (response.getBody() != null && response.getBody().getContent() != null
-                    && !response.getBody().getContent().isEmpty()) {
-                String responseText = response.getBody().getContent().get(0).getText();
+            ClaudeApiResponse body = response.getBody();
+            if (body != null && body.getContent() != null && !body.getContent().isEmpty()) {
+                String responseText = body.getContent().get(0).getText();
                 AIDecision decision = parseAIDecision(responseText);
                 log.info("Claude API decision for {}: {}", scenarioKey, decision.getDecision());
                 return CompletableFuture.completedFuture(decision);

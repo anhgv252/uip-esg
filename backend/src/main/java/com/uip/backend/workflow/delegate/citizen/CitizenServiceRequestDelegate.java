@@ -22,7 +22,6 @@ public class CitizenServiceRequestDelegate implements JavaDelegate {
     public void execute(DelegateExecution execution) throws Exception {
         String citizenId = (String) execution.getVariable("citizenId");
         String requestType = (String) execution.getVariable("requestType");
-        String description = (String) execution.getVariable("description");
         String aiDecision = (String) execution.getVariable("aiDecision");
         String aiSeverity = (String) execution.getVariable("aiSeverity");
         @SuppressWarnings("unchecked")

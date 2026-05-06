@@ -12,6 +12,8 @@ import org.springframework.data.redis.listener.PatternTopic;
 import org.springframework.data.redis.listener.RedisMessageListenerContainer;
 import org.springframework.stereotype.Service;
 
+import java.nio.charset.StandardCharsets;
+
 /**
  * Subscribes to Redis channel "uip:alerts" and pushes messages to SSE clients.
  */
@@ -38,7 +40,7 @@ public class NotificationService implements MessageListener {
      */
     @Override
     public void onMessage(Message message, byte[] pattern) {
-        String payload = new String(message.getBody());
+        String payload = new String(message.getBody(), StandardCharsets.UTF_8);
         log.debug("Redis alert received: {}", payload);
         try {
             Object data = objectMapper.readValue(payload, Object.class);

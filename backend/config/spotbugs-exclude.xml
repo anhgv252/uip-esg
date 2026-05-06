@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  SpotBugs/FindSecBugs false-positive exclusion filter.
+  All suppressions are documented with the reason they are safe.
+-->
+<FindBugsFilter>
+
+    <!--
+      SQL_INJECTION_JDBC false positive: TenantContextAspect uses set_config() via
+      prepareStatement("SELECT set_config('app.tenant_id', ?, true)") with ps.setString(1, value).
+      This is a properly parameterized query — no string concatenation into SQL.
+      FindSecBugs 1.12.0 traces the tenant ID as tainted data and flags the surrounding JDBC block.
+    -->
+    <Match>
+        <Class name="com.uip.backend.tenant.hibernate.TenantContextAspect"/>
+        <Bug type="SQL_INJECTION_JDBC"/>
+    </Match>
+
+    <!--
+      EI_EXPOSE_REP / EI_EXPOSE_REP2 false positives on Lombok-generated DTOs and domain objects.
+      These are Spring MVC/Kafka transfer objects serialized immediately by Jackson — callers never
+      hold references to the internal collections long enough to cause data corruption.
+      Applying defensive copies on every DTO getter would generate unnecessary allocations.
+    -->
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP,EI_EXPOSE_REP2"/>
+        <Or>
+            <Package name="~com\.uip\.backend\..*\.api\.dto"/>
+            <Package name="~com\.uip\.backend\..*\.dto"/>
+            <Package name="~com\.uip\.backend\..*\.domain"/>
+            <Package name="~com\.uip\.backend\..*\.export"/>
+            <Class name="com.uip.backend.common.config.RateLimitConfig"/>
+            <Class name="com.uip.backend.partner.PartnerConfig"/>
+            <!-- FilterCondition is an internal record in FilterEvaluator — its List<Object> values
+                 field is only read (never mutated) by the rule engine filter logic. -->
+            <Class name="com.uip.backend.workflow.config.FilterEvaluator$FilterCondition"/>
+        </Or>
+    </Match>
+
+    <!--
+      EI_EXPOSE_REP2 false positives on Spring @Autowired / constructor-injected beans.
+      Spring manages the bean lifecycle and guarantees these references are never externally mutated.
+    -->
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+        <Or>
+            <Class name="com.uip.backend.alert.api.AlertController"/>
+            <Class name="com.uip.backend.alert.api.AlertRuleController"/>
+            <Class name="com.uip.backend.alert.kafka.AlertEventKafkaConsumer"/>
+            <Class name="com.uip.backend.alert.service.AlertEngine"/>
+            <Class name="com.uip.backend.auth.config.SecurityConfig"/>
+            <Class name="com.uip.backend.esg.kafka.TelemetryErrorConsumer"/>
+            <Class name="com.uip.backend.esg.service.EsgReportGenerator"/>
+            <Class name="com.uip.backend.esg.service.EsgService"/>
+            <Class name="com.uip.backend.notification.service.NotificationService"/>
+            <Class name="com.uip.backend.tenant.hibernate.TenantContextAspect"/>
+            <Class name="com.uip.backend.tenant.repository.TenantUsageCrossSchemaRepository"/>
+            <Class name="com.uip.backend.tenant.service.InviteService"/>
+            <Class name="com.uip.backend.workflow.config.FilterEvaluator"/>
+            <Class name="com.uip.backend.workflow.config.TriggerConfigAuditService"/>
+            <Class name="com.uip.backend.workflow.config.VariableMapper"/>
+            <Class name="com.uip.backend.workflow.controller.WorkflowConfigController"/>
+            <Class name="com.uip.backend.workflow.delegate.citizen.AqiCitizenAlertDelegate"/>
+            <Class name="com.uip.backend.workflow.delegate.citizen.FloodEvacuationDelegate"/>
+            <Class name="com.uip.backend.workflow.delegate.management.AqiTrafficControlDelegate"/>
+            <Class name="com.uip.backend.workflow.service.ClaudeApiService"/>
+            <Class name="com.uip.backend.workflow.service.WorkflowService"/>
+            <Class name="com.uip.backend.workflow.trigger.GenericKafkaTriggerService"/>
+        </Or>
+    </Match>
+
+</FindBugsFilter>

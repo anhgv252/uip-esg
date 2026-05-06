@@ -201,12 +201,14 @@ dependencyCheck {
 spotbugs {
     effort = com.github.spotbugs.snom.Effort.MAX
     ignoreFailures = false
+    // Suppress documented false positives; see config/spotbugs-exclude.xml for rationale.
+    excludeFilter = file("${projectDir}/config/spotbugs-exclude.xml")
 }
 
 spotbugsMain {
     reports {
         html.required = true
-        xml.required = false
+        xml.required = true
     }
 }
 

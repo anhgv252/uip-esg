@@ -2,6 +2,7 @@ package com.uip.backend.workflow.delegate.management;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.camunda.bpm.engine.delegate.DelegateExecution;
@@ -23,6 +24,7 @@ public class AqiTrafficControlDelegate implements JavaDelegate {
     private final ObjectMapper objectMapper;
 
     @Override
+    @SuppressFBWarnings(value = "VA_FORMAT_STRING_USES_NEWLINE", justification = "\\n is intentional — report text is stored in Camunda variables/DB, not printed to OS stdout where %n would be appropriate")
     public void execute(DelegateExecution execution) throws Exception {
         Object aqiValue = execution.getVariable("aqiValue");
         String pollutants = (String) execution.getVariable("pollutants");
@@ -53,10 +55,12 @@ public class AqiTrafficControlDelegate implements JavaDelegate {
         String recommendationReport = String.format(
                 "AQI Traffic Restriction Recommendation:\n" +
                 "- AQI Level: %s\n" +
+                "- Pollutants: %s\n" +
                 "- Affected Districts: %s\n" +
                 "- Severity: %s\n" +
                 "- Recommended Actions: %s",
                 aqiValue,
+                pollutants,
                 affectedDistricts,
                 aiSeverity,
                 recommendedActions != null ? String.join(", ", recommendedActions) : "None"

@@ -8,7 +8,8 @@ COMPOSE_UAT_FILE = -f docker-compose.yml -f docker-compose.uat.yml
 .PHONY: help up down logs ps migrate test-mqtt test-pipeline \
         uat-up uat-down uat-logs uat-ps uat-test uat-clean seed-uat clean \
         regression-test regression-test-group \
-        security-scan security-report security-open
+        security-scan security-report security-open \
+        spotbugs-scan spotbugs-report spotbugs-open security-full
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | \
@@ -148,6 +149,30 @@ security-report: ## Mở HTML report trong browser (sau khi đã chạy security
 	@open ../backend/build/reports/dependency-check/dependency-check-report.html
 
 security-open: security-report ## Alias của security-report
+
+spotbugs-scan: ## Run SpotBugs + FindSecBugs static analysis trên main sources
+	@echo "Running SpotBugs + FindSecBugs..."
+	@cd ../backend && ./gradlew spotbugsMain --no-daemon
+	@echo ""
+	@echo "=== SpotBugs complete ==="
+	@echo "  HTML report: backend/build/reports/spotbugs/main.html"
+	@echo ""
+	@echo "  Bug count:"
+	@grep -c '<BugInstance' ../backend/build/reports/spotbugs/main.xml 2>/dev/null \
+		&& echo " bugs found (xem HTML report để xem chi tiết)" \
+		|| echo "  0 bugs (hoặc report XML chưa có)"
+
+spotbugs-report: ## Mở SpotBugs HTML report trong browser (sau khi đã chạy spotbugs-scan)
+	@test -f ../backend/build/reports/spotbugs/main.html || { \
+		echo "ERROR: Report chưa có. Chạy 'make spotbugs-scan' trước."; exit 1; \
+	}
+	@open ../backend/build/reports/spotbugs/main.html
+
+spotbugs-open: spotbugs-report ## Alias của spotbugs-report
+
+security-full: ## Chạy toàn bộ security check: SpotBugs + OWASP (cần NVD_API_KEY)
+	@$(MAKE) spotbugs-scan
+	@$(MAKE) security-scan
 
 # ─── Cleanup ──────────────────────────────────────────────────────────────────
 

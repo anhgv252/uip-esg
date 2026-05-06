@@ -9,6 +9,7 @@ import com.uip.backend.tenant.context.TenantContext;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.PathResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
@@ -18,10 +19,13 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import java.nio.file.Paths;
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Path;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 
 @RestController
 @RequestMapping("/api/v1/esg")
@@ -30,6 +34,10 @@ import java.util.UUID;
 public class EsgController {
 
     private final EsgService esgService;
+
+    // Must match the value in EsgReportGenerator so path validation uses the same base directory.
+    @Value("${esg.report.output-dir:${java.io.tmpdir}/uip-reports}")
+    private String reportOutputDir;
 
     @GetMapping("/summary")
     @Operation(summary = "ESG summary aggregation for a given period")
@@ -86,6 +94,7 @@ public class EsgController {
     @GetMapping("/reports/{id}/download")
     @Operation(summary = "Download ESG report (XLSX or CSV)")
     @PreAuthorize("isAuthenticated()")
+    @SuppressFBWarnings(value = "PATH_TRAVERSAL_IN", justification = "report.getFilePath() is server-written (set by EsgReportGenerator, never from user input); further guarded by getCanonicalFile() + startsWith(baseDir) check")
     public ResponseEntity<?> downloadReport(
             @PathVariable UUID id,
             @RequestParam(defaultValue = "xlsx") String format) {
@@ -93,13 +102,23 @@ public class EsgController {
         EsgReport report = esgService.getReportForDownload(tenantId, id);
 
         if ("xlsx".equalsIgnoreCase(format) && report.getFilePath() != null) {
-            Resource resource = new PathResource(Paths.get(report.getFilePath()));
-            return ResponseEntity.ok()
-                    .contentType(MediaType.parseMediaType(
-                            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
-                    .header(HttpHeaders.CONTENT_DISPOSITION,
-                            "attachment; filename=\"esg-report-%s.xlsx\"".formatted(id))
-                    .body(resource);
+            try {
+                // getCanonicalFile() resolves symlinks/traversal sequences — FindSecBugs-recognized sanitizer.
+                Path normalizedPath = new File(report.getFilePath()).getCanonicalFile().toPath();
+                Path baseDir = new File(reportOutputDir).getCanonicalFile().toPath();
+                if (!normalizedPath.startsWith(baseDir)) {
+                    throw new IllegalArgumentException("Report file path is outside the configured output directory");
+                }
+                Resource resource = new PathResource(normalizedPath);
+                return ResponseEntity.ok()
+                        .contentType(MediaType.parseMediaType(
+                                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                        .header(HttpHeaders.CONTENT_DISPOSITION,
+                                "attachment; filename=\"esg-report-%s.xlsx\"".formatted(id))
+                        .body(resource);
+            } catch (IOException e) {
+                throw new IllegalStateException("Cannot resolve report file path", e);
+            }
         }
 
         byte[] data = esgService.exportReport(report, format);

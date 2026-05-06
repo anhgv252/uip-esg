@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
+import java.security.SecureRandom;
 import java.util.stream.IntStream;
 
 /**
@@ -23,7 +23,7 @@ public class FakeTrafficDataController {
         "HCM-IT-001", "HCM-IT-002", "HCM-IT-003", "HCM-IT-004", "HCM-IT-005"
     };
     private static final String[] CONGESTION_LEVELS = {"LOW", "MEDIUM", "HIGH", "CRITICAL"};
-    private static final Random RANDOM = new Random();
+    private static final SecureRandom RANDOM = new SecureRandom();
 
     @GetMapping("/fake-traffic")
     public List<Map<String, Object>> getFakeTraffic() {

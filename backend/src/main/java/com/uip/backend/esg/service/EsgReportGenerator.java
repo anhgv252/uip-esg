@@ -14,16 +14,17 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.*;
 import java.util.stream.Collectors;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 
 @Service
 @RequiredArgsConstructor
@@ -115,14 +116,20 @@ public class EsgReportGenerator {
         esgReportRepository.save(report);
     }
 
+    @SuppressFBWarnings(value = "PATH_TRAVERSAL_IN", justification = "outputDir is @Value-injected server config, not user input; guarded by getCanonicalFile() + startsWith(dir) check on next line")
     private String buildReport(EsgReport report) throws IOException {
         String tenantId = report.getTenantId();
-        Path dir = Paths.get(outputDir);
+        // getCanonicalFile() resolves symlinks and normalizes traversal sequences,
+        // producing a trusted canonical path (FindSecBugs-recognized PATH_TRAVERSAL sanitizer).
+        Path dir = new File(outputDir).getCanonicalFile().toPath();
         Files.createDirectories(dir);
 
         String fileName = "esg-report-%s-Q%d-%d.xlsx"
                 .formatted(report.getId(), report.getQuarter(), report.getYear());
-        Path outputPath = dir.resolve(fileName);
+        Path outputPath = dir.resolve(fileName).normalize();
+        if (!outputPath.startsWith(dir)) {
+            throw new IOException("Computed output path escapes configured report directory");
+        }
 
         Instant[] range = quarterRange(report.getYear(), report.getQuarter());
 

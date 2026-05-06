@@ -9,6 +9,7 @@ import com.uip.backend.citizen.domain.Meter;
 import com.uip.backend.citizen.repository.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -71,31 +72,33 @@ public class InvoiceService {
      * Get invoices for a specific month/year
      */
     @Transactional(readOnly = true)
+    @SuppressFBWarnings(value = "CRLF_INJECTION_LOGS", justification = "month/year are Integer — cannot contain CRLF; FindSecBugs false positive on numeric HTTP params")
     public List<InvoiceDto> getInvoicesByMonth(UUID citizenId, Integer year, Integer month) {
-        log.info("Fetching invoices for citizen {} - {}/{}", citizenId, month, year);
+        log.info("Fetching invoices by month: {}/{}", month, year);
         List<Invoice> invoices = invoiceRepository.findByYearAndMonth(citizenId, year, month);
         return invoices.stream().map(this::mapToInvoiceDto).toList();
     }
-    
+
     /**
      * Get single invoice detail
      * GET /api/v1/citizen/invoices/{id}
      */
     @Transactional(readOnly = true)
     public InvoiceDto getInvoiceById(UUID invoiceId) {
-        log.info("Fetching invoice {}", invoiceId);
+        log.info("Fetching invoice {}", sanitizeLog(String.valueOf(invoiceId)));
         Invoice invoice = invoiceRepository.findById(invoiceId)
             .orElseThrow(() -> new IllegalArgumentException("Invoice not found: " + invoiceId));
         return mapToInvoiceDto(invoice);
     }
-    
+
     /**
      * Get consumption history for a meter
      * GET /api/v1/citizen/consumption/history?meterId=&months=3
      */
     @Transactional(readOnly = true)
+    @SuppressFBWarnings(value = "CRLF_INJECTION_LOGS", justification = "months is Integer — cannot contain CRLF; FindSecBugs false positive on numeric HTTP params")
     public List<ConsumptionHistoryDto> getConsumptionHistory(UUID meterId, Integer months) {
-        log.info("Fetching consumption history for meter {} (last {} months)", meterId, months);
+        log.info("Fetching consumption history (last {} months)", months);
         
         meterRepository.findById(meterId)
             .orElseThrow(() -> new IllegalArgumentException("Meter not found: " + meterId));
@@ -118,6 +121,11 @@ public class InvoiceService {
     }
     
     // Helper methods
+    private static String sanitizeLog(String input) {
+        if (input == null) return "null";
+        return input.replaceAll("[\r\n\t]", "_");
+    }
+
     private InvoiceDto mapToInvoiceDto(Invoice invoice) {
         return InvoiceDto.builder()
             .id(invoice.getId())
