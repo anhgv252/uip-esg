@@ -62,6 +62,10 @@ jobs:
 
       - name: OWASP Dependency-Check (CVE scan)
         working-directory: backend
+        env:
+          NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
+        # autoUpdate=false in build.gradle avoids CISA KEV 403 (blocked outside US)
+        # NVD DB is cached in ~/.gradle/dependency-check-data via Gradle cache
         run: ./gradlew dependencyCheckAnalyze --no-daemon
         continue-on-error: true
 

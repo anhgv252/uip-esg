@@ -7,6 +7,14 @@ plugins {
     id 'com.github.spotbugs' version '6.0.7'
 }
 
+ext {
+    // Security fixes — OWASP report 2026-05-06
+    set('tomcat.version', '10.1.41')         // CVE-2025-31651, CVE-2025-24813, +6 CRITICAL
+    set('netty.version', '4.1.132.Final')    // CVE-2026-33871, +5 HIGH
+    set('log4j2.version', '2.25.0')          // CVE-2026-34481, +2 HIGH
+    set('postgresql.version', '42.7.11')     // CVE-2026-42198: SQL injection
+}
+
 group = 'com.uip'
 version = '0.1.0-SNAPSHOT'
 sourceCompatibility = '17'
@@ -20,6 +28,17 @@ configurations {
         extendsFrom annotationProcessor
     }
 }
+
+// OPEN CVEs — fix versions not yet published to Maven Central as of 2026-05-06.
+// Review monthly and apply force override once artifact becomes available.
+//
+// CVE-2025-7962 (CVSS 7.5, SMTP injection): angus-activation — fix target 2.0.3, latest on
+//   Maven Central: 2.0.2. Already at latest; no upgrade possible until 2.0.3 is published.
+//
+// CVE-2025-48976 (CVSS 7.5, DoS multipart): commons-fileupload — fix target 1.6, but Apache
+//   has never published 1.6 to Maven Central (latest: 1.5). Camunda 7.22 owns this transitive
+//   dependency; mitigated by network boundary. Revisit with Camunda 7.23+.
+
 
 dependencies {
     // Core
@@ -96,6 +115,9 @@ dependencyManagement {
     imports {
         mavenBom "org.testcontainers:testcontainers-bom:1.21.4"
     }
+    dependencies {
+        dependency 'org.apache.kafka:kafka-clients:3.9.1'  // CVE-2025-27818, +2 HIGH
+    }
 }
 
 test {
@@ -154,12 +176,24 @@ bootJar {
 // ─── OWASP Dependency-Check ───────────────────────────────────────────────────
 
 dependencyCheck {
-    formats = ['HTML']
+    formats = ['HTML', 'JSON']
     outputDirectory = 'build/reports/dependency-check'
     failBuildOnCVSS = 7.0
+    failOnError = false
+    autoUpdate = System.env.NVD_API_KEY ? true : false
     analyzers {
         assemblyEnabled = false
     }
+    nvd {
+        // Free API key: https://nvd.nist.gov/developers/request-an-api-key
+        // CI: store as GitHub Secret NVD_API_KEY
+        // Local: export NVD_API_KEY=<your-key>
+        apiKey = System.env.NVD_API_KEY ?: ''
+        delay = System.env.NVD_API_KEY ? 1000 : 4000
+    }
+    // KEV (CISA Known Exploited Vulnerabilities) disabled via JVM arg in gradle.properties:
+    // -Danalyzer.knownexploited.enabled=false
+    // Reason: cisa.gov returns 403 from non-US IPs and aborts the entire scan.
 }
 
 // ─── SpotBugs + FindSecBugs ───────────────────────────────────────────────────
