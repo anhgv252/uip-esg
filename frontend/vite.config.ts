@@ -13,18 +13,22 @@ export default defineConfig({
         name: 'UIP Smart City',
         short_name: 'UIP',
         start_url: '/citizen',
+        scope: '/',
         display: 'standalone',
         theme_color: '#1976D2',
         background_color: '#ffffff',
         icons: [
           { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
           { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png' },
+          { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'maskable' },
+          { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
           { src: '/icons/icon-192.svg', sizes: '192x192', type: 'image/svg+xml' },
           { src: '/icons/icon-512.svg', sizes: '512x512', type: 'image/svg+xml' },
         ],
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
+        navigateFallback: '/offline.html',
         runtimeCaching: [
           {
             urlPattern: /^https?:\/\/.*\/api\/v1\/citizen\/bills/,
