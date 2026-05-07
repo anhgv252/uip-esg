@@ -84,6 +84,11 @@ class PushSubscriptionIT {
 
     private String adminToken;
 
+    @BeforeEach
+    void cleanPushSubscriptions() {
+        jdbc.execute("DELETE FROM push_subscriptions");
+    }
+
     @BeforeAll
     void obtainTokens() throws Exception {
         // Login as admin to get a valid JWT token
