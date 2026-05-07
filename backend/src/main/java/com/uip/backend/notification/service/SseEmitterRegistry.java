@@ -51,10 +51,9 @@ public class SseEmitterRegistry {
                 emitter.send(SseEmitter.event()
                         .name(eventName)
                         .data(data));
-            } catch (IOException e) {
+            } catch (IOException | IllegalStateException e) {
                 log.debug("SSE send failed for client {}; removing", clientId);
                 emitters.remove(clientId);
-                emitter.completeWithError(e);
             }
         });
     }

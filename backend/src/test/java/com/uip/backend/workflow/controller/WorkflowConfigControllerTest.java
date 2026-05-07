@@ -208,4 +208,72 @@ class WorkflowConfigControllerTest {
 
         assertThatCode(() -> controller.createConfig(input, auth)).doesNotThrowAnyException();
     }
+
+    // ─── updateConfig: covers updateFields + PUT endpoint ────────────────────
+
+    @Test
+    @DisplayName("PUT /{id} — found: updates all fields and returns 200")
+    void updateConfig_found_allFields() {
+        TriggerConfig existing = buildConfig(1L, "old");
+        when(configRepo.findById(1L)).thenReturn(Optional.of(existing));
+        when(configRepo.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(auth.getName()).thenReturn("admin");
+
+        TriggerConfig updates = TriggerConfig.builder()
+            .scenarioKey("new-scenario").processKey("new-process")
+            .displayName("New Name").description("New desc")
+            .triggerType("REST").kafkaTopic("new-topic")
+            .kafkaConsumerGroup("new-group").filterConditions("[{\"field\":\"v\"}]")
+            .variableMapping("{\"k\":{\"static\":\"v\"}}").scheduleCron("0 * * * *")
+            .scheduleQueryBean("newBean").promptTemplatePath("/new/template.txt")
+            .aiConfidenceThreshold(new java.math.BigDecimal("0.9")).deduplicationKey("ded-key").enabled(false)
+            .build();
+
+        var response = controller.updateConfig(1L, updates, auth);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        TriggerConfig saved = response.getBody();
+        assertThat(saved.getScenarioKey()).isEqualTo("new-scenario");
+        assertThat(saved.getProcessKey()).isEqualTo("new-process");
+        assertThat(saved.getTriggerType()).isEqualTo("REST");
+        assertThat(saved.getEnabled()).isFalse();
+        verify(auditService).record(any(), eq("UPDATE"), eq("admin"));
+    }
+
+    @Test
+    @DisplayName("PUT /{id} — not found → 404")
+    void updateConfig_notFound() {
+        when(configRepo.findById(99L)).thenReturn(Optional.empty());
+
+        var response = controller.updateConfig(99L, buildConfig(null, "x"), auth);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
+    @Test
+    @DisplayName("PUT /{id} — null update fields are not copied")
+    void updateConfig_nullFields_notCopied() {
+        TriggerConfig existing = buildConfig(1L, "original");
+        when(configRepo.findById(1L)).thenReturn(Optional.of(existing));
+        when(configRepo.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(auth.getName()).thenReturn("admin");
+
+        TriggerConfig updates = TriggerConfig.builder().build(); // all null
+
+        var response = controller.updateConfig(1L, updates, auth);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        // Original fields preserved
+        assertThat(response.getBody().getScenarioKey()).isEqualTo("original");
+    }
+
+    @Test
+    @DisplayName("POST /{id}/test — config not found → 404")
+    void testTrigger_notFound() {
+        when(configRepo.findById(99L)).thenReturn(Optional.empty());
+
+        var response = controller.testTrigger(99L, Map.of("k", "v"));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    }
 }
