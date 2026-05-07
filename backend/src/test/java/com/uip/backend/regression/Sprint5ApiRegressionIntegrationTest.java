@@ -267,14 +267,14 @@ class Sprint5ApiRegressionIntegrationTest {
         }
 
         @Test
-        @DisplayName("REG-API-17: PUT /tenant/config returns 200 for valid update")
+        @DisplayName("REG-API-17: PUT /admin/tenants/{tenantId}/settings returns 200 for valid update")
         void tenantConfigUpdate_returns200() throws Exception {
             String token = loginAndGetAccessToken();
-            mockMvc.perform(put("/api/v1/tenant/config")
+            mockMvc.perform(put("/api/v1/admin/tenants/default/settings")
                             .header("Authorization", "Bearer " + token)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""
-                                    {"features": {"tenant_management": true}}
+                                    {"configKey":"tenant_management","configValue":"true"}
                                     """))
                     .andExpect(status().is2xxSuccessful());
         }
@@ -328,7 +328,7 @@ class Sprint5ApiRegressionIntegrationTest {
             mockMvc.perform(post("/api/v1/auth/login")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""
-                                    {"username":"admin","password":"wrong"}
+                                    {"username":"admin","password":"wrong-password-123"}
                                     """))
                     .andExpect(status().isUnauthorized());
         }

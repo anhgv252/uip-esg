@@ -36,6 +36,7 @@ import static org.assertj.core.api.Assertions.assertThat;
     }
 )
 @Testcontainers(disabledWithoutDocker = true)
+@org.springframework.test.annotation.DirtiesContext
 @DisplayName("Workflow Startup — 7 BPMN processes deployed")
 class WorkflowStartupTest {
 

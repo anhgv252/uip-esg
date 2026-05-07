@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { rest } from 'msw'
+import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
 
 /**
@@ -41,8 +41,8 @@ function renderWithProviders(ui: React.ReactElement) {
 // ============================================================================
 
 const tenantAdminHandlers = [
-  rest.get('/api/v1/tenant/overview', (_req, res, ctx) => {
-    return res(ctx.json({
+  http.get('/api/v1/tenant/overview', () => {
+    return HttpResponse.json({
       totalUsers: 42,
       totalBuildings: 8,
       activeAlerts: 3,
@@ -51,39 +51,39 @@ const tenantAdminHandlers = [
         { id: '1', action: 'User invited', timestamp: '2026-06-23T10:00:00Z' },
         { id: '2', action: 'Alert acknowledged', timestamp: '2026-06-23T09:30:00Z' },
       ],
-    }))
+    })
   }),
 
-  rest.get('/api/v1/admin/users', (_req, res, ctx) => {
-    return res(ctx.json({
+  http.get('/api/v1/admin/users', () => {
+    return HttpResponse.json({
       content: [
         { id: '1', username: 'user1', email: 'user1@example.com', role: 'CITIZEN', active: true },
         { id: '2', username: 'user2', email: 'user2@example.com', role: 'OPERATOR', active: true },
       ],
       totalElements: 2,
       totalPages: 1,
-    }))
+    })
   }),
 
-  rest.get('/api/v1/tenant/config', (_req, res, ctx) => {
-    return res(ctx.json({
+  http.get('/api/v1/tenant/config', () => {
+    return HttpResponse.json({
       features: { tenant_management: true, ai_workflow: true },
       branding: { primaryColor: '#1976d2', logo: '/logo.png' },
-    }))
+    })
   }),
 
-  rest.get('/api/v1/citizen/buildings', (_req, res, ctx) => {
-    return res(ctx.json([
+  http.get('/api/v1/citizen/buildings', () => {
+    return HttpResponse.json([
       { id: '1', name: 'Building A', location: 'HCM', sensorCount: 5, active: true },
       { id: '2', name: 'Building B', location: 'HN', sensorCount: 3, active: false },
-    ]))
+    ])
   }),
 
-  rest.get('/api/v1/tenant/usage', (_req, res, ctx) => {
-    return res(ctx.json({
+  http.get('/api/v1/tenant/usage', () => {
+    return HttpResponse.json({
       period: { from: '2026-06-01', to: '2026-06-30' },
       stats: { apiCalls: 15000, activeUsers: 12, alertsTriggered: 8 },
-    }))
+    })
   }),
 ]
 

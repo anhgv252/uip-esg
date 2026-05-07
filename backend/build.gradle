@@ -133,7 +133,7 @@ test {
     environment 'RYUK_DISABLED', 'true'
     // Sequential forks: @SpringBootTest contexts share DB pool; parallel forks exhaust connections
     maxParallelForks = 1
-    jvmArgs '-Xmx1g', '-Xms256m'
+    jvmArgs '-Xmx2g', '-Xms256m'
     finalizedBy jacocoTestReport
 }
 
