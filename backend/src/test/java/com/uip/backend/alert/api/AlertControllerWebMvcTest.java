@@ -3,6 +3,8 @@ package com.uip.backend.alert.api;
 import com.uip.backend.alert.api.dto.AlertEventDto;
 import com.uip.backend.alert.service.AlertService;
 import com.uip.backend.auth.config.JwtAuthenticationFilter;
+import com.uip.backend.common.ratelimit.TenantRateLimiter;
+import com.uip.backend.common.ratelimit.RateLimitFilter;
 import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -32,8 +34,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest(
     controllers = AlertController.class,
-    excludeFilters = @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE,
-        classes = JwtAuthenticationFilter.class)
+    excludeFilters = {
+        @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = JwtAuthenticationFilter.class),
+        @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = RateLimitFilter.class)
+    }
 )
 @Import(AlertControllerWebMvcTest.MethodSecurityConfig.class)
 @DisplayName("AlertController — WebMvc")
@@ -45,6 +49,7 @@ class AlertControllerWebMvcTest {
 
     @Autowired MockMvc mockMvc;
     @MockBean AlertService alertService;
+    @MockBean @SuppressWarnings("unused") TenantRateLimiter tenantRateLimiter;
 
     private AlertEventDto buildDto(UUID id, String status) {
         return AlertEventDto.builder()

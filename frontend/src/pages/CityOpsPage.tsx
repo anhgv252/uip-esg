@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react'
-import { Box, Typography, CircularProgress, Alert, FormControlLabel, Switch } from '@mui/material'
+import { Box, Typography, CircularProgress, Alert, FormControlLabel, Switch, useTheme, useMediaQuery } from '@mui/material'
 import LocationCityIcon from '@mui/icons-material/LocationCity'
 import { useQuery } from '@tanstack/react-query'
 import { getSensorsForMap, getRecentAlerts, getCongestionSegments } from '@/api/cityops'
@@ -11,6 +11,8 @@ import DistrictFilter from '@/components/cityops/DistrictFilter'
 import { useMapSSE } from '@/hooks/useMapSSE'
 
 export default function CityOpsPage() {
+  const muiTheme = useTheme()
+  const isMobile = useMediaQuery(muiTheme.breakpoints.down('md'))
   const [districtFilter, setDistrictFilter] = useState<string | null>(null)
   const [liveAlerts, setLiveAlerts] = useState<AlertEvent[]>([])
   const [showTraffic, setShowTraffic] = useState(false)
@@ -56,7 +58,7 @@ export default function CityOpsPage() {
   ].slice(0, 20)
 
   return (
-    <Box sx={{ height: 'calc(100vh - 84px)', display: 'flex', flexDirection: 'column', gap: 1 }}>
+    <Box sx={{ height: 'calc(100vh - 84px)', display: 'flex', flexDirection: 'column', gap: 1, overflow: isMobile ? 'auto' : undefined }}>
       {/* Header */}
       <Box display="flex" alignItems="center" justifyContent="space-between" flexWrap="wrap" gap={1}>
         <Box display="flex" alignItems="center" gap={1}>
@@ -73,7 +75,7 @@ export default function CityOpsPage() {
             onChange={setDistrictFilter}
           />
           <FormControlLabel
-            control={<Switch size="small" checked={showTraffic} onChange={(e) => setShowTraffic(e.target.checked)} />}
+            control={<Switch size="small" checked={showTraffic} onChange={(e) => setShowTraffic(e.target.checked)} sx={isMobile ? { '& .MuiSwitch-thumb': { width: 24, height: 24 } } : undefined} />}
             label={<Typography variant="body2">Traffic</Typography>}
           />
         </Box>
@@ -84,9 +86,9 @@ export default function CityOpsPage() {
       )}
 
       {/* Main 2-panel layout */}
-      <Box sx={{ flex: 1, display: 'flex', gap: 1.5, minHeight: 0 }}>
-        {/* Map (70%) */}
-        <Box sx={{ flex: '0 0 70%', position: 'relative', minHeight: 0 }}>
+      <Box sx={{ flex: 1, display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 1.5, minHeight: 0 }}>
+        {/* Map */}
+        <Box sx={{ flex: isMobile ? undefined : '0 0 70%', position: 'relative', height: isMobile ? '50vh' : undefined, minHeight: 0 }}>
           {sensorsLoading ? (
             <Box
               display="flex"
@@ -109,7 +111,7 @@ export default function CityOpsPage() {
         </Box>
 
         {/* Alert Feed (30%) */}
-        <Box sx={{ flex: 1, minHeight: 0, maxHeight: '100%' }}>
+        <Box sx={{ flex: 1, minHeight: 0, maxHeight: '100%', height: isMobile ? '40vh' : undefined, overflow: isMobile ? 'auto' : undefined }}>
           <AlertFeedPanel alerts={feedAlerts} loading={alertsLoading && liveAlerts.length === 0} />
         </Box>
       </Box>

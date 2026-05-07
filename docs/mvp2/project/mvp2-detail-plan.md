@@ -2351,10 +2351,10 @@ frontend/src/
 
 **Acceptance Criteria:**
 - [ ] PWA: Lighthouse score ≥90 (performance, accessibility, PWA)
-- [ ] Add to homescreen: iOS Safari + Android Chrome
-- [ ] Push notification khi AQI critical (Web Push)
-- [ ] Offline mode: bills readable khi mất internet
-- [ ] Mobile layout: responsive breakpoint <768px
+- [x] Add to homescreen: iOS Safari + Android Chrome — manifest inline VitePWA + apple meta tags + icons
+- [x] Push notification khi AQI critical (Web Push) — usePushNotificationRegistration hook + MobileNotificationsPage + MobileAQIPage toggle
+- [x] Offline mode: bills readable khi mất internet — Workbox NetworkFirst for /citizen/bills + offline.html fallback
+- [x] Mobile layout: responsive breakpoint <768px — MobileLayout + MobileNav bottom tabs
 
 ---
 
@@ -2383,29 +2383,31 @@ PUT  /api/v1/admin/tenants/{tenantId}/settings        ✅ Sprint 4
 ```
 
 **Acceptance Criteria:**
-- [ ] Tenant admin (role TENANT_ADMIN) có menu "Tenant Admin" trong sidebar
-- [ ] User invite: email → nhận link → set password → login
-- [ ] Building list: toggle active/inactive
-- [ ] Usage report: monthly sensor readings count, ESG reports generated
+- [x] Tenant admin (role TENANT_ADMIN) có menu "Tenant Admin" trong sidebar — AppShell NAV_ITEMS with ROLE_TENANT_ADMIN + tenant_management feature flag
+- [x] User invite: email → nhận link → set password → login — UserManagementPage invite dialog + InviteService backend
+- [x] Building list: toggle active/inactive — BuildingConfigPage with Switch mutation + snackbar feedback
+- [x] Usage report: monthly sensor readings count, ESG reports generated — UsageReportPage with date range + recharts
 
 ---
 
 ### Sprint 5 — Tasks Frontend bổ sung
 
-#### FE-23 — PWA VAPID Key + Push Subscription (3 SP) [Frontend] P1
+#### FE-23 — PWA VAPID Key + Push Subscription (3 SP) [Frontend] P1 ✅ DONE
 
-**Files cần tạo:**
+**Files đã tạo:**
 ```
-frontend/src/pwa/vapid.ts                   ← VAPID public key config
-frontend/src/api/pushSubscription.ts        ← register/unregister subscription với backend
-frontend/src/hooks/usePushSubscription.ts
+frontend/src/pwa/vapid.ts                   ← VAPID public key fetch + cache ✅
+frontend/src/api/pushSubscription.ts        ← subscribe/unsubscribe/list API client ✅
+frontend/src/hooks/usePushSubscription.ts   ← React Query hooks + usePushNotificationRegistration ✅
+frontend/src/pages/citizen/MobileNotificationsPage.tsx ← Push toggle + alerts list ✅
+frontend/src/vite-env.d.ts                  ← virtual:pwa-register type declaration ✅
 ```
 
-**Backend API cần có:** `POST /api/v1/push/subscribe`, `DELETE /api/v1/push/subscribe`
+**Backend API đã có:** `POST /api/v1/push/subscribe`, `DELETE /api/v1/push/subscriptions/{id}`, `GET /api/v1/push/vapid-key`, `GET /api/v1/push/subscriptions`
 
 ---
 
-#### FE-24 — Tenant Admin Nested Routing (1 SP) [Frontend] P1
+#### FE-24 — Tenant Admin Nested Routing (1 SP) [Frontend] P1 ✅ DONE
 
 **Files cần sửa:**
 ```
@@ -2417,9 +2419,20 @@ Routes: `/tenant-admin`, `/tenant-admin/users`, `/tenant-admin/buildings`, `/ten
 
 ---
 
-#### FE-30 — Responsive Audit + Fix 11 pages (5 SP) [Frontend] P2
+#### FE-30 — Responsive Audit + Fix 11 pages (5 SP) [Frontend] P2 — PARTIAL
 
 Audit tất cả 11 page hiện tại cho breakpoint <768px: tables → card layout, grid 3→1 column, touch targets ≥44px.
+
+**Đã hoàn thành:**
+- [x] AppShell — useMediaQuery mobile detection, temporary/permanent drawer, responsive padding
+- [x] TenantAdminPage — mobile temporary drawer + desktop permanent drawer
+- [x] UserManagementPage — mobile card layout + desktop table (useMediaQuery)
+- [x] BuildingConfigPage — responsive grid xs={12} sm={6}
+- [x] TenantSettingsPage — responsive grid
+- [x] MobileLayout + MobileNav — mobile-first bottom tabs
+- [x] MobileBillsPage, MobileAQIPage, MobileNotificationsPage — mobile-first
+
+**Chưa audit:** DashboardPage, EnvironmentPage, EsgPage, TrafficPage, AlertsPage, CityOpsPage
 
 ---
 
@@ -2437,13 +2450,13 @@ frontend/src/theme/partnerThemes/citizen-first.stories.tsx
 
 ### Sprint MVP2-5 DoD
 
-- [ ] PWA installable trên iOS Safari + Android Chrome
-- [ ] Push notification nhận được khi có AQI critical alert
-- [ ] Tenant admin: invite user flow end-to-end functional
-- [ ] Lighthouse PWA score ≥90
-- [ ] Tenant Admin Dashboard 5 pages functional (FE-only, API từ Sprint 4)
-- [ ] VAPID push subscription register/unregister hoạt động
-- [ ] Tenant admin nested routing hoạt động (/tenant-admin/*)
+- [x] PWA installable trên iOS Safari + Android Chrome — manifest inline + apple meta + icons + SW
+- [x] Push notification nhận được khi có AQI critical alert — usePushNotificationRegistration + MobileNotificationsPage + MobileAQIPage toggle
+- [x] Tenant admin: invite user flow end-to-end functional — UserManagementPage + InviteService
+- [ ] Lighthouse PWA score ≥90 — cần chạy Lighthouse audit
+- [x] Tenant Admin Dashboard 5 pages functional (FE-only, API từ Sprint 4) — Overview, Users, Buildings, Usage, Settings
+- [x] VAPID push subscription register/unregister hoạt động — vapid.ts + pushSubscription.ts + usePushSubscription.ts
+- [x] Tenant admin nested routing hoạt động (/tenant-admin/*) — routes/index.tsx + TenantAdminPage with <Outlet/>
 
 ---
 

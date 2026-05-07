@@ -189,6 +189,9 @@ management:
   endpoint:
     health:
       show-details: when-authorized
+  health:
+    mail:
+      enabled: false
 
 springdoc:
   swagger-ui:
@@ -206,6 +209,11 @@ uip:
     iot-ingestion-external: false
     alert-external: false
     analytics-external: false
+  push:
+    vapid:
+      public-key: ${VAPID_PUBLIC_KEY:}
+      private-key: ${VAPID_PRIVATE_KEY:}
+      subject: ${VAPID_SUBJECT:mailto:admin@uip.vn}
 
 logging:
   level:

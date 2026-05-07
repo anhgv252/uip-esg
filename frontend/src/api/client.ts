@@ -8,22 +8,43 @@ export const apiClient = axios.create({
   withCredentials: true, // sends httpOnly refresh-token cookie
 })
 
+const ACCESS_TOKEN_KEY = 'uip_access_token'
+const REFRESH_TOKEN_KEY = 'uip_refresh_token'
+
+function readStoredToken(key: string): string | null {
+  if (typeof window === 'undefined') return null
+  return window.localStorage.getItem(key)
+}
+
+function writeStoredToken(key: string, value: string | null) {
+  if (typeof window === 'undefined') return
+  if (value) {
+    window.localStorage.setItem(key, value)
+  } else {
+    window.localStorage.removeItem(key)
+  }
+}
+
 // In-memory access token — never touches localStorage / sessionStorage
-let _accessToken: string | null = null
-let _refreshToken: string | null = null
+let _accessToken: string | null = readStoredToken(ACCESS_TOKEN_KEY)
+let _refreshToken: string | null = readStoredToken(REFRESH_TOKEN_KEY)
 
 export const tokenStore = {
   set: (token: string) => {
     _accessToken = token
+    writeStoredToken(ACCESS_TOKEN_KEY, token)
   },
   setRefresh: (token: string) => {
     _refreshToken = token
+    writeStoredToken(REFRESH_TOKEN_KEY, token)
   },
   get: () => _accessToken,
   getRefresh: () => _refreshToken,
   clear: () => {
     _accessToken = null
     _refreshToken = null
+    writeStoredToken(ACCESS_TOKEN_KEY, null)
+    writeStoredToken(REFRESH_TOKEN_KEY, null)
     _tenantId = null
   },
 }

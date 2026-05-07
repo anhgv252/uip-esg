@@ -21,7 +21,7 @@ import static org.mockito.Mockito.*;
 @DisplayName("NotificationService")
 class NotificationServiceTest {
 
-    @Mock private SseEmitterRegistry            sseEmitterRegistry;
+    @Mock private NotificationRouter            notificationRouter;
     @Mock private StringRedisTemplate           redisTemplate;
     @Mock private RedisMessageListenerContainer listenerContainer;
 
@@ -64,7 +64,7 @@ class NotificationServiceTest {
 
         notificationService.onMessage(message, null);
 
-        verify(sseEmitterRegistry).broadcast(eq("alert"), any());
+        verify(notificationRouter).route(argThat(n -> "ENV-002".equals(n.sensorId()) && "WARNING".equals(n.severity())));
     }
 
     @Test
@@ -75,7 +75,7 @@ class NotificationServiceTest {
 
         notificationService.onMessage(message, null);
 
-        verify(sseEmitterRegistry).broadcast("alert", bad);
+        verify(notificationRouter).route(argThat(n -> bad.equals(n.message())));
     }
 
     // ─── subscribe (@PostConstruct) ──────────────────────────────────────────

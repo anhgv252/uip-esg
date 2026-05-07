@@ -13,9 +13,11 @@ import org.springframework.data.redis.listener.RedisMessageListenerContainer;
 import org.springframework.stereotype.Service;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Map;
 
 /**
- * Subscribes to Redis channel "uip:alerts" and pushes messages to SSE clients.
+ * Subscribes to Redis channel "uip:alerts" and routes messages
+ * through NotificationRouter to all registered channels (SSE, Web Push, etc.).
  */
 @Service
 @RequiredArgsConstructor
@@ -24,10 +26,10 @@ public class NotificationService implements MessageListener {
 
     public static final String ALERT_CHANNEL = "uip:alerts";
 
-    private final SseEmitterRegistry            sseEmitterRegistry;
-    private final StringRedisTemplate           redisTemplate;
+    private final NotificationRouter          notificationRouter;
+    private final StringRedisTemplate         redisTemplate;
     private final RedisMessageListenerContainer listenerContainer;
-    private final ObjectMapper                  objectMapper;
+    private final ObjectMapper                objectMapper;
 
     @PostConstruct
     public void subscribe() {
@@ -37,17 +39,29 @@ public class NotificationService implements MessageListener {
 
     /**
      * Called by Redis when a message arrives on the channel.
+     * Deserializes the payload into an AlertNotification and routes it.
      */
     @Override
+    @SuppressWarnings("unchecked")
     public void onMessage(Message message, byte[] pattern) {
         String payload = new String(message.getBody(), StandardCharsets.UTF_8);
         log.debug("Redis alert received: {}", payload);
         try {
-            Object data = objectMapper.readValue(payload, Object.class);
-            sseEmitterRegistry.broadcast("alert", data);
+            Map<String, Object> data = objectMapper.readValue(payload, Map.class);
+            AlertNotification notification = new AlertNotification(
+                    (String) data.getOrDefault("sensorId", ""),
+                    (String) data.getOrDefault("module", ""),
+                    (String) data.getOrDefault("severity", ""),
+                    (String) data.getOrDefault("message", ""),
+                    (String) data.getOrDefault("tenantId", ""),
+                    data.get("alertId") != null ? ((Number) data.get("alertId")).longValue() : null
+            );
+            notificationRouter.route(notification);
         } catch (JsonProcessingException e) {
-            // Broadcast raw string if JSON parsing fails
-            sseEmitterRegistry.broadcast("alert", payload);
+            log.warn("Failed to parse Redis alert payload, sending raw message: {}", e.getMessage());
+            AlertNotification fallback = new AlertNotification(
+                    "", "", "", payload, "", null);
+            notificationRouter.route(fallback);
         }
     }
 

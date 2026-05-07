@@ -1,6 +1,7 @@
 import { lazy } from 'react'
 import { type RouteObject } from 'react-router-dom'
 import AppShell from '@/components/AppShell'
+import MobileLayout from '@/components/mobile/MobileLayout'
 import ProtectedRoute from '@/routes/ProtectedRoute'
 
 // Lazily loaded page components
@@ -17,6 +18,15 @@ const AdminPage = lazy(() => import('@/pages/AdminPage'))
 const AiWorkflowPage = lazy(() => import('@/pages/AiWorkflowPage'))
 const WorkflowConfigPage = lazy(() => import('@/pages/WorkflowConfigPage'))
 const TenantAdminPage = lazy(() => import('@/pages/TenantAdminPage'))
+const TenantOverviewPage = lazy(() => import('@/pages/tenant-admin/TenantOverviewPage'))
+const UserManagementPage = lazy(() => import('@/pages/tenant-admin/UserManagementPage'))
+const BuildingConfigPage = lazy(() => import('@/pages/tenant-admin/BuildingConfigPage'))
+const UsageReportPage = lazy(() => import('@/pages/tenant-admin/UsageReportPage'))
+const TenantSettingsPage = lazy(() => import('@/pages/tenant-admin/TenantSettingsPage'))
+const MobileBillsPage = lazy(() => import('@/pages/citizen/MobileBillsPage'))
+const MobileBillDetailPage = lazy(() => import('@/pages/citizen/MobileBillDetailPage'))
+const MobileAQIPage = lazy(() => import('@/pages/citizen/MobileAQIPage'))
+const MobileNotificationsPage = lazy(() => import('@/pages/citizen/MobileNotificationsPage'))
 
 export const routes: RouteObject[] = [
   {
@@ -42,7 +52,19 @@ export const routes: RouteObject[] = [
       { path: '/traffic', element: <TrafficPage /> },
       { path: '/alerts', element: <AlertsPage /> },
       { path: '/city-ops', element: <CityOpsPage /> },
-      { path: '/citizen', element: <CitizenPage /> },
+      // Citizen routes — all wrapped in MobileLayout to render bottom navigation
+      {
+        path: '/citizen',
+        element: <MobileLayout />,
+        children: [
+          { index: true, element: <CitizenPage /> },
+          { path: 'bills', element: <MobileBillsPage /> },
+          { path: 'bills/:billId', element: <MobileBillDetailPage /> },
+          { path: 'aqi', element: <MobileAQIPage /> },
+          { path: 'alerts', element: <MobileNotificationsPage /> },
+          { path: 'profile', element: <CitizenPage /> },
+        ],
+      },
       { path: '/ai-workflow', element: (
           <ProtectedRoute requiredRoles={['ROLE_ADMIN', 'ROLE_OPERATOR']}>
             <AiWorkflowPage />
@@ -72,6 +94,13 @@ export const routes: RouteObject[] = [
             <TenantAdminPage />
           </ProtectedRoute>
         ),
+        children: [
+          { index: true, element: <TenantOverviewPage /> },
+          { path: 'users', element: <UserManagementPage /> },
+          { path: 'buildings', element: <BuildingConfigPage /> },
+          { path: 'usage', element: <UsageReportPage /> },
+          { path: 'settings', element: <TenantSettingsPage /> },
+        ],
       },
     ],
   },

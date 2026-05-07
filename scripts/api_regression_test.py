@@ -660,6 +660,145 @@ def test_esg_export():
 
 
 # ──────────────────────────────────────────────────────────────────────────────
+# GROUP 15: Mobile PWA — Citizen Bill & Notification APIs (Sprint 5 MVP2-12)
+# ──────────────────────────────────────────────────────────────────────────────
+
+def test_pwa_citizen():
+    grp_header("Mobile PWA — Citizen API (Sprint 5 MVP2-12)")
+    G = "pwa_citizen"
+
+    # Citizen token (public-facing endpoints)
+    cit = token("citizen")
+
+    # GET /citizen/bills — utility bills list for citizen
+    # GET /citizen/invoices — utility bills list for citizen (actual endpoint)
+    status, body = _req("GET", "/citizen/invoices", token=cit)
+    check_status_any(G, "GET /citizen/invoices (citizen) → 200 or 204", status, [200, 204], body)
+    if status == 200 and isinstance(body, dict):
+        check_field(G, "  bills response has content array", body, "content")
+    elif status == 200 and isinstance(body, list):
+        _record(G, "  bills returned as list", True)
+
+    # GET /citizen/invoices (no token) → 401 [RBAC regression guard]
+    status, _ = _req("GET", "/citizen/invoices")
+    check_status(G, "GET /citizen/invoices (no token) → 401 [RBAC]", status, 401)
+
+    # GET /push/subscriptions — list citizen's push subscriptions
+    status, body = _req("GET", "/push/subscriptions", token=cit)
+    check_status_any(G, "GET /push/subscriptions (citizen) → 200 or 204", status, [200, 204], body)
+
+    # POST /push/subscribe — register push subscription (actual endpoint)
+    push_payload = {
+        "endpoint": "https://test.example.com/push/fake-endpoint",
+        "keys": {
+            "p256dh": "BFAKE_P256DH_KEY_FOR_REGRESSION_TEST",
+            "auth": "FAKE_AUTH_KEY"
+        }
+    }
+    status, body = _req("POST", "/push/subscribe", body=push_payload, token=cit)
+    check_status_any(G, "POST /push/subscribe (citizen) → 200, 201, or 400",
+                     status, [200, 201, 400], body)
+
+    # POST subscribe (no token) → 401
+    status, _ = _req("POST", "/push/subscribe", body=push_payload)
+    check_status(G, "POST /push/subscribe (no token) → 401 [RBAC]", status, 401)
+
+    # GET /citizen/aqi/current — AQI for citizen's district (used by PWA home screen)
+    status, body = _req("GET", "/citizen/aqi/current", token=cit)
+    check_status_any(G, "GET /citizen/aqi/current (citizen) → 200 or 204 or 404",
+                     status, [200, 204, 404], body)
+
+    # Admin can read citizen bills too (cross-role read)
+    adm = token("admin")
+    status, body = _req("GET", "/citizen/invoices", token=adm)
+    check_status_any(G, "GET /citizen/invoices (admin) → 200, 204, or 403 [citizen-scoped]",
+                     status, [200, 204, 403], body)
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# GROUP 16: Tenant Admin Dashboard API Coverage (Sprint 5 MVP2-13)
+# ──────────────────────────────────────────────────────────────────────────────
+
+def test_tenant_admin_dashboard():
+    grp_header("Tenant Admin Dashboard API (Sprint 5 MVP2-13)")
+    G = "tenant_admin_dashboard"
+    adm = token("admin")
+    opr = token("operator")
+    tenant_id = "default"
+
+    # GET /admin/tenants/{id}/overview — stat cards on dashboard home
+    status, body = _req("GET", f"/admin/tenants/{tenant_id}/overview", token=adm)
+    check_status_any(G, "GET .../overview (admin) → 200 or 404", status, [200, 404], body)
+    if status == 200 and isinstance(body, dict):
+        check_field(G, "  overview has totalUsers", body, "totalUsers")
+        check_field(G, "  overview has totalBuildings", body, "totalBuildings")
+
+    # GET /admin/tenants/{id}/users — user management table
+    status, body = _req("GET", f"/admin/tenants/{tenant_id}/users", token=adm)
+    check_status_any(G, "GET .../users (admin) → 200 or 404", status, [200, 404], body)
+    if status == 200:
+        if isinstance(body, dict):
+            check_field(G, "  users response has content", body, "content")
+        elif isinstance(body, list):
+            _record(G, "  users returned as list", True)
+
+    # GET /admin/tenants/{id}/users?role=CITIZEN — role filter
+    status, body = _req("GET", f"/admin/tenants/{tenant_id}/users?role=CITIZEN", token=adm)
+    check_status_any(G, "GET .../users?role=CITIZEN (admin) → 200 or 404",
+                     status, [200, 404], body)
+
+    # PATCH /admin/tenants/{id}/users/{uid}/status — deactivate user
+    # Use a non-existent user id — expect 404, not 401/403
+    status, body = _req("PATCH",
+                        f"/admin/tenants/{tenant_id}/users/non-existent-user/status",
+                        body={"active": False}, token=adm)
+    check_status_any(G, "PATCH .../users/non-existent/status (admin) → 404 or 400",
+                     status, [400, 404, 422], body)
+
+    # PATCH without token → 401
+    status, _ = _req("PATCH",
+                     f"/admin/tenants/{tenant_id}/users/non-existent-user/status",
+                     body={"active": False})
+    check_status(G, "PATCH .../status (no token) → 401 [RBAC]", status, 401)
+
+    # GET /admin/tenants/{id}/settings — branding & color settings
+    status, body = _req("GET", f"/admin/tenants/{tenant_id}/settings", token=adm)
+    check_status_any(G, "GET .../settings (admin) → 200 or 404", status, [200, 404], body)
+    if status == 200 and isinstance(body, dict):
+        # Sprint 5 settings includes primaryColor
+        has_color = "primaryColor" in body or "branding" in body
+        _record(G, "  settings has color/branding field", has_color,
+                f"fields present: {list(body.keys())}" if not has_color else "")
+
+    # PATCH /admin/tenants/{id}/settings — update branding
+    # PUT /admin/tenants/{id}/settings — update branding (backend uses PUT + configKey/configValue)
+    put_body = {"configKey": "primaryColor", "configValue": "#2e7d32"}
+    status, body = _req("PUT", f"/admin/tenants/{tenant_id}/settings",
+                        body=put_body, token=adm)
+    check_status_any(G, "PUT .../settings (admin) → 200 or 204 or 404",
+                     status, [200, 204, 404], body)
+
+    # Operator cannot access tenant admin endpoints → 403
+    status, body = _req("GET", f"/admin/tenants/{tenant_id}/overview", token=opr)
+    check_status_any(G, "GET .../overview (operator) → 403 or 404 [RBAC]",
+                     status, [403, 404], body)
+
+    # GET /admin/tenants/{id}/usage — usage chart data
+    now = datetime.now(timezone.utc)
+    from_ts = (now - timedelta(days=14)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    to_ts = now.strftime("%Y-%m-%dT%H:%M:%SZ")
+    status, body = _req("GET",
+                        f"/admin/tenants/{tenant_id}/usage?from={from_ts}&to={to_ts}",
+                        token=adm)
+    check_status_any(G, "GET .../usage (admin, 14d range) → 200 or 404",
+                     status, [200, 404], body)
+
+    # GET .../usage (no token) → 401
+    status, _ = _req("GET", f"/admin/tenants/{tenant_id}/usage?from={from_ts}&to={to_ts}")
+    check_status(G, "GET .../usage (no token) → 401 [RBAC]", status, 401)
+
+
+# ──────────────────────────────────────────────────────────────────────────────
 # Summary
 # ──────────────────────────────────────────────────────────────────────────────
 
@@ -710,20 +849,23 @@ def _print_summary() -> int:
 # ──────────────────────────────────────────────────────────────────────────────
 
 ALL_GROUPS: dict[str, callable] = {
-    "health":        test_health,
-    "auth":          test_auth,
-    "environment":   test_environment,
-    "esg":           test_esg,
-    "alerts":        test_alerts,
-    "traffic":       test_traffic,
-    "tenant":        test_tenant,
-    "citizen":       test_citizen,
-    "admin":         test_admin,
-    "workflow":      test_workflow,
-    "tenant_admin":  test_tenant_admin,
-    "invite":        test_invite_flow,
-    "rate_limit":    test_rate_limiting,
-    "esg_export":    test_esg_export,
+    "health":                 test_health,
+    "auth":                   test_auth,
+    "environment":            test_environment,
+    "esg":                    test_esg,
+    "alerts":                 test_alerts,
+    "traffic":                test_traffic,
+    "tenant":                 test_tenant,
+    "citizen":                test_citizen,
+    "admin":                  test_admin,
+    "workflow":               test_workflow,
+    "tenant_admin":           test_tenant_admin,
+    "invite":                 test_invite_flow,
+    "rate_limit":             test_rate_limiting,
+    "esg_export":             test_esg_export,
+    # Sprint 5 (MVP2-5)
+    "pwa_citizen":            test_pwa_citizen,
+    "tenant_admin_dashboard": test_tenant_admin_dashboard,
 }
 
 

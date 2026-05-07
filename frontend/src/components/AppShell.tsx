@@ -381,10 +381,13 @@ export default function AppShell() {
         component="main"
         sx={{
           flexGrow: 1,
+          width: '100%',
+          boxSizing: 'border-box',
           bgcolor: 'background.default',
-          p: 3,
+          p: { xs: 1.5, md: 3 },
           mt: '64px',
           minHeight: 'calc(100vh - 64px)',
+          overflowX: 'hidden',
           transition: muiTheme.transitions.create('margin', {
             easing: muiTheme.transitions.easing.sharp,
             duration: muiTheme.transitions.duration.leavingScreen,

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Box, Typography, Grid, Paper, Divider, ToggleButton, ToggleButtonGroup } from '@mui/material';
+import { Box, Typography, Grid, Paper, Divider, ToggleButton, ToggleButtonGroup, useTheme, useMediaQuery } from '@mui/material';
 import NaturePeopleIcon from '@mui/icons-material/NaturePeople';
 import { useQuery } from '@tanstack/react-query';
 import { getEsgSummary, getEsgEnergy, getEsgCarbon } from '../api/esg';
@@ -12,6 +12,8 @@ type ChartView = 'energy' | 'carbon';
 
 export default function EsgPage() {
   const [chartView, setChartView] = useState<ChartView>('energy');
+  const muiTheme = useTheme()
+  const isMobile = useMediaQuery(muiTheme.breakpoints.down('sm'))
   const { user } = useAuth();
   const tenantId = user?.tenantId ?? 'default';
 
@@ -92,6 +94,7 @@ export default function EsgPage() {
                 value={chartView}
                 exclusive
                 size="small"
+                fullWidth={isMobile}
                 onChange={(_, v) => v && setChartView(v)}
               >
                 <ToggleButton value="energy">Energy</ToggleButton>

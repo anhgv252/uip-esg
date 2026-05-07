@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UIP Smart City - Offline</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+      background: #f5f5f5;
+    }
+    .container {
+      text-align: center;
+      padding: 2rem;
+      max-width: 480px;
+    }
+    h1 { color: #1976D2; font-size: 1.5rem; margin-bottom: 0.75rem; }
+    p { color: #666; line-height: 1.6; }
+    button {
+      margin-top: 1.5rem;
+      padding: 0.625rem 1.5rem;
+      font-size: 1rem;
+      color: #fff;
+      background: #1976D2;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:hover { background: #1565C0; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>You are offline</h1>
+    <p>The UIP Smart City app cannot reach the server right now. Please check your internet connection and try again.</p>
+    <button onclick="window.location.reload()">Retry</button>
+  </div>
+</body>
+</html>

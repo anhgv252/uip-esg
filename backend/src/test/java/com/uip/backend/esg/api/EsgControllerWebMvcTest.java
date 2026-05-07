@@ -1,6 +1,8 @@
 package com.uip.backend.esg.api;
 
 import com.uip.backend.auth.config.JwtAuthenticationFilter;
+import com.uip.backend.common.ratelimit.TenantRateLimiter;
+import com.uip.backend.common.ratelimit.RateLimitFilter;
 import com.uip.backend.esg.api.dto.EsgMetricDto;
 import com.uip.backend.esg.api.dto.EsgReportDto;
 import com.uip.backend.esg.api.dto.EsgSummaryDto;
@@ -46,7 +48,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
     controllers = EsgController.class,
     excludeFilters = {
         @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = JwtAuthenticationFilter.class),
-        @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = TenantContextFilter.class)
+            @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = TenantContextFilter.class),
+            @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = RateLimitFilter.class)
     }
 )
 @Import(EsgControllerWebMvcTest.MethodSecurityConfig.class)
@@ -59,6 +62,7 @@ class EsgControllerWebMvcTest {
 
     @Autowired MockMvc mockMvc;
     @MockBean  EsgService esgService;
+    @MockBean @SuppressWarnings("unused") TenantRateLimiter tenantRateLimiter;
 
     private static final String TENANT_HCM     = "hcm";
     private static final String TENANT_DEFAULT = "default";

@@ -83,6 +83,9 @@ public class SecurityConfig {
                 .requestMatchers(AntPathRequestMatcher.antMatcher("/api/v1/admin/**")).hasRole("ADMIN")
                 .requestMatchers(AntPathRequestMatcher.antMatcher("/api/v1/wf-config/**")).hasRole("ADMIN")
                 .requestMatchers(AntPathRequestMatcher.antMatcher(HttpMethod.GET, "/api/v1/notifications/stream")).authenticated()
+                // Push notification endpoints
+                .requestMatchers(AntPathRequestMatcher.antMatcher(HttpMethod.GET, "/api/v1/push/vapid-key")).permitAll()
+                .requestMatchers(AntPathRequestMatcher.antMatcher("/api/v1/push/**")).authenticated()
                 .anyRequest().authenticated()
             )
             .exceptionHandling(ex -> ex

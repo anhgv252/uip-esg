@@ -9,15 +9,21 @@
 #   1. Kiểm tra service health (backend bắt buộc, frontend tuỳ chọn)
 #   2. Unit + Integration tests  (./gradlew test)
 #   3. API regression tests      (scripts/api_regression_test.py)
+#      Groups Sprint 1-4: health, auth, environment, esg, alerts, traffic,
+#                         tenant, citizen, admin, workflow, tenant_admin,
+#                         invite, rate_limit, esg_export
+#      Groups Sprint 5:   pwa_citizen, tenant_admin_dashboard
 #   4. E2E Playwright tests       (frontend/e2e/ — tuỳ chọn, cần frontend up)
+#      Projects: chromium, firefox, mobile-chrome, mobile-safari
 #
 # Usage:
-#   ./scripts/regression_test.sh                # Chạy tất cả (trừ e2e)
-#   ./scripts/regression_test.sh --unit-only    # Chỉ Gradle unit/IT tests
-#   ./scripts/regression_test.sh --api-only     # Chỉ API regression tests
-#   ./scripts/regression_test.sh --e2e          # Thêm Playwright e2e tests
-#   ./scripts/regression_test.sh --no-unit      # Bỏ qua Gradle (nhanh hơn)
-#   ./scripts/regression_test.sh --fail-fast    # Dừng ngay khi có lỗi
+#   ./scripts/regression_test.sh                        # Chạy tất cả (trừ e2e)
+#   ./scripts/regression_test.sh --unit-only            # Chỉ Gradle unit/IT tests
+#   ./scripts/regression_test.sh --api-only             # Chỉ API regression tests
+#   ./scripts/regression_test.sh --e2e                  # Thêm Playwright e2e tests
+#   ./scripts/regression_test.sh --e2e --e2e-project=mobile-chrome  # Mobile PWA tests only
+#   ./scripts/regression_test.sh --no-unit              # Bỏ qua Gradle (nhanh hơn)
+#   ./scripts/regression_test.sh --fail-fast            # Dừng ngay khi có lỗi
 #   BASE_URL=http://staging:8080 ./scripts/regression_test.sh --api-only
 #
 # Biến môi trường:
@@ -25,6 +31,7 @@
 #   FRONTEND_URL   Frontend URL        (default: http://localhost:3000)
 #   BACKEND_DIR    Thư mục backend     (default: auto-detect)
 #   FRONTEND_DIR   Thư mục frontend    (default: auto-detect)
+#   E2E_PROJECT    Playwright project  (default: all; e.g. mobile-chrome)
 # =============================================================================
 
 set -euo pipefail
@@ -46,6 +53,7 @@ RUN_API=true
 RUN_E2E=false
 FAIL_FAST=false
 API_VERBOSE=false
+E2E_PROJECT="${E2E_PROJECT:-}"
 
 # ─── Colors ───────────────────────────────────────────────────────────────────
 
@@ -67,15 +75,16 @@ sep()  { echo "${DIM}───────────────────�
 
 for arg in "$@"; do
   case $arg in
-    --unit-only)  RUN_API=false  RUN_E2E=false ;;
-    --api-only)   RUN_UNIT=false RUN_E2E=false ;;
-    --no-unit)    RUN_UNIT=false ;;
-    --e2e)        RUN_E2E=true   ;;
-    --fail-fast)  FAIL_FAST=true ;;
-    --verbose|-v) API_VERBOSE=true ;;
-    --url=*)      BASE_URL="${arg#--url=}" ;;
+    --unit-only)       RUN_API=false  RUN_E2E=false ;;
+    --api-only)        RUN_UNIT=false RUN_E2E=false ;;
+    --no-unit)         RUN_UNIT=false ;;
+    --e2e)             RUN_E2E=true   ;;
+    --e2e-project=*)   E2E_PROJECT="${arg#--e2e-project=}" RUN_E2E=true ;;
+    --fail-fast)       FAIL_FAST=true ;;
+    --verbose|-v)      API_VERBOSE=true ;;
+    --url=*)           BASE_URL="${arg#--url=}" ;;
     --help|-h)
-      head -40 "$0" | grep '^#' | sed 's/^# \?//'
+      head -45 "$0" | grep '^#' | sed 's/^# \?//'
       exit 0
       ;;
   esac
@@ -259,8 +268,28 @@ if [[ "$RUN_E2E" == "true" && "$FRONTEND_UP" == "true" ]]; then
 
   E2E_SCRIPT="$SCRIPT_DIR/e2e_regression_test.py"
   if [[ ! -f "$E2E_SCRIPT" ]]; then
-    fail "e2e_regression_test.py not found at $E2E_SCRIPT"
-    record_phase "E2E" "fail"
+    warn "e2e_regression_test.py not found — running Playwright directly instead"
+    # ── Playwright (preferred path) ────────────────────────────────────────
+    if [[ ! -d "$FRONTEND_DIR" ]]; then
+      fail "Frontend dir not found: $FRONTEND_DIR"
+      record_phase "E2E" "fail"
+    else
+      PW_ARGS="--reporter=list"
+      [[ -n "${E2E_PROJECT:-}" ]] && PW_ARGS="$PW_ARGS --project=$E2E_PROJECT"
+
+      E2E_EXIT=0
+      (cd "$FRONTEND_DIR" && npx playwright test $PW_ARGS 2>&1) || E2E_EXIT=$?
+
+      if [[ "$E2E_EXIT" -eq 0 ]]; then
+        ok "Playwright: all tests passed"
+        record_phase "E2E" "pass"
+      else
+        fail "Playwright: some tests failed (exit $E2E_EXIT)"
+        echo "  ${DIM}HTML report: $FRONTEND_DIR/playwright-report/index.html${RESET}"
+        record_phase "E2E" "fail"
+        maybe_fail_fast
+      fi
+    fi
   else
     E2E_ARGS="--url $FRONTEND_URL"
     [[ "$API_VERBOSE" == "true" ]] && E2E_ARGS="$E2E_ARGS --verbose"

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import {
   Box, Typography, Paper, Grid, MenuItem, TextField, Chip,
+  useTheme, useMediaQuery,
 } from '@mui/material'
 import TrafficIcon from '@mui/icons-material/Traffic'
 import WarningIcon from '@mui/icons-material/Warning'
@@ -11,6 +12,8 @@ import { useTrafficCounts, useTrafficIncidents } from '@/hooks/useTrafficData'
 const INTERSECTIONS = ['INT-001', 'INT-002', 'INT-003', 'INT-004', 'INT-005']
 
 export default function TrafficPage() {
+  const theme = useTheme()
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'))
   const [intersection, setIntersection] = useState('INT-001')
   const [statusFilter, setStatusFilter] = useState('OPEN')
 
@@ -20,9 +23,13 @@ export default function TrafficPage() {
   const incidents = incidentPage?.content ?? []
   const openCount = incidents.filter((i) => i.status === 'OPEN').length
 
+  const selectSx = isMobile
+    ? { width: '100%', '& .MuiSelect-select': { minHeight: 44 } }
+    : { minWidth: 130 }
+
   return (
     <Box>
-      <Box display="flex" alignItems="center" gap={1} mb={3}>
+      <Box display="flex" alignItems="center" gap={1} mb={isMobile ? 2 : 3}>
         <TrafficIcon color="primary" />
         <Typography variant="h5">Traffic Management</Typography>
         {openCount > 0 && (
@@ -35,21 +42,28 @@ export default function TrafficPage() {
         )}
       </Box>
 
-      <Grid container spacing={3}>
+      <Grid container spacing={isMobile ? 2 : 3}>
         {/* Vehicle Counts Chart */}
         <Grid item xs={12}>
-          <Paper variant="outlined" sx={{ p: 2 }}>
-            <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+          <Paper variant="outlined" sx={{ p: isMobile ? 1.5 : 2 }}>
+            <Box
+              display="flex"
+              flexDirection={isMobile ? 'column' : 'row'}
+              justifyContent="space-between"
+              alignItems={isMobile ? 'stretch' : 'center'}
+              gap={isMobile ? 1.5 : 0}
+              mb={2}
+            >
               <Typography variant="subtitle1" fontWeight={600}>
                 Vehicle Counts by Hour
               </Typography>
               <TextField
                 select size="small" label="Intersection" value={intersection}
                 onChange={(e) => setIntersection(e.target.value)}
-                sx={{ minWidth: 130 }}
+                sx={selectSx}
               >
                 {INTERSECTIONS.map((id) => (
-                  <MenuItem key={id} value={id}>{id}</MenuItem>
+                  <MenuItem key={id} value={id} sx={{ minHeight: 44 }}>{id}</MenuItem>
                 ))}
               </TextField>
             </Box>
@@ -59,18 +73,25 @@ export default function TrafficPage() {
 
         {/* Incident Table */}
         <Grid item xs={12}>
-          <Paper variant="outlined" sx={{ p: 2 }}>
-            <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+          <Paper variant="outlined" sx={{ p: isMobile ? 1.5 : 2 }}>
+            <Box
+              display="flex"
+              flexDirection={isMobile ? 'column' : 'row'}
+              justifyContent="space-between"
+              alignItems={isMobile ? 'stretch' : 'center'}
+              gap={isMobile ? 1.5 : 0}
+              mb={2}
+            >
               <Typography variant="subtitle1" fontWeight={600}>
                 Traffic Incidents
               </Typography>
               <TextField
                 select size="small" label="Status" value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                sx={{ minWidth: 130 }}
+                sx={selectSx}
               >
                 {['OPEN', 'RESOLVED', 'ESCALATED'].map((s) => (
-                  <MenuItem key={s} value={s}>{s}</MenuItem>
+                  <MenuItem key={s} value={s} sx={{ minHeight: 44 }}>{s}</MenuItem>
                 ))}
               </TextField>
             </Box>

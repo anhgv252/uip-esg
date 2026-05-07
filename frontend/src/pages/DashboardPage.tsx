@@ -32,7 +32,7 @@ export default function DashboardPage() {
   ]
 
   return (
-    <Box>
+    <Box sx={{ overflow: 'hidden' }}>
       <Box display="flex" alignItems="center" gap={1} mb={3}>
         <DashboardIcon color="primary" />
         <Typography variant="h5">Dashboard</Typography>
@@ -45,7 +45,7 @@ export default function DashboardPage() {
                 <Typography variant="body2" color="text.secondary">
                   {s.label}
                 </Typography>
-                <Typography variant="h4" fontWeight={700} sx={{ color: s.color }}>
+                <Typography variant="h4" fontWeight={700} sx={{ color: s.color, overflow: 'hidden', textOverflow: 'ellipsis' }}>
                   {s.stat && 'text' in s.stat
                     ? s.stat.text
                     : s.stat && 'error' in s.stat

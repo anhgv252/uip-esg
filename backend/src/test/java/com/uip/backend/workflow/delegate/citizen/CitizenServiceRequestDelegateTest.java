@@ -28,7 +28,7 @@ class CitizenServiceRequestDelegateTest {
     @Test
     @DisplayName("ASSIGN_TO_ENVIRONMENT → department = ENVIRONMENT")
     void execute_assignToEnvironment_setsCorrectDepartment() throws Exception {
-        setupExecution("citizen-001", "ENVIRONMENT", "Bad smell", "ASSIGN_TO_ENVIRONMENT", null);
+        setupExecution("citizen-001", "ENVIRONMENT", "ASSIGN_TO_ENVIRONMENT", null);
 
         delegate.execute(execution);
 
@@ -40,7 +40,7 @@ class CitizenServiceRequestDelegateTest {
     @Test
     @DisplayName("ASSIGN_TO_UTILITIES → department = UTILITIES")
     void execute_assignToUtilities_setsCorrectDepartment() throws Exception {
-        setupExecution("citizen-002", "WATER", "No water", "ASSIGN_TO_UTILITIES", null);
+        setupExecution("citizen-002", "WATER", "ASSIGN_TO_UTILITIES", null);
 
         delegate.execute(execution);
 
@@ -52,7 +52,7 @@ class CitizenServiceRequestDelegateTest {
     @Test
     @DisplayName("aiDecision không xác định → department = GENERAL")
     void execute_unknownDecision_defaultsToGeneral() throws Exception {
-        setupExecution("citizen-003", "OTHER", "Random issue", "SOME_UNKNOWN_VALUE", null);
+        setupExecution("citizen-003", "OTHER", "SOME_UNKNOWN_VALUE", null);
 
         delegate.execute(execution);
 
@@ -64,7 +64,7 @@ class CitizenServiceRequestDelegateTest {
     @Test
     @DisplayName("requestId được set ở dạng UUID hợp lệ (36 chars)")
     void execute_setsValidUuidRequestId() throws Exception {
-        setupExecution("citizen-001", "ROAD", "Pothole", "ASSIGN_TO_GENERAL", null);
+        setupExecution("citizen-001", "ROAD", "ASSIGN_TO_GENERAL", null);
 
         delegate.execute(execution);
 
@@ -79,7 +79,7 @@ class CitizenServiceRequestDelegateTest {
     @DisplayName("aiRecommendedActions không null → autoResponseText = first element")
     void execute_withRecommendations_usesFirstAsAutoResponse() throws Exception {
         List<String> actions = List.of("Please wait 2 business days.", "Check portal for status.");
-        setupExecution("citizen-004", "TRAFFIC", "Broken light", "ASSIGN_TO_TRAFFIC", actions);
+        setupExecution("citizen-004", "TRAFFIC", "ASSIGN_TO_TRAFFIC", actions);
 
         delegate.execute(execution);
 
@@ -93,7 +93,7 @@ class CitizenServiceRequestDelegateTest {
     @Test
     @DisplayName("aiRecommendedActions = null → autoResponseText là default message")
     void execute_nullRecommendations_usesDefaultAutoResponse() throws Exception {
-        setupExecution("citizen-005", "GENERAL", "Complaint", "ASSIGN_TO_GENERAL", null);
+        setupExecution("citizen-005", "GENERAL", "ASSIGN_TO_GENERAL", null);
 
         delegate.execute(execution);
 
@@ -107,7 +107,7 @@ class CitizenServiceRequestDelegateTest {
     @Test
     @DisplayName("aiDecision = null → không throw exception, department = GENERAL")
     void execute_nullDecision_doesNotThrow() {
-        setupExecution("citizen-006", "OTHER", "Unknown", null, null);
+        setupExecution("citizen-006", "OTHER", null, null);
 
         assertThatCode(() -> delegate.execute(execution)).doesNotThrowAnyException();
         verify(execution).setVariable("department", "GENERAL");
@@ -118,7 +118,7 @@ class CitizenServiceRequestDelegateTest {
     @Test
     @DisplayName("aiSeverity = CRITICAL → priority = HIGH")
     void execute_criticalSeverity_setsHighPriority() throws Exception {
-        setupExecution("citizen-007", "ENVIRONMENT", "Urgent issue", "ASSIGN_TO_ENVIRONMENT", "CRITICAL", null);
+        setupExecution("citizen-007", "ENVIRONMENT", "ASSIGN_TO_ENVIRONMENT", "CRITICAL", null);
 
         delegate.execute(execution);
 
@@ -130,7 +130,7 @@ class CitizenServiceRequestDelegateTest {
     @Test
     @DisplayName("aiSeverity = LOW → priority = LOW")
     void execute_lowSeverity_setsLowPriority() throws Exception {
-        setupExecution("citizen-008", "ROAD", "Minor issue", "ASSIGN_TO_GENERAL", "LOW", null);
+        setupExecution("citizen-008", "ROAD", "ASSIGN_TO_GENERAL", "LOW", null);
 
         delegate.execute(execution);
 
@@ -142,7 +142,7 @@ class CitizenServiceRequestDelegateTest {
     @Test
     @DisplayName("aiSeverity = null → priority = MEDIUM (default)")
     void execute_nullSeverity_defaultsToMedium() throws Exception {
-        setupExecution("citizen-009", "OTHER", "Some issue", "ASSIGN_TO_GENERAL", null);
+        setupExecution("citizen-009", "OTHER", "ASSIGN_TO_GENERAL", null);
 
         delegate.execute(execution);
 
@@ -151,16 +151,15 @@ class CitizenServiceRequestDelegateTest {
 
     // ─── Helpers ─────────────────────────────────────────────────────────────
 
-    private void setupExecution(String citizenId, String requestType, String description,
-                                String aiDecision, List<String> recommendedActions) {
-        setupExecution(citizenId, requestType, description, aiDecision, null, recommendedActions);
+    private void setupExecution(String citizenId, String requestType, String aiDecision,
+                                List<String> recommendedActions) {
+        setupExecution(citizenId, requestType, aiDecision, null, recommendedActions);
     }
 
-    private void setupExecution(String citizenId, String requestType, String description,
-                                String aiDecision, String aiSeverity, List<String> recommendedActions) {
+    private void setupExecution(String citizenId, String requestType, String aiDecision,
+                                String aiSeverity, List<String> recommendedActions) {
         when(execution.getVariable("citizenId")).thenReturn(citizenId);
         when(execution.getVariable("requestType")).thenReturn(requestType);
-        when(execution.getVariable("description")).thenReturn(description);
         when(execution.getVariable("aiDecision")).thenReturn(aiDecision);
         when(execution.getVariable("aiSeverity")).thenReturn(aiSeverity);
         when(execution.getVariable("aiRecommendedActions")).thenReturn(recommendedActions);

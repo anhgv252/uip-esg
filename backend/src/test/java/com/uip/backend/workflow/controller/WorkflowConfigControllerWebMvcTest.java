@@ -1,9 +1,12 @@
 package com.uip.backend.workflow.controller;
 
 import com.uip.backend.auth.config.JwtAuthenticationFilter;
+import com.uip.backend.common.ratelimit.RateLimitFilter;
+import com.uip.backend.common.ratelimit.TenantRateLimiter;
 import com.uip.backend.workflow.config.FilterEvaluator;
 import com.uip.backend.workflow.config.TriggerConfig;
 import com.uip.backend.workflow.config.TriggerConfigAuditService;
+import com.uip.backend.workflow.config.TriggerConfigCacheInvalidator;
 import com.uip.backend.workflow.config.TriggerConfigRepository;
 import com.uip.backend.workflow.config.VariableMapper;
 import org.junit.jupiter.api.DisplayName;
@@ -30,7 +33,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @WebMvcTest(
     controllers = WorkflowConfigController.class,
-    excludeFilters = @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = JwtAuthenticationFilter.class)
+    excludeFilters = {
+        @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = JwtAuthenticationFilter.class),
+        @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = RateLimitFilter.class)
+    }
 )
 @WithMockUser(roles = "ADMIN")
 @DisplayName("WorkflowConfigController — URL Contract (BUG-S4-001 regression lock)")
@@ -41,6 +47,8 @@ class WorkflowConfigControllerWebMvcTest {
     @MockBean FilterEvaluator filterEvaluator;
     @MockBean VariableMapper variableMapper;
     @MockBean TriggerConfigAuditService auditService;
+    @MockBean TriggerConfigCacheInvalidator cacheInvalidator;
+    @MockBean TenantRateLimiter tenantRateLimiter;
     @MockBean KafkaTemplate<String, Object> kafkaTemplate;
 
     @Test

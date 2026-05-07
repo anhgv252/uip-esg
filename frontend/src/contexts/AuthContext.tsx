@@ -91,6 +91,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // On mount: attempt silent refresh via httpOnly cookie
   useEffect(() => {
+    const existingToken = tokenStore.get()
+    if (existingToken) {
+      setUser(userFromToken(existingToken))
+      setIsLoading(false)
+      return () => {
+        if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current)
+      }
+    }
+
     trySilentRefresh().then((u) => {
       setUser(u)
       setIsLoading(false)

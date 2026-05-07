@@ -10,6 +10,9 @@ import {
   Snackbar,
   Divider,
   Skeleton,
+  useTheme,
+  useMediaQuery,
+  Stack,
 } from '@mui/material';
 import AirIcon from '@mui/icons-material/Air';
 import { useQuery } from '@tanstack/react-query';
@@ -20,6 +23,8 @@ import SensorStatusTable from '../components/environment/SensorStatusTable';
 import { useNotificationSSE, AlertNotification } from '../hooks/useNotificationSSE';
 
 export default function EnvironmentPage() {
+  const muiTheme = useTheme()
+  const isMobile = useMediaQuery(muiTheme.breakpoints.down('md'))
   const [selectedSensor, setSelectedSensor] = useState<Sensor | null>(null);
   const [liveAlert, setLiveAlert] = useState<AlertNotification | null>(null);
 
@@ -55,14 +60,26 @@ export default function EnvironmentPage() {
   return (
     <Box>
       {/* Header */}
-      <Box display="flex" alignItems="center" gap={1} mb={2}>
-        <AirIcon color="primary" />
-        <Typography variant="h5">Environment Monitoring</Typography>
-        <Box flexGrow={1} />
-        <Typography variant="body2" color="text.secondary">
-          {onlineCount}/{sensors.length} sensors online
-        </Typography>
-      </Box>
+      {isMobile ? (
+        <Box mb={2}>
+          <Stack direction="row" alignItems="center" gap={1} mb={0.5}>
+            <AirIcon color="primary" />
+            <Typography variant="h5">Environment Monitoring</Typography>
+          </Stack>
+          <Typography variant="body2" color="text.secondary">
+            {onlineCount}/{sensors.length} sensors online
+          </Typography>
+        </Box>
+      ) : (
+        <Box display="flex" alignItems="center" gap={1} mb={2}>
+          <AirIcon color="primary" />
+          <Typography variant="h5">Environment Monitoring</Typography>
+          <Box flexGrow={1} />
+          <Typography variant="body2" color="text.secondary">
+            {onlineCount}/{sensors.length} sensors online
+          </Typography>
+        </Box>
+      )}
 
       {/* Live alert banner */}
       <Snackbar
