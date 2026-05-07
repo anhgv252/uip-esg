@@ -8,8 +8,8 @@ plugins {
 }
 
 ext {
-    // Security fixes — OWASP report 2026-05-06
-    set('tomcat.version', '10.1.41')         // CVE-2025-31651, CVE-2025-24813, +6 CRITICAL
+    // Security fixes — OWASP report 2026-05-07
+    set('tomcat.version', '10.1.54')         // fix CVE-2025-55754, CVE-2026-29145, +15 CRITICAL/HIGH
     set('netty.version', '4.1.132.Final')    // CVE-2026-33871, +5 HIGH
     set('log4j2.version', '2.25.0')          // CVE-2026-34481, +2 HIGH
     set('postgresql.version', '42.7.11')     // CVE-2026-42198: SQL injection
