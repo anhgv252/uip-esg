@@ -45,7 +45,7 @@ export default function DashboardPage() {
                 <Typography variant="body2" color="text.secondary">
                   {s.label}
                 </Typography>
-                <Typography variant="h4" fontWeight={700} sx={{ color: s.color, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                <Typography variant="h4" fontWeight={700} sx={{ color: s.color, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: { xs: '1.25rem', sm: '1.5rem', md: '2.125rem' } }}>
                   {s.stat && 'text' in s.stat
                     ? s.stat.text
                     : s.stat && 'error' in s.stat

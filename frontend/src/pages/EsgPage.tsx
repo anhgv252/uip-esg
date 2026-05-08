@@ -87,7 +87,7 @@ export default function EsgPage() {
       {/* Chart + Report Panel */}
       <Grid container spacing={2}>
         <Grid item xs={12} md={8}>
-          <Paper variant="outlined" sx={{ p: 2 }}>
+          <Paper variant="outlined" sx={{ p: 2, minHeight: { xs: 260, sm: 320 } }}>
             <Box display="flex" alignItems="center" justifyContent="space-between" mb={1}>
               <Typography variant="subtitle1" fontWeight={600}>Trend by Building</Typography>
               <ToggleButtonGroup

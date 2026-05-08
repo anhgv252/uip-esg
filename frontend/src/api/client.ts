@@ -129,6 +129,11 @@ apiClient.interceptors.response.use(
       _isRefreshing = true
       try {
         const refreshToken = tokenStore.getRefresh()
+        if (!refreshToken) {
+          tokenStore.clear()
+          window.location.href = '/login'
+          return Promise.reject(error)
+        }
         const { data } = await apiClient.post<{ accessToken: string }>(
           '/auth/refresh',
           { refreshToken },

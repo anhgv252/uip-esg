@@ -77,6 +77,7 @@ export default function LoginPage() {
 
   return (
     <Box
+      component="main"
       sx={{
         minHeight: '100vh',
         bgcolor: '#0A1929',

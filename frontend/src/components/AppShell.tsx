@@ -31,6 +31,7 @@ import {
   AdminPanelSettings as AdminIcon,
   Logout as LogoutIcon,
   ChevronLeft as ChevronLeftIcon,
+  Close as CloseIcon,
   SmartToy as AiWorkflowIcon,
   SettingsSuggest as WorkflowConfigIcon,
 } from '@mui/icons-material'
@@ -161,8 +162,11 @@ export default function AppShell() {
           <IconButton
             size="small"
             onClick={() => setMobileOpen(false)}
+            aria-label="Close navigation"
             sx={{ color: muiTheme.palette.sidebar.text }}
-          />
+          >
+            <CloseIcon />
+          </IconButton>
         )}
       </Toolbar>
 

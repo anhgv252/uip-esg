@@ -50,4 +50,23 @@ public interface EsgMetricRepository extends JpaRepository<EsgMetric, EsgMetricI
             @Param("metricType") String metricType,
             @Param("from") Instant from,
             @Param("to") Instant to);
+
+    /**
+     * Fast quarterly/monthly SUM using the pre-computed daily continuous aggregate.
+     * Scans O(days) rows instead of O(hourly-readings × buildings).
+     * Falls back to null if the cagg has not been refreshed yet for the range.
+     */
+    @Query(value = """
+        SELECT SUM(daily_total)
+        FROM esg.daily_esg_summary
+        WHERE tenant_id  = :tenantId
+          AND metric_type = :metricType
+          AND day >= :from
+          AND day <  :to
+        """, nativeQuery = true)
+    Double sumByTypeAndRangeFast(
+            @Param("tenantId") String tenantId,
+            @Param("metricType") String metricType,
+            @Param("from") Instant from,
+            @Param("to") Instant to);
 }

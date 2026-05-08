@@ -47,10 +47,10 @@ public class EsgService {
                 ? yearRange(year)
                 : quarterRange(year, quarter);
 
-        Double energy = metricRepository.sumByTypeAndRange(tenantId, "ENERGY", range[0], range[1]);
-        Double water  = metricRepository.sumByTypeAndRange(tenantId, "WATER",  range[0], range[1]);
-        Double carbon = metricRepository.sumByTypeAndRange(tenantId, "CARBON", range[0], range[1]);
-        Double waste  = metricRepository.sumByTypeAndRange(tenantId, "WASTE",  range[0], range[1]);
+        Double energy = sumWithCaggFallback(tenantId, "ENERGY", range[0], range[1]);
+        Double water  = sumWithCaggFallback(tenantId, "WATER",  range[0], range[1]);
+        Double carbon = sumWithCaggFallback(tenantId, "CARBON", range[0], range[1]);
+        Double waste  = sumWithCaggFallback(tenantId, "WASTE",  range[0], range[1]);
 
         return EsgSummaryDto.builder()
                 .period(periodType)
@@ -189,6 +189,16 @@ public class EsgService {
     }
 
     // ─── Helpers ──────────────────────────────────────────────────────────────
+
+    /**
+     * Try pre-aggregated cagg first (fast: O(days)); fall back to raw scan if cagg
+     * has no materialized data yet for the range (cagg refresh lag ≤ 1 hour).
+     */
+    private Double sumWithCaggFallback(String tenantId, String metricType, Instant from, Instant to) {
+        Double result = metricRepository.sumByTypeAndRangeFast(tenantId, metricType, from, to);
+        if (result != null) return result;
+        return metricRepository.sumByTypeAndRange(tenantId, metricType, from, to);
+    }
 
     private Instant[] quarterRange(int year, int quarter) {
         int startMonth = (quarter - 1) * 3 + 1;

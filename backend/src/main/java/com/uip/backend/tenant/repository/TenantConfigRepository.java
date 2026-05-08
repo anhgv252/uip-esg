@@ -9,4 +9,6 @@ import java.util.List;
 public interface TenantConfigRepository extends JpaRepository<TenantConfigEntry, TenantConfigEntryId> {
 
     List<TenantConfigEntry> findByTenantId(String tenantId);
+
+    List<TenantConfigEntry> findAllByConfigKey(String configKey);
 }
