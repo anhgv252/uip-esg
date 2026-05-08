@@ -77,11 +77,11 @@ define(['./workbox-6d4f622d'], (function (workbox) { 'use strict';
    * See https://goo.gl/S9QRab
    */
   workbox.precacheAndRoute([{
-    "url": "index.html",
-    "revision": "0.k1vvm3vc0e8"
+    "url": "/offline.html",
+    "revision": "0.9ljiendvp8"
   }], {});
   workbox.cleanupOutdatedCaches();
-  workbox.registerRoute(new workbox.NavigationRoute(workbox.createHandlerBoundToURL("index.html"), {
+  workbox.registerRoute(new workbox.NavigationRoute(workbox.createHandlerBoundToURL("/offline.html"), {
     allowlist: [/^\/$/]
   }));
   workbox.registerRoute(/^https?:\/\/.*\/api\/v1\/citizen\/bills/, new workbox.NetworkFirst({
