@@ -16,7 +16,7 @@ import {
 export function useBuildings() {
   return useQuery({
     queryKey: ['buildings'],
-    queryFn: getBuildings,
+    queryFn: () => getBuildings(),
     staleTime: 5 * 60_000,
   })
 }
@@ -24,7 +24,7 @@ export function useBuildings() {
 export function useCitizenProfile() {
   return useQuery({
     queryKey: ['citizen-profile'],
-    queryFn: getCitizenProfile,
+    queryFn: () => getCitizenProfile(),
   })
 }
 
@@ -46,7 +46,7 @@ export function useInvoiceDetail(id: string | null) {
 export function useMeters() {
   return useQuery({
     queryKey: ['meters'],
-    queryFn: getMeters,
+    queryFn: () => getMeters(),
   })
 }
 

@@ -83,28 +83,42 @@ export interface MeterRequest {
   meterType: 'ELECTRICITY' | 'WATER'
 }
 
-export const getBuildings = () =>
-  apiClient.get<BuildingDto[]>('/citizen/buildings').then((r) => r.data)
+export const getBuildings = (tenantId?: string) => {
+  const headers = tenantId ? { 'X-Tenant-Override': tenantId } : {}
+  return apiClient.get<BuildingDto[]>('/citizen/buildings', { headers }).then((r) => r.data)
+}
 
-export const registerCitizen = (data: CitizenRegistrationRequest) =>
-  apiClient.post<CitizenRegistrationResponse>('/citizen/register', data).then((r) => r.data)
+export const registerCitizen = (data: CitizenRegistrationRequest, tenantId?: string) => {
+  const headers = tenantId ? { 'X-Tenant-Override': tenantId } : {}
+  return apiClient.post<CitizenRegistrationResponse>('/citizen/register', data, { headers }).then((r) => r.data)
+}
 
-export const linkHousehold = (data: HouseholdRequest) =>
-  apiClient
-    .post<CitizenProfileDto>('/citizen/profile/household', data)
+export const linkHousehold = (data: HouseholdRequest, tenantId?: string) => {
+  const headers = tenantId ? { 'X-Tenant-Override': tenantId } : {}
+  return apiClient
+    .post<CitizenProfileDto>('/citizen/profile/household', data, { headers })
     .then((r) => r.data)
+}
 
-export const getCitizenProfile = () =>
-  apiClient.get<CitizenProfileDto>('/citizen/profile').then((r) => r.data)
+export const getCitizenProfile = (tenantId?: string) => {
+  const headers = tenantId ? { 'X-Tenant-Override': tenantId } : {}
+  return apiClient.get<CitizenProfileDto>('/citizen/profile', { headers }).then((r) => r.data)
+}
 
-export const registerMeter = (data: MeterRequest) =>
-  apiClient.post<MeterDto>('/citizen/meters', data).then((r) => r.data)
+export const registerMeter = (data: MeterRequest, tenantId?: string) => {
+  const headers = tenantId ? { 'X-Tenant-Override': tenantId } : {}
+  return apiClient.post<MeterDto>('/citizen/meters', data, { headers }).then((r) => r.data)
+}
 
-export const getInvoices = (params?: { month?: number; year?: number; page?: number; size?: number }) => {
+export const getInvoices = (
+  params?: { month?: number; year?: number; page?: number; size?: number },
+  tenantId?: string,
+) => {
+  const headers = tenantId ? { 'X-Tenant-Override': tenantId } : {}
   // When both month and year are provided, use the by-month endpoint (BUG-S3-05-01)
   if (params?.month != null && params?.year != null) {
     return apiClient
-      .get<InvoiceDto[]>('/citizen/invoices/by-month', { params: { month: params.month, year: params.year } })
+      .get<InvoiceDto[]>('/citizen/invoices/by-month', { params: { month: params.month, year: params.year }, headers })
       .then((r): InvoicePage => ({
         content: r.data,
         totalElements: r.data.length,
@@ -112,11 +126,15 @@ export const getInvoices = (params?: { month?: number; year?: number; page?: num
         number: 0,
       }))
   }
-  return apiClient.get<InvoicePage>('/citizen/invoices', { params }).then((r) => r.data)
+  return apiClient.get<InvoicePage>('/citizen/invoices', { params, headers }).then((r) => r.data)
 }
 
-export const getInvoiceById = (id: string) =>
-  apiClient.get<InvoiceDto>(`/citizen/invoices/${id}`).then((r) => r.data)
+export const getInvoiceById = (id: string, tenantId?: string) => {
+  const headers = tenantId ? { 'X-Tenant-Override': tenantId } : {}
+  return apiClient.get<InvoiceDto>(`/citizen/invoices/${id}`, { headers }).then((r) => r.data)
+}
 
-export const getMeters = () =>
-  apiClient.get<MeterDto[]>('/citizen/meters').then((r) => r.data)
+export const getMeters = (tenantId?: string) => {
+  const headers = tenantId ? { 'X-Tenant-Override': tenantId } : {}
+  return apiClient.get<MeterDto[]>('/citizen/meters', { headers }).then((r) => r.data)
+}
