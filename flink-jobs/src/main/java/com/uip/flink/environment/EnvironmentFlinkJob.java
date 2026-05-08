@@ -28,6 +28,12 @@ public class EnvironmentFlinkJob {
     private static final Logger LOG = LoggerFactory.getLogger(EnvironmentFlinkJob.class);
 
     private static final String KAFKA_BOOTSTRAP = System.getenv().getOrDefault("KAFKA_BOOTSTRAP", "kafka:9092");
+    private static final String KAFKA_SECURITY_PROTOCOL =
+            System.getenv().getOrDefault("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT");
+    private static final String KAFKA_SASL_MECHANISM =
+            System.getenv().getOrDefault("KAFKA_SASL_MECHANISM", "");
+    private static final String KAFKA_SASL_JAAS_CONFIG =
+            System.getenv().getOrDefault("KAFKA_SASL_JAAS_CONFIG", "");
     private static final String DB_URL = System.getenv().getOrDefault("DB_URL",
             "jdbc:postgresql://timescaledb:5432/uip_smartcity");
     private static final String DB_USER = System.getenv().getOrDefault("DB_USER", "uip");
@@ -52,6 +58,7 @@ public class EnvironmentFlinkJob {
                 .setGroupId("flink-environment-job")
                 .setStartingOffsets(OffsetsInitializer.latest())
                 .setValueOnlyDeserializer(new NgsiLdDeserializer())
+                .setProperties(kafkaSecurityProps())
                 .build();
 
         SinkFunction<EnvironmentReading> jdbcSink = JdbcSink.<EnvironmentReading>sink(
@@ -104,6 +111,18 @@ public class EnvironmentFlinkJob {
 
         LOG.info("Starting EnvironmentFlinkJob — Kafka={} DB={}", KAFKA_BOOTSTRAP, DB_URL);
         env.execute("EnvironmentFlinkJob");
+    }
+
+    private static java.util.Properties kafkaSecurityProps() {
+        java.util.Properties props = new java.util.Properties();
+        props.setProperty("security.protocol", KAFKA_SECURITY_PROTOCOL);
+        if (!KAFKA_SASL_MECHANISM.isEmpty()) {
+            props.setProperty("sasl.mechanism", KAFKA_SASL_MECHANISM);
+        }
+        if (!KAFKA_SASL_JAAS_CONFIG.isEmpty()) {
+            props.setProperty("sasl.jaas.config", KAFKA_SASL_JAAS_CONFIG);
+        }
+        return props;
     }
 
     private static void setNullableDouble(java.sql.PreparedStatement stmt, int idx, Double val)

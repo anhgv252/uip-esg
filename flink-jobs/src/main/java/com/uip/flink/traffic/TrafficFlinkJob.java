@@ -29,6 +29,12 @@ public class TrafficFlinkJob {
     private static final Logger LOG = LoggerFactory.getLogger(TrafficFlinkJob.class);
 
     private static final String KAFKA_BOOTSTRAP = System.getenv().getOrDefault("KAFKA_BOOTSTRAP", "kafka:9092");
+    private static final String KAFKA_SECURITY_PROTOCOL =
+            System.getenv().getOrDefault("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT");
+    private static final String KAFKA_SASL_MECHANISM =
+            System.getenv().getOrDefault("KAFKA_SASL_MECHANISM", "");
+    private static final String KAFKA_SASL_JAAS_CONFIG =
+            System.getenv().getOrDefault("KAFKA_SASL_JAAS_CONFIG", "");
     private static final String DB_URL = System.getenv().getOrDefault("DB_URL",
             "jdbc:postgresql://timescaledb:5432/uip_smartcity");
     private static final String DB_USER     = System.getenv().getOrDefault("DB_USER", "uip");
@@ -49,6 +55,7 @@ public class TrafficFlinkJob {
                 .setGroupId("flink-traffic-job")
                 .setStartingOffsets(OffsetsInitializer.latest())
                 .setValueOnlyDeserializer(new NgsiLdDeserializer())
+                .setProperties(kafkaSecurityProps())
                 .build();
 
         SinkFunction<TrafficCount> jdbcSink = JdbcSink.sink(
@@ -90,5 +97,17 @@ public class TrafficFlinkJob {
 
         LOG.info("TrafficFlinkJob starting, consuming from ngsi_ld_traffic");
         env.execute("UIP — TrafficFlinkJob");
+    }
+
+    private static java.util.Properties kafkaSecurityProps() {
+        java.util.Properties props = new java.util.Properties();
+        props.setProperty("security.protocol", KAFKA_SECURITY_PROTOCOL);
+        if (!KAFKA_SASL_MECHANISM.isEmpty()) {
+            props.setProperty("sasl.mechanism", KAFKA_SASL_MECHANISM);
+        }
+        if (!KAFKA_SASL_JAAS_CONFIG.isEmpty()) {
+            props.setProperty("sasl.jaas.config", KAFKA_SASL_JAAS_CONFIG);
+        }
+        return props;
     }
 }

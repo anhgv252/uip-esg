@@ -42,6 +42,12 @@ public class EsgCleansingJob {
             new OutputTag<>("telemetry-errors") {};
 
     private static final String KAFKA_BOOTSTRAP = System.getenv().getOrDefault("KAFKA_BOOTSTRAP", "kafka:9092");
+    private static final String KAFKA_SECURITY_PROTOCOL =
+            System.getenv().getOrDefault("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT");
+    private static final String KAFKA_SASL_MECHANISM =
+            System.getenv().getOrDefault("KAFKA_SASL_MECHANISM", "");
+    private static final String KAFKA_SASL_JAAS_CONFIG =
+            System.getenv().getOrDefault("KAFKA_SASL_JAAS_CONFIG", "");
     private static final String DB_URL = System.getenv().getOrDefault("DB_URL",
             "jdbc:postgresql://timescaledb:5432/uip_smartcity");
     private static final String DB_USER = System.getenv().getOrDefault("DB_USER", "uip");
@@ -69,6 +75,7 @@ public class EsgCleansingJob {
                 .setGroupId("flink-esg-cleansing")
                 .setStartingOffsets(OffsetsInitializer.latest())
                 .setValueOnlyDeserializer(new NgsiLdDeserializer())
+                .setProperties(kafkaSecurityProps())
                 .build();
 
         SinkFunction<Object[]> jdbcSink = JdbcSink.<Object[]>sink(
@@ -145,6 +152,18 @@ public class EsgCleansingJob {
 
         LOG.info("Starting EsgCleansingJob — Kafka={}", KAFKA_BOOTSTRAP);
         env.execute("EsgCleansingJob");
+    }
+
+    private static java.util.Properties kafkaSecurityProps() {
+        java.util.Properties props = new java.util.Properties();
+        props.setProperty("security.protocol", KAFKA_SECURITY_PROTOCOL);
+        if (!KAFKA_SASL_MECHANISM.isEmpty()) {
+            props.setProperty("sasl.mechanism", KAFKA_SASL_MECHANISM);
+        }
+        if (!KAFKA_SASL_JAAS_CONFIG.isEmpty()) {
+            props.setProperty("sasl.jaas.config", KAFKA_SASL_JAAS_CONFIG);
+        }
+        return props;
     }
 
     private static String getUnit(String key) {

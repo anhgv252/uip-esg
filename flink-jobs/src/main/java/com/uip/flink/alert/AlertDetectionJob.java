@@ -35,6 +35,12 @@ public class AlertDetectionJob {
     private static final Logger LOG = LoggerFactory.getLogger(AlertDetectionJob.class);
 
     private static final String KAFKA_BOOTSTRAP = System.getenv().getOrDefault("KAFKA_BOOTSTRAP", "kafka:9092");
+    private static final String KAFKA_SECURITY_PROTOCOL =
+            System.getenv().getOrDefault("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT");
+    private static final String KAFKA_SASL_MECHANISM =
+            System.getenv().getOrDefault("KAFKA_SASL_MECHANISM", "");
+    private static final String KAFKA_SASL_JAAS_CONFIG =
+            System.getenv().getOrDefault("KAFKA_SASL_JAAS_CONFIG", "");
 
     private static final ObjectMapper MAPPER = new ObjectMapper().registerModule(new JavaTimeModule());
 
@@ -52,6 +58,7 @@ public class AlertDetectionJob {
                 .setGroupId("flink-alert-detection-job")
                 .setStartingOffsets(OffsetsInitializer.latest())
                 .setValueOnlyDeserializer(new NgsiLdDeserializer())
+                .setProperties(kafkaSecurityProps())
                 .build();
 
         // Sink: publish AlertEvent JSON to Kafka — must match AlertEventKafkaConsumer.TOPIC
@@ -61,6 +68,7 @@ public class AlertDetectionJob {
                         .setTopic("UIP.flink.alert.detected.v1")
                         .setValueSerializationSchema(new SimpleStringSchema())
                         .build())
+                .setKafkaProducerConfig(kafkaSecurityProps())
                 .build();
 
         env.fromSource(
@@ -81,5 +89,17 @@ public class AlertDetectionJob {
 
         LOG.info("Starting AlertDetectionJob");
         env.execute("AlertDetectionJob");
+    }
+
+    private static java.util.Properties kafkaSecurityProps() {
+        java.util.Properties props = new java.util.Properties();
+        props.setProperty("security.protocol", KAFKA_SECURITY_PROTOCOL);
+        if (!KAFKA_SASL_MECHANISM.isEmpty()) {
+            props.setProperty("sasl.mechanism", KAFKA_SASL_MECHANISM);
+        }
+        if (!KAFKA_SASL_JAAS_CONFIG.isEmpty()) {
+            props.setProperty("sasl.jaas.config", KAFKA_SASL_JAAS_CONFIG);
+        }
+        return props;
     }
 }
