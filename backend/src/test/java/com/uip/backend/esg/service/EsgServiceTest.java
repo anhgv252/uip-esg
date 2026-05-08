@@ -39,6 +39,7 @@ class EsgServiceTest {
     @Test
     @DisplayName("getSummary(QUARTERLY) sums all four metric types for tenant")
     void getSummary_quarterly_returnsAggregates() {
+        when(metricRepository.sumByTypeAndRangeFast(any(), any(), any(), any())).thenReturn(null);
         when(metricRepository.sumByTypeAndRange(eq(TENANT_ID), eq("ENERGY"), any(), any())).thenReturn(1000.0);
         when(metricRepository.sumByTypeAndRange(eq(TENANT_ID), eq("WATER"),  any(), any())).thenReturn(500.0);
         when(metricRepository.sumByTypeAndRange(eq(TENANT_ID), eq("CARBON"), any(), any())).thenReturn(200.0);
@@ -57,6 +58,7 @@ class EsgServiceTest {
     @Test
     @DisplayName("getSummary: null metric values are handled gracefully (not NPE)")
     void getSummary_nullMetrics_doesNotThrow() {
+        when(metricRepository.sumByTypeAndRangeFast(any(), any(), any(), any())).thenReturn(null);
         when(metricRepository.sumByTypeAndRange(eq(TENANT_ID), anyString(), any(), any())).thenReturn(null);
 
         EsgSummaryDto dto = esgService.getSummary(TENANT_ID, "QUARTERLY", 2025, 2);
@@ -68,6 +70,7 @@ class EsgServiceTest {
     @Test
     @DisplayName("getSummary: different tenants get isolated data")
     void getSummary_differentTenants_queriesIsolated() {
+        when(metricRepository.sumByTypeAndRangeFast(any(), any(), any(), any())).thenReturn(null);
         when(metricRepository.sumByTypeAndRange(eq("tenant-a"), anyString(), any(), any())).thenReturn(100.0);
         when(metricRepository.sumByTypeAndRange(eq("tenant-b"), anyString(), any(), any())).thenReturn(200.0);
 

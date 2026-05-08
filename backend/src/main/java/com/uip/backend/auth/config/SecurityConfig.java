@@ -1,7 +1,7 @@
 package com.uip.backend.auth.config;
 
 import com.uip.backend.auth.service.UipUserDetailsService;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
@@ -27,13 +27,23 @@ import com.uip.backend.tenant.filter.TenantContextFilter;
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
-@RequiredArgsConstructor
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthFilter;
     private final TenantContextFilter tenantContextFilter;
     private final UipUserDetailsService userDetailsService;
     private final DynamicCorsConfigurationSource dynamicCorsConfigurationSource;
+
+    @Autowired
+    public SecurityConfig(JwtAuthenticationFilter jwtAuthFilter,
+                          @Autowired(required = false) TenantContextFilter tenantContextFilter,
+                          UipUserDetailsService userDetailsService,
+                          DynamicCorsConfigurationSource dynamicCorsConfigurationSource) {
+        this.jwtAuthFilter = jwtAuthFilter;
+        this.tenantContextFilter = tenantContextFilter;
+        this.userDetailsService = userDetailsService;
+        this.dynamicCorsConfigurationSource = dynamicCorsConfigurationSource;
+    }
 
     @Bean
     @Order(2)
@@ -92,8 +102,11 @@ public class SecurityConfig {
                     response.getWriter().write("{\"type\":\"/errors/access-denied\",\"title\":\"Forbidden\",\"status\":403,\"detail\":\"Access Denied\"}");
                 })
             )
-            .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
-            .addFilterAfter(tenantContextFilter, JwtAuthenticationFilter.class);
+            .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+
+        if (tenantContextFilter != null) {
+            http.addFilterAfter(tenantContextFilter, JwtAuthenticationFilter.class);
+        }
 
         return http.build();
     }

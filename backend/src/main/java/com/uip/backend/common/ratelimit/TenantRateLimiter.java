@@ -68,7 +68,10 @@ public class TenantRateLimiter {
         try {
             RedisScript<Long> script = RedisScript.of(RATE_LIMIT_SCRIPT, Long.class);
             Long count = redisTemplate.execute(script, List.of(redisKey(tenantId)));
-            return count != null && count <= defaultRpm;
+            if (count == null) {
+                return tryConsumeInMemory(tenantId);
+            }
+            return count <= defaultRpm;
         } catch (Exception e) {
             log.warn("Redis rate-limit error tenant={}, falling back to in-memory: {}", tenantId, e.getMessage());
             return tryConsumeInMemory(tenantId);
