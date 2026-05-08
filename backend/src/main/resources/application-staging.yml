@@ -32,6 +32,14 @@ uip:
     redis-cache: true
     kong-gateway: true
 
+management:
+  otlp:
+    tracing:
+      endpoint: http://jaeger:4318/v1/traces
+  tracing:
+    sampling:
+      probability: 0.1
+
 logging:
   level:
     root: WARN

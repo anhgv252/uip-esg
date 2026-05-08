@@ -51,6 +51,11 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-aop'
     implementation 'org.springframework.boot:spring-boot-starter-mail'
     runtimeOnly 'io.micrometer:micrometer-registry-prometheus'
+
+    // OpenTelemetry: Micrometer Tracing bridge + OTLP exporter (BT-CC-02)
+    // Versions managed by spring-boot-dependencies BOM (Spring Boot 3.2.x)
+    implementation 'io.micrometer:micrometer-tracing-bridge-otel'
+    runtimeOnly    'io.opentelemetry:opentelemetry-exporter-otlp'
     implementation 'org.springframework.kafka:spring-kafka'
 
     // JWT
