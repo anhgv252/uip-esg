@@ -14,10 +14,8 @@ import org.apache.flink.contrib.streaming.state.EmbeddedRocksDBStateBackend;
 import org.apache.flink.streaming.api.CheckpointingMode;
 import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
-import org.apache.flink.streaming.api.functions.ProcessFunction;
 import org.apache.flink.streaming.api.functions.sink.SinkFunction;
 import org.apache.flink.util.Collector;
-import org.apache.flink.util.OutputTag;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,8 +36,6 @@ public class EsgCleansingJob {
     private static final Logger LOG = LoggerFactory.getLogger(EsgCleansingJob.class);
 
     static final String ERROR_TOPIC = "UIP.esg.telemetry.error.v1";
-    static final OutputTag<Map<String, Object>> ERROR_TAG =
-            new OutputTag<>("telemetry-errors") {};
 
     private static final String KAFKA_BOOTSTRAP = System.getenv().getOrDefault("KAFKA_BOOTSTRAP", "kafka:9092");
     private static final String KAFKA_SECURITY_PROTOCOL =
@@ -105,8 +101,6 @@ public class EsgCleansingJob {
                         .build()
         );
 
-        TenantIdValidator validator = new TenantIdValidator();
-
         SingleOutputStreamOperator<NgsiLdMessage> validated = env.fromSource(
                 source,
                 WatermarkStrategy.<NgsiLdMessage>forBoundedOutOfOrderness(Duration.ofSeconds(10))
@@ -114,22 +108,7 @@ public class EsgCleansingJob {
                 "ngsi_ld_esg Source"
         )
         .filter(msg -> msg != null && msg.getDeviceIdValue() != null)
-        .process(new ProcessFunction<NgsiLdMessage, NgsiLdMessage>() {
-            @Override
-            public void processElement(NgsiLdMessage msg, Context ctx, Collector<NgsiLdMessage> out) {
-                try {
-                    validator.map(msg);
-                    out.collect(msg);
-                } catch (TelemetryValidationException e) {
-                    ctx.output(ERROR_TAG, Map.of(
-                            "errorCode", e.getErrorCode(),
-                            "sensorId", e.getSensorId() != null ? e.getSensorId() : "unknown",
-                            "message", e.getMessage(),
-                            "detectedAt", Instant.now().toString()
-                    ));
-                }
-            }
-        });
+        .process(new TenantIdValidator());
 
         // Main flow: valid messages → metric extraction → TimescaleDB
         validated
@@ -147,7 +126,7 @@ public class EsgCleansingJob {
         .name("TimescaleDB esg.clean_metrics Sink");
 
         // Side output: error messages → logged (Kafka sink can be added later)
-        validated.getSideOutput(ERROR_TAG)
+        validated.getSideOutput(TenantIdValidator.ERROR_TAG)
                 .print("TELEMETRY-ERROR");
 
         LOG.info("Starting EsgCleansingJob — Kafka={}", KAFKA_BOOTSTRAP);
