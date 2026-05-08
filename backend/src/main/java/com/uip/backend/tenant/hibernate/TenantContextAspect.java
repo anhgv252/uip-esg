@@ -7,6 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Before;
 import org.hibernate.Session;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,9 +19,11 @@ import org.springframework.transaction.annotation.Transactional;
  * and automatically resets when the transaction completes.
  * SET SESSION would persist across transactions, which is a security risk in
  * a connection pool scenario.
+ * BT-07e: Only loaded when multi-tenancy capability is enabled (T2+). T1 uses default tenant.
  */
 @Aspect
 @Component
+@ConditionalOnProperty(prefix = "uip.capabilities", name = "multi-tenancy", havingValue = "true")
 @Slf4j
 @RequiredArgsConstructor
 public class TenantContextAspect {

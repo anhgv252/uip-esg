@@ -7,6 +7,7 @@ import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -22,8 +23,10 @@ import java.nio.charset.StandardCharsets;
  *
  * ADR-021: Fallback to "default" when tenant_id claim is missing or no JWT present.
  * ADR-010: TenantContext is consumed by TenantContextAspect to run SET LOCAL app.tenant_id.
+ * BT-07e: Only loaded when multi-tenancy capability is enabled (T2+). T1 skips this filter.
  */
 @Component
+@ConditionalOnProperty(prefix = "uip.capabilities", name = "multi-tenancy", havingValue = "true")
 @Slf4j
 public class TenantContextFilter extends OncePerRequestFilter {
 
