@@ -9,6 +9,7 @@
 
 | Chủ đề | File | Mô tả |
 |--------|------|-------|
+| **🆕 MVP3 Master Plan** | [mvp3/README.md](mvp3/README.md) | Building Cluster v3.0 — 6 sprints, Tier 2 pilot 2026-08-10 |
 | **Roadmap tổng thể** | [mvp2/project/demo-and-roadmap-2026-04-25.md](mvp2/project/demo-and-roadmap-2026-04-25.md) | 4 Tier strategy, ROI, 17 user stories, KPIs |
 | **Executive Demo Script** | [mvp2/project/executive-demo-script.md](mvp2/project/executive-demo-script.md) | 10 phút cho lãnh đạo/đối tác |
 | **Demo Setup Script** | [scripts/demo-setup.sh](../scripts/demo-setup.sh) | Tự động kiểm tra trước demo |
@@ -134,4 +135,14 @@ cd frontend && npm run generate:types
 
 ---
 
-*Tổng hợp từ 78 tài liệu — cập nhật 2026-05-10*
+---
+
+## MVP3 — Building Cluster v3.0 (Planning)
+
+| Tài liệu | Mô tả |
+|----------|-------|
+| [MVP3 Master Plan](mvp3/README.md) | 6 sprints, milestone map, risk register, budget |
+| `mvp3/architecture/` | ADR-026 đến ADR-034 (cần viết) |
+| `mvp3/qa/` | Test strategy Tier 2, ClickHouse consistency, BMS tests |
+
+*Tổng hợp từ 79 tài liệu — cập nhật 2026-05-10*
