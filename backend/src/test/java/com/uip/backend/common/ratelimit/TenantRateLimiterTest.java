@@ -1,11 +1,16 @@
 package com.uip.backend.common.ratelimit;
 
+import com.uip.backend.tenant.domain.TenantConfigEntry;
+import com.uip.backend.tenant.repository.TenantConfigRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.data.redis.core.script.RedisScript;
 import org.springframework.test.util.ReflectionTestUtils;
+
+import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -133,5 +138,73 @@ class TenantRateLimiterTest {
         ReflectionTestUtils.setField(rateLimiter, "redisTemplate", mockRedis);
 
         assertThat(rateLimiter.getAvailableTokens("tenant-avail")).isEqualTo(7);
+    }
+
+    // ─── Per-tenant RPM tests ─────────────────────────────────────────────────
+
+    @Test
+    void reloadTenantRpm_withNullRepository_doesNothing() {
+        // tenantConfigRepository is null by default in unit tests — should not throw
+        rateLimiter.reloadTenantRpm();
+        assertThat(rateLimiter.tryConsume("tenant-ok")).isTrue();
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void tryConsume_perTenantRpm_usesConfiguredLimit() {
+        TenantConfigRepository mockRepo = mock(TenantConfigRepository.class);
+        TenantConfigEntry entry = new TenantConfigEntry();
+        entry.setTenantId("tenant-limited");
+        entry.setConfigKey("rate-limit.requests-per-minute");
+        entry.setConfigValue("3"); // tenant-specific limit of 3
+        when(mockRepo.findAllByConfigKey("rate-limit.requests-per-minute"))
+                .thenReturn(List.of(entry));
+        ReflectionTestUtils.setField(rateLimiter, "tenantConfigRepository", mockRepo);
+        rateLimiter.reloadTenantRpm();
+
+        // First 3 should pass (in-memory bucket with capacity 3)
+        for (int i = 0; i < 3; i++) {
+            assertThat(rateLimiter.tryConsume("tenant-limited")).isTrue();
+        }
+        // 4th request should be denied
+        assertThat(rateLimiter.tryConsume("tenant-limited")).isFalse();
+        // Other tenants are unaffected (still use defaultRpm=10)
+        assertThat(rateLimiter.tryConsume("tenant-other")).isTrue();
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void tryConsume_perTenantRpm_redisUsesConfiguredLimit() {
+        TenantConfigRepository mockRepo = mock(TenantConfigRepository.class);
+        TenantConfigEntry entry = new TenantConfigEntry();
+        entry.setTenantId("tenant-redis-limited");
+        entry.setConfigKey("rate-limit.requests-per-minute");
+        entry.setConfigValue("5");
+        when(mockRepo.findAllByConfigKey("rate-limit.requests-per-minute"))
+                .thenReturn(List.of(entry));
+        ReflectionTestUtils.setField(rateLimiter, "tenantConfigRepository", mockRepo);
+        rateLimiter.reloadTenantRpm();
+
+        StringRedisTemplate mockRedis = mock(StringRedisTemplate.class);
+        when(mockRedis.execute(any(RedisScript.class), anyList())).thenReturn(6L); // 6 > rpm=5
+        ReflectionTestUtils.setField(rateLimiter, "redisTemplate", mockRedis);
+
+        assertThat(rateLimiter.tryConsume("tenant-redis-limited")).isFalse();
+    }
+
+    @Test
+    void reloadTenantRpm_invalidValue_skipsEntry() {
+        TenantConfigRepository mockRepo = mock(TenantConfigRepository.class);
+        TenantConfigEntry bad = new TenantConfigEntry();
+        bad.setTenantId("tenant-bad");
+        bad.setConfigKey("rate-limit.requests-per-minute");
+        bad.setConfigValue("not-a-number");
+        when(mockRepo.findAllByConfigKey("rate-limit.requests-per-minute"))
+                .thenReturn(List.of(bad));
+        ReflectionTestUtils.setField(rateLimiter, "tenantConfigRepository", mockRepo);
+
+        // Should not throw; bad entry is skipped → tenant falls back to defaultRpm
+        rateLimiter.reloadTenantRpm();
+        assertThat(rateLimiter.tryConsume("tenant-bad")).isTrue();
     }
 }
