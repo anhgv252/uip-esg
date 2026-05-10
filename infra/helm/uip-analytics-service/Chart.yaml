@@ -1,0 +1,13 @@
+apiVersion: v2
+name: uip-analytics-service
+description: UIP Analytics Service — standalone ClickHouse OLAP service for Tier 2+
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+keywords:
+  - uip
+  - analytics
+  - clickhouse
+  - smart-city
+maintainers:
+  - name: UIP Platform Team

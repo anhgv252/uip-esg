@@ -1,0 +1,86 @@
+// analytics-service — standalone Spring Boot application.
+// KHÔNG có dependency vào backend/ monolith.
+// Chỉ chịu trách nhiệm: ClickHouse OLAP queries + expose REST API cho monolith.
+//
+// Build: ./gradlew bootJar          → build/libs/app.jar
+// Docker: docker build -t uip-analytics-service:v3.x .
+// Deploy: helm upgrade analytics infra/helm/uip-analytics-service -f values-tier2.yaml
+
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '3.2.4'
+    id 'io.spring.dependency-management' version '1.1.4'
+    id 'jacoco'
+}
+
+group = 'com.uip'
+version = '0.1.0-SNAPSHOT'
+sourceCompatibility = '17'
+
+repositories {
+    mavenCentral()
+}
+
+configurations {
+    compileOnly { extendsFrom annotationProcessor }
+}
+
+dependencies {
+    // Core Spring Boot — web + security + actuator
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+    runtimeOnly    'io.micrometer:micrometer-registry-prometheus'
+
+    // JWT — validate token từ monolith (cùng secret)
+    implementation 'io.jsonwebtoken:jjwt-api:0.12.3'
+    runtimeOnly    'io.jsonwebtoken:jjwt-impl:0.12.3'
+    runtimeOnly    'io.jsonwebtoken:jjwt-jackson:0.12.3'
+
+    // Spring JDBC — JdbcTemplate (no JPA/Hibernate, just raw JDBC)
+    implementation 'org.springframework.boot:spring-boot-starter-jdbc'
+
+    // ClickHouse JDBC — driver cho analytics queries
+    implementation 'com.clickhouse:clickhouse-jdbc:0.6.0'
+    implementation 'com.clickhouse:clickhouse-http-client:0.6.0'
+
+    // Logging
+    implementation 'net.logstash.logback:logstash-logback-encoder:7.4'
+
+    // Utilities
+    compileOnly    'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+
+    // OpenAPI docs
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.3.0'
+
+    // Test
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.security:spring-security-test'
+    testImplementation 'org.testcontainers:junit-jupiter'
+    testImplementation 'org.testcontainers:clickhouse:1.19.7'
+}
+
+dependencyManagement {
+    imports {
+        mavenBom "org.testcontainers:testcontainers-bom:1.21.4"
+    }
+}
+
+test {
+    useJUnitPlatform()
+    environment 'RYUK_DISABLED', 'true'
+    jvmArgs '-Xmx1g'
+    finalizedBy jacocoTestReport
+}
+
+jacocoTestReport {
+    dependsOn test
+    reports { xml.required = true; html.required = true }
+}
+
+bootJar {
+    archiveFileName = 'app.jar'
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}

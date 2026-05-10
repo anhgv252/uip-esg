@@ -1,0 +1,53 @@
+replicaCount: 2
+
+image:
+  repository: uip-analytics-service
+  tag: ""          # set via --set image.tag=v3.x.y at deploy time
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8081
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 512Mi
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 6
+  targetCPUUtilizationPercentage: 70
+
+# ClickHouse connection
+clickhouse:
+  url: "jdbc:clickhouse://clickhouse:8123"
+  user: "default"
+  database: "uip_analytics"
+  # password injected from Secret: uip-analytics-secrets
+
+# JWT secret shared with monolith — injected from Secret
+jwt:
+  secretKey: ""   # mounted from uip-analytics-secrets
+
+ingress:
+  enabled: false   # Kong handles ingress at cluster level
+
+livenessProbe:
+  httpGet:
+    path: /actuator/health/liveness
+    port: 8081
+  initialDelaySeconds: 30
+  periodSeconds: 15
+
+readinessProbe:
+  httpGet:
+    path: /actuator/health/readiness
+    port: 8081
+  initialDelaySeconds: 20
+  periodSeconds: 10
