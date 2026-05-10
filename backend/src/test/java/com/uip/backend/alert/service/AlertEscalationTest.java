@@ -60,7 +60,6 @@ class AlertEscalationTest {
             // Given
             when(alertEventRepository.findById(alertId)).thenReturn(Optional.of(openAlert));
             when(alertEventRepository.save(any(AlertEvent.class))).thenAnswer(inv -> inv.getArgument(0));
-            when(alertRuleRepository.findById(any())).thenReturn(Optional.empty());
 
             AcknowledgeRequest req = new AcknowledgeRequest();
             req.setNote("Investigating sensor malfunction");
@@ -91,7 +90,6 @@ class AlertEscalationTest {
 
             when(alertEventRepository.findById(alertId)).thenReturn(Optional.of(openAlert));
             when(alertEventRepository.save(any(AlertEvent.class))).thenAnswer(inv -> inv.getArgument(0));
-            when(alertRuleRepository.findById(any())).thenReturn(Optional.empty());
 
             AcknowledgeRequest req = new AcknowledgeRequest();
             req.setNote("Transferred to operator2");
@@ -112,7 +110,6 @@ class AlertEscalationTest {
             openAlert.setNote("original investigation note");
             when(alertEventRepository.findById(alertId)).thenReturn(Optional.of(openAlert));
             when(alertEventRepository.save(any(AlertEvent.class))).thenAnswer(inv -> inv.getArgument(0));
-            when(alertRuleRepository.findById(any())).thenReturn(Optional.empty());
 
             // When
             var result = alertService.acknowledgeAlert(alertId, "operator1", new AcknowledgeRequest());
@@ -134,7 +131,6 @@ class AlertEscalationTest {
             // Given
             when(alertEventRepository.findById(alertId)).thenReturn(Optional.of(openAlert));
             when(alertEventRepository.save(any(AlertEvent.class))).thenAnswer(inv -> inv.getArgument(0));
-            when(alertRuleRepository.findById(any())).thenReturn(Optional.empty());
 
             // When
             var result = alertService.escalateAlert(alertId, "supervisor1", "Critical threshold exceeded — needs management decision");
@@ -163,7 +159,6 @@ class AlertEscalationTest {
 
             when(alertEventRepository.findById(alertId)).thenReturn(Optional.of(openAlert));
             when(alertEventRepository.save(any(AlertEvent.class))).thenAnswer(inv -> inv.getArgument(0));
-            when(alertRuleRepository.findById(any())).thenReturn(Optional.empty());
 
             // When
             var result = alertService.escalateAlert(alertId, "supervisor2", "Re-escalated to higher management");
@@ -181,7 +176,6 @@ class AlertEscalationTest {
             openAlert.setNote("initial escalation reason");
             when(alertEventRepository.findById(alertId)).thenReturn(Optional.of(openAlert));
             when(alertEventRepository.save(any(AlertEvent.class))).thenAnswer(inv -> inv.getArgument(0));
-            when(alertRuleRepository.findById(any())).thenReturn(Optional.empty());
 
             // When
             var result = alertService.escalateAlert(alertId, "supervisor1", null);
@@ -244,7 +238,6 @@ class AlertEscalationTest {
             AlertEvent saved = inv.getArgument(0);
             return saved;
         });
-        when(alertRuleRepository.findById(any())).thenReturn(Optional.empty());
 
         AcknowledgeRequest req = new AcknowledgeRequest();
         req.setNote("Verified — sensor recalibrated");

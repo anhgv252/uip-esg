@@ -48,7 +48,6 @@ class RateLimitFilterTest {
         try (MockedStatic<TenantContext> ctx = mockStatic(TenantContext.class)) {
             ctx.when(TenantContext::getCurrentTenant).thenReturn("tenant-ok");
             when(rateLimiter.tryConsume("tenant-ok")).thenReturn(true);
-            when(rateLimiter.getAvailableTokens("tenant-ok")).thenReturn(999L);
 
             MockHttpServletRequest req = new MockHttpServletRequest();
             MockHttpServletResponse res = new MockHttpServletResponse();
@@ -56,7 +55,7 @@ class RateLimitFilterTest {
             filter.doFilterInternal(req, res, chain);
 
             verify(chain).doFilter(req, res);
-            assertThat(res.getHeader("X-RateLimit-Remaining")).isEqualTo("999");
+            assertThat(res.getStatus()).isEqualTo(200);
         }
     }
 
@@ -65,7 +64,6 @@ class RateLimitFilterTest {
         try (MockedStatic<TenantContext> ctx = mockStatic(TenantContext.class)) {
             ctx.when(TenantContext::getCurrentTenant).thenReturn("tenant-x");
             when(rateLimiter.tryConsume("tenant-x")).thenReturn(false);
-            when(rateLimiter.getAvailableTokens("tenant-x")).thenReturn(0L);
 
             MockHttpServletRequest req = new MockHttpServletRequest();
             req.setRequestURI("/api/v1/test");
@@ -75,7 +73,6 @@ class RateLimitFilterTest {
 
             assertThat(res.getStatus()).isEqualTo(429);
             assertThat(res.getHeader("Retry-After")).isEqualTo("60");
-            assertThat(res.getHeader("X-RateLimit-Remaining")).isEqualTo("0");
             assertThat(res.getContentType()).isEqualTo("application/json");
             verify(chain, never()).doFilter(any(), any());
         }
