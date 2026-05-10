@@ -53,6 +53,8 @@ public class EsgService {
         // ENERGY: qua AnalyticsPort — Tier 1 → TimescaleDB, Tier 2 → analytics-service (ClickHouse)
         EsgAggregateResult energyResult = analyticsPort.queryEnergyAggregate(
                 tenantId, List.of(), range[0].getEpochSecond(), range[1].getEpochSecond());
+        // 0.0 treated as "no data" — adapters return 0.0 when repo/ClickHouse has no rows.
+        // Dashboard shows null as "N/A", not "0 kWh", which is correct for missing-data periods.
         Double energy = energyResult.totalKwh() > 0 ? energyResult.totalKwh() : null;
 
         // WATER, CARBON, WASTE: vẫn dùng TimescaleDB trực tiếp (chưa extract)

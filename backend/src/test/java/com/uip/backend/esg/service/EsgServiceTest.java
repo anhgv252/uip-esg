@@ -2,6 +2,8 @@ package com.uip.backend.esg.service;
 
 import com.uip.backend.esg.api.dto.EsgSummaryDto;
 import com.uip.backend.esg.common.CacheKeyBuilder;
+import com.uip.backend.esg.config.analytics.AnalyticsPort;
+import com.uip.backend.esg.config.analytics.EsgAggregateResult;
 import com.uip.backend.esg.domain.EsgReport;
 import com.uip.backend.esg.repository.EsgMetricRepository;
 import com.uip.backend.esg.repository.EsgReportRepository;
@@ -19,6 +21,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
+import java.util.List;
+import java.util.Map;
+
 @ExtendWith(MockitoExtension.class)
 @DisplayName("EsgService")
 class EsgServiceTest {
@@ -29,6 +34,7 @@ class EsgServiceTest {
     @Mock private EsgReportRepository  reportRepository;
     @Mock private EsgReportGenerator   reportGenerator;
     @Mock private CacheKeyBuilder      cacheKeyBuilder;
+    @Mock private AnalyticsPort        analyticsPort;
 
     @InjectMocks private EsgService esgService;
 
@@ -39,8 +45,11 @@ class EsgServiceTest {
     @Test
     @DisplayName("getSummary(QUARTERLY) sums all four metric types for tenant")
     void getSummary_quarterly_returnsAggregates() {
+        // ENERGY qua AnalyticsPort (Tier 1 hoặc Tier 2 tuỳ flag)
+        when(analyticsPort.queryEnergyAggregate(eq(TENANT_ID), anyList(), anyLong(), anyLong()))
+                .thenReturn(new EsgAggregateResult(1000.0, 0.5, Map.of(), List.of()));
+        // WATER/CARBON/WASTE vẫn qua metricRepository
         when(metricRepository.sumByTypeAndRangeFast(any(), any(), any(), any())).thenReturn(null);
-        when(metricRepository.sumByTypeAndRange(eq(TENANT_ID), eq("ENERGY"), any(), any())).thenReturn(1000.0);
         when(metricRepository.sumByTypeAndRange(eq(TENANT_ID), eq("WATER"),  any(), any())).thenReturn(500.0);
         when(metricRepository.sumByTypeAndRange(eq(TENANT_ID), eq("CARBON"), any(), any())).thenReturn(200.0);
         when(metricRepository.sumByTypeAndRange(eq(TENANT_ID), eq("WASTE"),  any(), any())).thenReturn(50.0);
@@ -56,23 +65,30 @@ class EsgServiceTest {
     }
 
     @Test
-    @DisplayName("getSummary: null metric values are handled gracefully (not NPE)")
+    @DisplayName("getSummary: no data in period → energy null (0.0 from port treated as no-data)")
     void getSummary_nullMetrics_doesNotThrow() {
+        // AnalyticsPort trả về 0.0 khi không có data (adapter fallback)
+        // EsgService convert 0.0 → null để phân biệt "no data" với "zero consumption"
+        when(analyticsPort.queryEnergyAggregate(any(), anyList(), anyLong(), anyLong()))
+                .thenReturn(new EsgAggregateResult(0.0, 0.0, Map.of(), List.of()));
         when(metricRepository.sumByTypeAndRangeFast(any(), any(), any(), any())).thenReturn(null);
-        when(metricRepository.sumByTypeAndRange(eq(TENANT_ID), anyString(), any(), any())).thenReturn(null);
+        when(metricRepository.sumByTypeAndRange(any(), anyString(), any(), any())).thenReturn(null);
 
         EsgSummaryDto dto = esgService.getSummary(TENANT_ID, "QUARTERLY", 2025, 2);
 
         assertThat(dto).isNotNull();
-        assertThat(dto.getTotalEnergyKwh()).isNull();
+        assertThat(dto.getTotalEnergyKwh()).isNull();  // 0.0 treated as no-data
     }
 
     @Test
     @DisplayName("getSummary: different tenants get isolated data")
     void getSummary_differentTenants_queriesIsolated() {
+        when(analyticsPort.queryEnergyAggregate(eq("tenant-a"), anyList(), anyLong(), anyLong()))
+                .thenReturn(new EsgAggregateResult(100.0, 0.05, Map.of(), List.of()));
+        when(analyticsPort.queryEnergyAggregate(eq("tenant-b"), anyList(), anyLong(), anyLong()))
+                .thenReturn(new EsgAggregateResult(200.0, 0.1, Map.of(), List.of()));
         when(metricRepository.sumByTypeAndRangeFast(any(), any(), any(), any())).thenReturn(null);
-        when(metricRepository.sumByTypeAndRange(eq("tenant-a"), anyString(), any(), any())).thenReturn(100.0);
-        when(metricRepository.sumByTypeAndRange(eq("tenant-b"), anyString(), any(), any())).thenReturn(200.0);
+        when(metricRepository.sumByTypeAndRange(any(), anyString(), any(), any())).thenReturn(null);
 
         EsgSummaryDto dtoA = esgService.getSummary("tenant-a", "QUARTERLY", 2025, 1);
         EsgSummaryDto dtoB = esgService.getSummary("tenant-b", "QUARTERLY", 2025, 1);

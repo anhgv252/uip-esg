@@ -5,6 +5,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.List;
@@ -43,11 +44,18 @@ public class ClickHouseRestAnalyticsAdapter implements AnalyticsPort {
 
         log.debug("[Analytics-T2] analytics-service call: tenant={} from={} to={}", tenantId, fromEpoch, toEpoch);
 
-        var request = new EnergyAggregateHttpRequest(tenantId, buildingIds, fromEpoch, toEpoch);
-        var response = restTemplate.postForObject(
-                analyticsServiceUrl + "/energy-aggregate",
-                request,
-                EnergyAggregateHttpResponse.class);
+        EnergyAggregateHttpResponse response;
+        try {
+            var request = new EnergyAggregateHttpRequest(tenantId, buildingIds, fromEpoch, toEpoch);
+            response = restTemplate.postForObject(
+                    analyticsServiceUrl + "/energy-aggregate",
+                    request,
+                    EnergyAggregateHttpResponse.class);
+        } catch (RestClientException e) {
+            // analytics-service down hoặc timeout → trả về zero thay vì 500 lên client
+            log.error("[Analytics-T2] analytics-service unavailable for tenant={}: {}", tenantId, e.getMessage());
+            return new EsgAggregateResult(0.0, 0.0, Map.of(), buildingIds);
+        }
 
         if (response == null) {
             log.warn("[Analytics-T2] analytics-service returned null for tenant={}", tenantId);
