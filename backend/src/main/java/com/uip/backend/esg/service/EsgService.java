@@ -5,6 +5,8 @@ import com.uip.backend.esg.api.dto.EsgReportDto;
 import com.uip.backend.esg.api.dto.EsgSummaryDto;
 import com.uip.backend.esg.common.CacheKeyBuilder;
 import com.uip.backend.esg.config.CacheConfig;
+import com.uip.backend.esg.config.analytics.AnalyticsPort;
+import com.uip.backend.esg.config.analytics.EsgAggregateResult;
 import com.uip.backend.esg.domain.EsgMetric;
 import com.uip.backend.esg.domain.EsgReport;
 import com.uip.backend.esg.repository.EsgMetricRepository;
@@ -37,6 +39,7 @@ public class EsgService {
     private final EsgReportRepository  reportRepository;
     private final EsgReportGenerator   reportGenerator;
     private final CacheKeyBuilder      cacheKeyBuilder;
+    private final AnalyticsPort        analyticsPort;
 
     // ─── Summary ──────────────────────────────────────────────────────────────
 
@@ -47,7 +50,12 @@ public class EsgService {
                 ? yearRange(year)
                 : quarterRange(year, quarter);
 
-        Double energy = sumWithCaggFallback(tenantId, "ENERGY", range[0], range[1]);
+        // ENERGY: qua AnalyticsPort — Tier 1 → TimescaleDB, Tier 2 → analytics-service (ClickHouse)
+        EsgAggregateResult energyResult = analyticsPort.queryEnergyAggregate(
+                tenantId, List.of(), range[0].getEpochSecond(), range[1].getEpochSecond());
+        Double energy = energyResult.totalKwh() > 0 ? energyResult.totalKwh() : null;
+
+        // WATER, CARBON, WASTE: vẫn dùng TimescaleDB trực tiếp (chưa extract)
         Double water  = sumWithCaggFallback(tenantId, "WATER",  range[0], range[1]);
         Double carbon = sumWithCaggFallback(tenantId, "CARBON", range[0], range[1]);
         Double waste  = sumWithCaggFallback(tenantId, "WASTE",  range[0], range[1]);

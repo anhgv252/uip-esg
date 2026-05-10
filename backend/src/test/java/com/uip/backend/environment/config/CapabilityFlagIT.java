@@ -4,9 +4,11 @@ import com.uip.backend.esg.config.analytics.AnalyticsAutoConfiguration;
 import com.uip.backend.esg.config.analytics.AnalyticsPort;
 import com.uip.backend.esg.config.analytics.ClickHouseRestAnalyticsAdapter;
 import com.uip.backend.esg.config.analytics.TimescaleDbAnalyticsAdapter;
+import com.uip.backend.esg.repository.EsgMetricRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -91,10 +93,14 @@ class CapabilityFlagIT {
     @DisplayName("AnalyticsAutoConfiguration — Port Interface swap")
     class AnalyticsFlagTests {
 
+        // TimescaleDbAnalyticsAdapter cần EsgMetricRepository — mock để không load JPA stack
         private final ApplicationContextRunner contextRunner = new ApplicationContextRunner()
             .withUserConfiguration(
                 AnalyticsAutoConfiguration.class,
-                ClickHouseRestAnalyticsAdapter.class);
+                ClickHouseRestAnalyticsAdapter.class)
+            .withBean("esgMetricRepository",
+                EsgMetricRepository.class,
+                () -> Mockito.mock(EsgMetricRepository.class));
 
         @Test
         @DisplayName("Tier 1 — không set flag → TimescaleDbAnalyticsAdapter load")
@@ -109,10 +115,11 @@ class CapabilityFlagIT {
         @Test
         @DisplayName("Tier 2 — analytics-external=true → ClickHouseRestAnalyticsAdapter load")
         void tier2_analyticsExternal_clickhouseAdapterLoaded() {
-            // Sau Sprint 2 cutover: analytics-service (ClickHouse) online
-            // Monolith swap sang HTTP adapter — business code EsgService không đổi
             contextRunner
-                .withPropertyValues("uip.capabilities.analytics-external=true")
+                .withPropertyValues(
+                    "uip.capabilities.analytics-external=true",
+                    // URL required when ClickHouseRestAnalyticsAdapter is loaded
+                    "uip.analytics-service.url=http://localhost:8081/api/v1/analytics")
                 .run(ctx -> {
                     assertThat(ctx).hasSingleBean(AnalyticsPort.class);
                     assertThat(ctx.getBean(AnalyticsPort.class))

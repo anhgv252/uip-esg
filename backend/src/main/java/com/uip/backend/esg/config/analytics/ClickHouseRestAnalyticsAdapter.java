@@ -1,39 +1,89 @@
 package com.uip.backend.esg.config.analytics;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.RestTemplate;
 
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * Tier 2+ implementation của AnalyticsPort.
  * Delegate sang analytics-service (ClickHouse owner) qua HTTP REST.
  *
- * Được load KHI analytics-external=true (Tier 2, sau cutover Sprint 2).
- * AnalyticsAutoConfiguration sẽ KHÔNG load TimescaleDbAnalyticsAdapter.
- *
- * Business code (EsgService) không đổi — chỉ biết AnalyticsPort interface.
+ * Load khi analytics-external=true. EsgService không đổi — chỉ biết AnalyticsPort.
  */
 @Component
 @ConditionalOnProperty(
     name        = "uip.capabilities.analytics-external",
-    havingValue = "true"  // chỉ load khi flag = true
+    havingValue = "true"
 )
 @Slf4j
 public class ClickHouseRestAnalyticsAdapter implements AnalyticsPort {
 
-    // In production: @Value("${uip.analytics-service.url}") + inject RestTemplate/WebClient
+    private final RestTemplate restTemplate;
+    private final String analyticsServiceUrl;
+
+    public ClickHouseRestAnalyticsAdapter(
+            @Value("${uip.analytics-service.url}") String analyticsServiceUrl) {
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(5_000);
+        factory.setReadTimeout(30_000);
+        this.restTemplate = new RestTemplate(factory);
+        this.analyticsServiceUrl = analyticsServiceUrl;
+    }
 
     @Override
     public EsgAggregateResult queryEnergyAggregate(
-            String tenantId,
-            List<String> buildingIds,
-            long fromEpoch,
-            long toEpoch) {
-        log.debug("[Analytics] ClickHouse REST query via analytics-service: tenant={}", tenantId);
-        // In production: restTemplate.postForObject(url, request, EsgAggregateResult.class)
-        return new EsgAggregateResult(0.0, 0.0, Map.of(), buildingIds);
+            String tenantId, List<String> buildingIds, long fromEpoch, long toEpoch) {
+
+        log.debug("[Analytics-T2] analytics-service call: tenant={} from={} to={}", tenantId, fromEpoch, toEpoch);
+
+        var request = new EnergyAggregateHttpRequest(tenantId, buildingIds, fromEpoch, toEpoch);
+        var response = restTemplate.postForObject(
+                analyticsServiceUrl + "/energy-aggregate",
+                request,
+                EnergyAggregateHttpResponse.class);
+
+        if (response == null) {
+            log.warn("[Analytics-T2] analytics-service returned null for tenant={}", tenantId);
+            return new EsgAggregateResult(0.0, 0.0, Map.of(), buildingIds);
+        }
+
+        Map<String, Double> kwhPerBuilding = response.buildings() == null ? Map.of()
+                : response.buildings().stream()
+                    .collect(Collectors.toMap(
+                        EnergyAggregateHttpResponse.BuildingBreakdown::buildingId,
+                        EnergyAggregateHttpResponse.BuildingBreakdown::totalKwh));
+
+        // CO2 estimate: 0.5 kg/kWh → 0.0005 tonnes/kWh
+        double co2 = response.totalKwh() * 0.0005;
+
+        return new EsgAggregateResult(response.totalKwh(), co2, kwhPerBuilding, buildingIds);
+    }
+
+    // ── HTTP request/response DTOs (internal — không share với analytics-service code) ──
+
+    record EnergyAggregateHttpRequest(
+        String tenantId,
+        List<String> buildingIds,
+        long fromEpoch,
+        long toEpoch
+    ) {}
+
+    record EnergyAggregateHttpResponse(
+        String tenantId,
+        long fromEpoch,
+        long toEpoch,
+        double totalKwh,
+        double peakDemandKw,
+        double averagePowerFactor,
+        List<BuildingBreakdown> buildings
+    ) {
+        record BuildingBreakdown(String buildingId, double totalKwh, double peakDemandKw) {}
     }
 }
