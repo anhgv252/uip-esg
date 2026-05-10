@@ -23,6 +23,12 @@ backend/build/
 backend/out/
 backend/bin/
 backend/*.iml
+
+# analytics-service (Gradle / Java)
+analytics-service/.gradle/
+analytics-service/build/
+analytics-service/out/
+analytics-service/bin/
 *.jar
 *.war
 
