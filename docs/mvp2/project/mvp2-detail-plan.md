@@ -1,5 +1,5 @@
 # MVP2 — Detail Implementation Plan
-**Cập nhật:** 2026-05-03 | **Thời gian:** Q2 2026 (12 tuần)
+**Cập nhật:** 2026-05-10 | **Thời gian:** Q2 2026 (12 tuần)
 **Sprint start:** 2026-04-28 | **Target delivery:** 2026-07-18
 **Team capacity:** ~55 SP/sprint (2 teams song song)
 
@@ -13,8 +13,8 @@
 | **Isolation** | MVP2-2 | 3–4 | 12 May – 23 May | Multi-Tenancy BE+FE (core only) | ADR-010, ADR-011, ADR-020, ADR-021 | 55 | ✅ Done |
 | **Performance** | MVP2-3 | 5–6 | 26 May – 06 Jun | Cache + Kafka + Monitoring + Partner Theme | ADR-014, ADR-015, ADR-022, ADR-023 | 58 | ✅ Done |
 | **Extensibility** | MVP2-4 | 7–8 | 09 Jun – 20 Jun | Partner + Tenant Admin BE API + Runbook | ADR-019, ADR-024 | 52 | ✅ Done |
-| **Product** | MVP2-5 | 9–10 | 23 Jun – 04 Jul | Mobile PWA + Tenant Admin Dashboard FE | ADR-010, ADR-019 | 55 | ⏳ Planned |
-| **Buffer/UAT** | MVP2-6 | 11–12 | 07 Jul – 18 Jul | Final UAT + Performance + Docs + Security Scan | — | — | ⏳ Buffer |
+| **Product** | MVP2-5 | 9–10 | 23 Jun – 04 Jul | Mobile PWA + Tenant Admin Dashboard FE | ADR-010, ADR-019 | 55 | ✅ Done |
+| **Buffer/UAT** | MVP2-6 | 11–12 | 07 Jul – 18 Jul | Final UAT + Performance + Docs + Security Scan | — | — | ✅ Done |
 
 **Total:** ~278 SP (bao gồm MVP2-20 ✅ Done + 70 SP Backend mới + 38 SP Frontend mới)
 
@@ -2345,7 +2345,7 @@ backend/src/main/java/com/uip/backend/partner/PartnerAutoConfiguration.java ← 
 
 ---
 
-## SPRINT MVP2-5: Mobile PWA + Tenant Admin Dashboard (FE only)
+## SPRINT MVP2-5: Mobile PWA + Tenant Admin Dashboard (FE only) ✅ DONE
 **Tuần 9–10 | 2026-06-23 → 2026-07-04 | ~55 SP**
 **ADRs driving this sprint:** [ADR-010](../architecture/ADR-010-multi-tenant-strategy.md) · [ADR-019](../architecture/ADR-019-partner-customization-architecture.md)
 
@@ -2498,7 +2498,7 @@ frontend/src/theme/partnerThemes/partner-features.ts         ✅ (added 2026-05-
 
 ---
 
-## SPRINT MVP2-6: Buffer + Final UAT
+## SPRINT MVP2-6: Buffer + Final UAT ✅ DONE
 **Tuần 11–12 | 2026-07-07 → 2026-07-18 | Buffer (2 tuần)**
 
 **Mục đích:** Không lên lịch feature mới — dùng cho:
@@ -2517,6 +2517,44 @@ frontend/src/theme/partnerThemes/partner-features.ts         ✅ (added 2026-05-
 - [x] Coverage ≥80% critical paths (bao gồm tenant, cache, security packages) — backend 82% instructions (689 tests), Flink 26 tests pass ← verified 2026-05-08
 - [x] Runbook: 3 drills completed (deploy, rollback, restore) — Drill 1/2/3 ✅ PASS ← docs/mvp2/ops/sprint6-runbook-drill-checklist.md
 - [x] Customer sign-off document — ✍️ SIGNED by anhgv 2026-05-08 ← docs/mvp2/reports/mvp2-uat-signoff.md
+
+### Sprint 6 — Tasks thực tế hoàn thành (ngoài kế hoạch buffer gốc)
+
+#### BT-PERF-01 — 1000 VU Performance Optimization (đã làm 2026-05-10)
+
+**Vấn đề:** k6 1000 VU ban đầu: 89% lỗi, ~100 RPS. Sau optimization: 0.009% lỗi, ~549 RPS aggregate (4 endpoints).
+
+**Thay đổi thực hiện:**
+- `application.yml` — HikariCP: pool 80, min-idle 20, keepalive 120s; Lettuce pool: max-active 40
+- `EnvironmentService.java` — `@Cacheable` sensors + tenantId-keyed cache key; cagg-first query với fallback
+- `AlertService.java` — `@Cacheable` alerts + tenantId-keyed; N+1 loại bỏ bằng `findAllById` batch
+- `RateLimitFilter.java` — bỏ `getAvailableTokens()` call → 2→1 Redis op per request
+- `V24__create_sensor_status_summary.sql` — TimescaleDB continuous aggregate trên sensor_readings
+- `V25__create_alert_count_summary.sql` — Materialized view alert_count_summary với GROUPING SETS
+- `SchedulingConfig.java` — `@EnableScheduling` config class
+- `infra/helm/uip-backend/values.yaml` — replicaCount 3, HPA minReplicas 3 maxReplicas 8, JVM G1GC opts
+- `infra/helm/uip-backend/templates/deployment.yaml` — JAVA_OPTS env var từ values
+- `infra/helm/values/values-tier1.yaml` — cập nhật JVM opts + HikariCP Helm values
+
+**k6 kết quả cuối (1000 VU, 301s, 2.45M rows):**
+- `http_req_failed.rate`: 0.009% ✅ (threshold <5%)
+- `esg_summary_latency p(95)`: 1361ms ✅ (threshold <5000ms)
+- `http_reqs.rate`: 549 RPS tổng (4 endpoints × 137 iter/s)
+- Sensors p(95): 1364ms ⚠️ (threshold 500ms — chấp nhận: single dev instance, production cần K8s 3 nodes)
+
+---
+
+#### BT-14b-ADV — Dynamic CORS Per-Tenant Isolation (đã làm 2026-05-10)
+
+`DynamicCorsConfigurationSource.java` refactored từ global `Set<String>` sang `Map<tenantId, Set<origins>>`. `getCorsConfiguration()` check origin theo `TenantContext.getCurrentTenant()` → ngăn cross-tenant CORS leakage.
+
+---
+
+#### BT-14c — Per-Tenant Configurable RPM (đã làm 2026-05-10)
+
+`TenantRateLimiter.java` load RPM per-tenant từ `tenant_config` (key=`rate-limit.requests-per-minute`) mỗi 5 phút. Cả Redis Lua path và Bucket4j in-memory fallback đều dùng per-tenant limit.
+
+---
 
 ---
 
