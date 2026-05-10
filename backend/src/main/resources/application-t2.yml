@@ -1,0 +1,40 @@
+# T2 deployment profile — Building Cluster (5-20 tòa), multi-tenant, extracted services.
+# Activate: SPRING_PROFILES_ACTIVE=t2
+#
+# Khác với T1:
+#   - multi-tenancy=true  → RLS + TenantContext active
+#   - redis-cache=true    → Redis distributed cache thay Caffeine
+#   - analytics-external=true  → analytics-service (ClickHouse) nhận OLAP queries
+#   - iot-ingestion-external=true  → iot-ingestion-service nhận BMS + MQTT traffic
+#
+# Tier 1 customer: KHÔNG dùng file này. Dùng application-t1.yml (hoặc không set gì).
+# Tier 1 vẫn chạy TOÀN BỘ trong monolith nhờ matchIfMissing=true.
+
+uip:
+  capabilities:
+    # Feature flags
+    multi-tenancy: true
+    redis-cache: true
+    kong-gateway: false       # bật sau khi Kong chart deploy xong
+    keycloak: false           # bật sau khi Keycloak realm provision xong
+
+    # Extraction flags — chỉ set true khi external service đã shadow-validated
+    # Strangler fig bước 4 (ADR-011): sau khi shadow diff < 0.01% trong 1 sprint
+    analytics-external: true          # Sprint 2 cutover: analytics-service live
+    iot-ingestion-external: true      # Sprint 5 cutover: iot-ingestion-service live
+    alert-external: false             # chưa đủ trigger (p95 alert < 5s hiện tại)
+    ai-workflow-external: false
+    citizen-external: false
+
+spring:
+  cache:
+    type: redis
+  data:
+    redis:
+      host: ${REDIS_HOST:redis}
+      port: 6379
+
+# URL của analytics-service khi analytics-external=true
+uip:
+  analytics-service:
+    url: ${ANALYTICS_SERVICE_URL:http://uip-analytics-service/api/v1/analytics}

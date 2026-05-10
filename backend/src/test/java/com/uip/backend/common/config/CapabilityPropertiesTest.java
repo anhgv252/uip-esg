@@ -9,10 +9,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 class CapabilityPropertiesTest {
 
     @Test
-    @DisplayName("default values are all false except what's configured")
+    @DisplayName("default values are all false — Tier 1 monolith runs without any flag")
     void defaultsAreFalse() {
         CapabilityProperties props = new CapabilityProperties();
 
+        // Feature flags
         assertThat(props.isMultiTenancy()).isFalse();
         assertThat(props.isRedisCache()).isFalse();
         assertThat(props.isClickhouse()).isFalse();
@@ -20,6 +21,13 @@ class CapabilityPropertiesTest {
         assertThat(props.isKeycloak()).isFalse();
         assertThat(props.isEdgeComputing()).isFalse();
         assertThat(props.isMultiRegion()).isFalse();
+
+        // Extraction flags — all false → monolith handles everything (Tier 1 safe)
+        assertThat(props.isIotIngestionExternal()).isFalse();
+        assertThat(props.isAlertExternal()).isFalse();
+        assertThat(props.isAnalyticsExternal()).isFalse();
+        assertThat(props.isAiWorkflowExternal()).isFalse();
+        assertThat(props.isCitizenExternal()).isFalse();
     }
 
     @Test
