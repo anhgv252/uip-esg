@@ -13,6 +13,7 @@ import org.springframework.data.redis.cache.RedisCacheManager;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
 import org.springframework.data.redis.serializer.RedisSerializationContext;
+import org.springframework.data.redis.serializer.StringRedisSerializer;
 
 import java.time.Duration;
 import java.util.Map;
@@ -24,6 +25,8 @@ public class CacheConfig {
     public static final String CACHE_DASHBOARD = "esg-dashboard";
     public static final String CACHE_REPORT = "esg-report";
     public static final String CACHE_TREND = "esg-trend";
+    public static final String CACHE_SENSORS = "sensors";
+    public static final String CACHE_ALERTS = "alerts";
 
     @Bean
     @ConditionalOnProperty(name = "spring.cache.type", havingValue = "redis", matchIfMissing = true)
@@ -31,7 +34,9 @@ public class CacheConfig {
         Map<String, RedisCacheConfiguration> cacheConfigs = Map.of(
                 CACHE_DASHBOARD, withTtl(Duration.ofSeconds(60)),
                 CACHE_REPORT,    withTtl(Duration.ofMinutes(5)),
-                CACHE_TREND,     withTtl(Duration.ofSeconds(30))
+                CACHE_TREND,     withTtl(Duration.ofSeconds(30)),
+                CACHE_SENSORS,   withTtl(Duration.ofSeconds(30)),
+                CACHE_ALERTS,    withTtl(Duration.ofSeconds(15))
         );
 
         return RedisCacheManager.builder(connectionFactory)
@@ -45,10 +50,12 @@ public class CacheConfig {
                 .registerModule(new JavaTimeModule())
                 .activateDefaultTyping(
                         LaissezFaireSubTypeValidator.instance,
-                        ObjectMapper.DefaultTyping.NON_FINAL,
+                        ObjectMapper.DefaultTyping.EVERYTHING,
                         JsonTypeInfo.As.PROPERTY);
         return RedisCacheConfiguration.defaultCacheConfig()
                 .entryTtl(ttl)
+                .serializeKeysWith(RedisSerializationContext.SerializationPair
+                        .fromSerializer(StringRedisSerializer.UTF_8))
                 .serializeValuesWith(RedisSerializationContext.SerializationPair
                         .fromSerializer(new GenericJackson2JsonRedisSerializer(mapper)));
     }

@@ -8,11 +8,17 @@ import com.uip.backend.environment.domain.SensorReading;
 import com.uip.backend.environment.domain.SensorReadingId;
 import com.uip.backend.environment.repository.SensorReadingRepository;
 import com.uip.backend.environment.repository.SensorRepository;
+import com.uip.backend.tenant.context.TenantContext;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
@@ -23,6 +29,7 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -31,26 +38,52 @@ public class EnvironmentService {
     private final SensorRepository        sensorRepository;
     private final SensorReadingRepository readingRepository;
     private final AqiCalculator           aqiCalculator;
+    private final JdbcTemplate            jdbcTemplate;
 
     /** Sensor is considered online if last_seen within last 5 minutes. */
     private static final long ONLINE_THRESHOLD_MINUTES = 5;
 
     // ─── Sensors ─────────────────────────────────────────────────────────────
 
+    @Cacheable(value = "sensors", key = "T(com.uip.backend.tenant.context.TenantContext).getCurrentTenant() + ':all'")
     public List<SensorDto> listSensors() {
         List<Sensor> sensors = sensorRepository.findByActiveTrueOrderBySensorNameAsc();
-        // Fallback: use latest reading timestamp if sensors.last_seen_at is stale
-        // (covers dev environments where the DB trigger fires via Flink, not directly)
-        Map<String, Instant> latestReadingTs = readingRepository.findLatestPerSensor()
-                .stream()
+        Map<String, Instant> latestReadingTs = latestTimestampPerSensor();
+        return sensors.stream()
+                .map(s -> toSensorDto(s, latestReadingTs.get(s.getSensorId())))
+                .toList();
+    }
+
+    // Cagg-first: query pre-aggregated view, fall back to raw LATERAL scan on miss/error.
+    private Map<String, Instant> latestTimestampPerSensor() {
+        try {
+            List<Object[]> rows = readingRepository.findLatestTimestampPerSensorFromCagg();
+            if (!rows.isEmpty()) {
+                return rows.stream().collect(Collectors.toMap(
+                        row -> (String) row[0],
+                        row -> ((java.sql.Timestamp) row[1]).toInstant(),
+                        (a, b) -> a.isAfter(b) ? a : b
+                ));
+            }
+        } catch (Exception e) {
+            log.warn("sensor_status_summary unavailable, falling back to raw scan: {}", e.getMessage());
+        }
+        return readingRepository.findLatestPerSensor().stream()
                 .collect(Collectors.toMap(
                         SensorReading::getSensorId,
                         r -> r.getId().getTimestamp(),
                         (a, b) -> a.isAfter(b) ? a : b
                 ));
-        return sensors.stream()
-                .map(s -> toSensorDto(s, latestReadingTs.get(s.getSensorId())))
-                .toList();
+    }
+
+    @Scheduled(fixedDelayString = "${uip.cagg.sensor-refresh-ms:30000}")
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    public void refreshSensorStatusSummary() {
+        try {
+            jdbcTemplate.execute("REFRESH MATERIALIZED VIEW CONCURRENTLY environment.sensor_status_summary");
+        } catch (Exception e) {
+            log.debug("sensor_status_summary refresh skipped (cagg or MV not ready): {}", e.getMessage());
+        }
     }
 
     /** Admin: list ALL sensors (active + inactive), sorted by name. */

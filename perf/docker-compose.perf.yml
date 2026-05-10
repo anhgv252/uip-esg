@@ -1,0 +1,98 @@
+services:
+
+  backend1:
+    image: uip-backend:perf
+    ports:
+      - "9091:8090"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      DB_HOST: host.docker.internal
+      POSTGRES_DB: uip_smartcity
+      POSTGRES_USER: uip
+      POSTGRES_PASSWORD: changeme_db_password
+      DB_PASSWORD: changeme_db_password
+      REDIS_HOST: host.docker.internal
+      REDIS_PASSWORD: changeme_redis_password
+      KAFKA_BOOTSTRAP_SERVERS: host.docker.internal:29092
+      JWT_SECRET: changeme_jwt_secret_must_be_at_least_256_bits_long_for_hmac_sha256
+      MANAGEMENT_SERVER_PORT: "8090"
+      SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: "28"
+      SPRING_DATASOURCE_HIKARI_MINIMUM_IDLE: "8"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8090/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    deploy:
+      resources:
+        limits:
+          memory: 1536m
+
+  backend2:
+    image: uip-backend:perf
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      DB_HOST: host.docker.internal
+      POSTGRES_DB: uip_smartcity
+      POSTGRES_USER: uip
+      POSTGRES_PASSWORD: changeme_db_password
+      DB_PASSWORD: changeme_db_password
+      REDIS_HOST: host.docker.internal
+      REDIS_PASSWORD: changeme_redis_password
+      KAFKA_BOOTSTRAP_SERVERS: host.docker.internal:29092
+      JWT_SECRET: changeme_jwt_secret_must_be_at_least_256_bits_long_for_hmac_sha256
+      MANAGEMENT_SERVER_PORT: "8090"
+      SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: "28"
+      SPRING_DATASOURCE_HIKARI_MINIMUM_IDLE: "8"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8090/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    deploy:
+      resources:
+        limits:
+          memory: 1536m
+
+  backend3:
+    image: uip-backend:perf
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      DB_HOST: host.docker.internal
+      POSTGRES_DB: uip_smartcity
+      POSTGRES_USER: uip
+      POSTGRES_PASSWORD: changeme_db_password
+      DB_PASSWORD: changeme_db_password
+      REDIS_HOST: host.docker.internal
+      REDIS_PASSWORD: changeme_redis_password
+      KAFKA_BOOTSTRAP_SERVERS: host.docker.internal:29092
+      JWT_SECRET: changeme_jwt_secret_must_be_at_least_256_bits_long_for_hmac_sha256
+      MANAGEMENT_SERVER_PORT: "8090"
+      SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: "28"
+      SPRING_DATASOURCE_HIKARI_MINIMUM_IDLE: "8"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8090/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    deploy:
+      resources:
+        limits:
+          memory: 1536m
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "9090:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - backend1
+      - backend2
+      - backend3

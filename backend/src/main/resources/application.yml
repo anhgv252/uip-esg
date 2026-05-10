@@ -1,3 +1,12 @@
+server:
+  tomcat:
+    threads:
+      max: 400
+      min-spare: 20
+    max-connections: 8000
+    accept-count: 200
+    connection-timeout: 10s
+
 spring:
   application:
     name: uip-backend
@@ -11,13 +20,14 @@ spring:
     password: ${DB_PASSWORD:changeme_db_password}
     driver-class-name: org.postgresql.Driver
     hikari:
-      maximum-pool-size: 20
-      minimum-idle: 5
+      maximum-pool-size: 80
+      minimum-idle: 20
       connection-timeout: 5000
       idle-timeout: 600000
       max-lifetime: 1800000
+      keepalive-time: 120000
+      validation-timeout: 2500
       leak-detection-threshold: 60000
-      connection-test-query: "SELECT 1"
       pool-name: UIP-HikariPool
 
   mvc:
@@ -68,9 +78,9 @@ spring:
       timeout: 3000ms
       lettuce:
         pool:
-          max-active: 8
-          max-idle: 8
-          min-idle: 2
+          max-active: 40
+          max-idle: 20
+          min-idle: 5
 
   cache:
     type: redis
@@ -182,6 +192,8 @@ resilience4j:
           - java.io.IOException
 
 management:
+  server:
+    port: 8081
   endpoints:
     web:
       exposure:
@@ -201,6 +213,12 @@ springdoc:
     operationsSorter: method
 
 uip:
+  rate-limit:
+    default:
+      requests-per-minute: 100000
+  cagg:
+    sensor-refresh-ms: 30000
+    alert-refresh-ms: 15000
   capabilities:
     multi-tenancy: true
     redis-cache: true

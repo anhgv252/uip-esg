@@ -25,6 +25,13 @@ public interface SensorReadingRepository extends JpaRepository<SensorReading, Se
             @Param("to") Instant to,
             Pageable pageable);
 
+    @Query(value = """
+        SELECT sensor_id, MAX(last_seen)
+        FROM environment.sensor_status_summary
+        GROUP BY sensor_id
+        """, nativeQuery = true)
+    List<Object[]> findLatestTimestampPerSensorFromCagg();
+
     @Query("""
         SELECT r FROM SensorReading r
         WHERE r.sensorId = :sensorId

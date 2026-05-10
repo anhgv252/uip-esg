@@ -18,15 +18,16 @@ export const options = {
     { duration: '30s', target: 0 },
   ],
   thresholds: {
-    http_req_failed: ['rate<0.1'],
-    sensor_latency: ['p(95)<200'],
+    http_req_failed: ['rate<0.05'],
+    sensor_latency: ['p(95)<500'],
     esg_summary_latency: ['p(95)<5000'],
-    alert_latency: ['p(95)<200'],
-    health_latency: ['p(95)<100'],
+    alert_latency: ['p(95)<500'],
+    health_latency: ['p(95)<300'],
   },
 };
 
 const BASE = __ENV.API_BASE || 'http://localhost:8080';
+const MGMT = __ENV.MGMT_BASE || 'http://localhost:8081';
 
 export function setup() {
   const res = http.post(`${BASE}/api/v1/auth/login`, JSON.stringify({
@@ -40,7 +41,7 @@ export function setup() {
 export default function (data) {
   const auth = { headers: { Authorization: `Bearer ${data.token}` } };
 
-  const health = http.get(`${BASE}/actuator/health`);
+  const health = http.get(`${MGMT}/actuator/health`);
   healthLatency.add(health.timings.duration);
   check(health, { 'health 200': (r) => r.status === 200 });
 

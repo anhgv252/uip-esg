@@ -12,6 +12,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.*;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Pageable;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.time.Instant;
 import java.util.List;
@@ -29,6 +30,7 @@ class EnvironmentServiceTest {
     @Mock private SensorRepository        sensorRepository;
     @Mock private SensorReadingRepository readingRepository;
     @Mock private AqiCalculator           aqiCalculator;
+    @Mock private JdbcTemplate            jdbcTemplate;
 
     @InjectMocks private EnvironmentService environmentService;
 

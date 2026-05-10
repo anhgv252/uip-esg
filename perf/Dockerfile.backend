@@ -1,0 +1,13 @@
+FROM eclipse-temurin:17-jre
+WORKDIR /app
+RUN groupadd --system uip && useradd --system --gid uip uip
+USER uip
+COPY app.jar app.jar
+EXPOSE 8080 8090
+ENTRYPOINT ["java", \
+  "-XX:+UseContainerSupport", \
+  "-XX:MaxRAMPercentage=60.0", \
+  "-XX:+UseG1GC", \
+  "-XX:MaxGCPauseMillis=200", \
+  "-Djava.security.egd=file:/dev/./urandom", \
+  "-jar", "app.jar"]

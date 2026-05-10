@@ -16,6 +16,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.time.Instant;
 import java.util.List;
@@ -32,6 +33,7 @@ class AlertServiceTest {
 
     @Mock private AlertEventRepository alertEventRepository;
     @Mock private AlertRuleRepository  alertRuleRepository;
+    @Mock private JdbcTemplate         jdbcTemplate;
 
     @InjectMocks private AlertService alertService;
 

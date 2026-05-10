@@ -34,18 +34,15 @@ public class RateLimitFilter extends OncePerRequestFilter {
         }
 
         if (!rateLimiter.tryConsume(tenantId)) {
-            long available = rateLimiter.getAvailableTokens(tenantId);
             log.warn("Rate limit exceeded tenant={} uri={}", tenantId, request.getRequestURI());
             response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
             response.setHeader("Retry-After", "60");
-            response.setHeader("X-RateLimit-Remaining", String.valueOf(available));
             response.setContentType("application/json");
             response.getWriter().write(
                 "{\"status\":429,\"error\":\"Too Many Requests\",\"message\":\"Rate limit exceeded for tenant\"}"
             );
             return;
         }
-        response.setHeader("X-RateLimit-Remaining", String.valueOf(rateLimiter.getAvailableTokens(tenantId)));
         chain.doFilter(request, response);
     }
 }

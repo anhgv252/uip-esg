@@ -1,4 +1,4 @@
-replicaCount: 2
+replicaCount: 3
 slot: blue
 
 image:
@@ -18,17 +18,19 @@ ingress:
 
 resources:
   requests:
-    cpu: 250m
-    memory: 512Mi
+    cpu: 500m
+    memory: 768Mi
   limits:
-    cpu: 1000m
-    memory: 1024Mi
+    cpu: 2000m
+    memory: 1536Mi
+
+javaOpts: "-Xms512m -Xmx1200m -XX:+UseG1GC -XX:MaxGCPauseMillis=200 -XX:+UseContainerSupport"
 
 autoscaling:
   enabled: true
-  minReplicas: 2
-  maxReplicas: 6
-  targetCPUUtilizationPercentage: 70
+  minReplicas: 3
+  maxReplicas: 8
+  targetCPUUtilizationPercentage: 65
 
 livenessProbe:
   httpGet:

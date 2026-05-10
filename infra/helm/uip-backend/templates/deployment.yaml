@@ -55,6 +55,8 @@ spec:
                 secretKeyRef:
                   name: uip-jwt-keys
                   key: secret
+            - name: JAVA_OPTS
+              value: {{ .Values.javaOpts | quote }}
             {{- with .Values.extraEnv }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
