@@ -62,7 +62,8 @@ public class ClickHouseEnergyRepository {
 
         Double result = jdbcTemplate.queryForObject(sql, Double.class,
                 buildParams(tenantId, buildingIds, fromEpoch, toEpoch));
-        return result != null ? result : 1.0;
+        // ClickHouse avg() trên empty set trả NaN, không phải null
+        return (result == null || Double.isNaN(result)) ? 1.0 : result;
     }
 
     private Object[] buildParams(

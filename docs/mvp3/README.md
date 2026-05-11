@@ -58,6 +58,14 @@
 | **Module extraction** | analytics-service (Sprint 1) → iot-ingestion (Sprint 3) → alert (defer) | Theo ADR-011 strangler fig, giữ monolith đến Sprint 3 |
 | **BMS SDK** | 3 adapter libraries trong monolith + Kafka topic riêng | Không microservice riêng; reuse pipeline enrichment ADR-014 |
 | **Mobile** | React Native + Expo (Operator) / PWA giữ nguyên (Citizen) | Reuse 60% React Query hooks + api-types workspace package |
+| **Internal transport (backend→analytics)** | **gRPC (Sprint 7)**, hiện tại REST tạm chấp nhận ở MVP demo | Canonical SA: module↔module = gRPC/Kafka, không REST internal. 4-5x throughput, Istio-native. Xem ADR-012. |
+
+### ADRs đã có (hoàn thiện / đề xuất)
+
+| ADR | Title | Trạng thái | File |
+|-----|-------|-----------|------|
+| ADR-011 | Strangler Fig — Analytics Service Extraction | ✅ Accepted | `docs/` |
+| **ADR-012** | **gRPC cho Internal Service-to-Service Communication** | **📋 Proposed (Sprint 7)** | [`docs/mvp3/ADR-012-grpc-for-internal-service-communication.md`](ADR-012-grpc-for-internal-service-communication.md) |
 
 ### ADRs cần viết cho MVP3
 
@@ -434,6 +442,49 @@ Chỉ đề xuất khi customer vượt **ít nhất 1 trigger**:
 | R8 | Extraction code (`@ConditionalOnProperty`) vô tình break Tier 1 monolith | HIGH | 25% | CI bắt buộc chạy test suite với **`values-tier1.yaml` (không set flag)** mỗi PR có extraction code; `matchIfMissing=true` phải được code review checklist xác nhận | QA |
 
 **Action ngay:** R1 + R2 — Pair DevOps + Backend Eng 1 trên SA-01 trong ngày đầu Sprint 1
+
+---
+
+## 8. Demo Kết Quả Tiền-Sprint (2026-05-11)
+
+> **Lưu ý:** Đây là kết quả từ bản **demo/POC chưa hoàn thiện**, chạy trên môi trường local dev (không phải staging chính thức). Mục đích: validate kiến trúc strangler fig (ADR-011) và thu thập early evidence trước Sprint MVP3-1.
+
+### 8.1 Kết quả kiểm thử deploy flow Mono vs Extracted Analytics
+
+SA đã demo luồng triển khai với 2 môi trường:
+
+| Môi trường | Config | Kết quả |
+|------------|--------|---------|
+| **Mono (Tier 1)** | `analytics-external=false` (default) | ✅ Backend healthy, `TimescaleDbAnalyticsAdapter` load đúng |
+| **Extracted (Tier 2)** | `analytics-external=true` | ✅ `analytics-service` container healthy, gọi ClickHouse OK |
+
+**Tỷ lệ kiểm thử pass: 87.5% (21/24 checks)**
+
+Defects phát hiện (cần fix trước Sprint MVP3-1):
+
+| ID | Summary | Severity | Action |
+|----|---------|----------|--------|
+| BUG-001 | EMQX Erlang node unhealthy (`not responding to pings`) | P2 | Restart + fix EMQX_NODE_NAME |
+| BUG-002 | Flink 0 active streaming jobs — alert pipeline tắt | P2 | Submit job jar vào JobManager |
+| **BUG-003** | **Auth login 401 — không có seed data / password hash sai** | **P1** | **Chạy `scripts/demo-setup.sh`** |
+| BUG-004 | analytics-service ClassNotFoundException (Apache HC5) — non-fatal | P3 | Thêm `httpclient5` dependency |
+
+📄 **Báo cáo đầy đủ:** [`docs/mvp3/test-eval-mono-vs-extracted-analytics-2026-05-11.md`](test-eval-mono-vs-extracted-analytics-2026-05-11.md)
+
+### 8.2 Kiến trúc transport nội bộ — REST → gRPC
+
+SA nhận xét: giao tiếp `backend → analytics-service` hiện dùng REST (`ClickHouseRestAnalyticsAdapter`) là tạm chấp nhận ở demo MVP nhưng **vi phạm canonical architecture** ("module↔module = gRPC/Kafka, không REST").
+
+Đề xuất migrate sang gRPC tại Sprint 7 (sau pilot launch):
+
+- **4-5x throughput** improvement cho analytics aggregate queries
+- **Compile-time schema safety** qua `.proto` contract
+- **Istio mTLS auto-inject** — không cần JWT propagation nội bộ
+- **Migration risk thấp**: `AnalyticsPort` interface đã tách — `EsgService` không cần đổi
+
+📄 **ADR đầy đủ:** [`docs/mvp3/ADR-012-grpc-for-internal-service-communication.md`](ADR-012-grpc-for-internal-service-communication.md)
+
+---
 
 **Quy tắc bắt buộc cho mọi extraction story (v3-EXT-*):**
 > Mỗi `@ConditionalOnProperty` cho extraction phải có `matchIfMissing = true`. Nếu thiếu → Tier 1 customer không set flag sẽ bị mất bean → regression. CI phải có test run riêng với profile `tier1` (không set flag) song song với test run `tier2`.

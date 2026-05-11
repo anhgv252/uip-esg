@@ -27,6 +27,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.stream.Collectors;
+import org.springframework.http.MediaType;
 
 @Slf4j
 @Configuration
@@ -45,7 +46,17 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/actuator/health", "/actuator/prometheus").permitAll()
                 .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
+                // /error phải được permit — Tomcat re-dispatch đến đây khi sendError()
+                // bị chặn → Spring Security gọi AuthenticationEntryPoint → 401 sai
+                .requestMatchers("/error").permitAll()
                 .anyRequest().authenticated()
+            )
+            .exceptionHandling(ex -> ex
+                .authenticationEntryPoint((req, res, e) -> {
+                    res.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                    res.setContentType(MediaType.APPLICATION_JSON_VALUE);
+                    res.getWriter().write("{\"error\":\"Unauthorized\",\"message\":\"Bearer token required\"}");
+                })
             )
             .addFilterBefore(jwtAuthFilter(), UsernamePasswordAuthenticationFilter.class);
         return http.build();
@@ -67,8 +78,10 @@ public class SecurityConfig {
 
                         @SuppressWarnings("unchecked")
                         List<String> roles = (List<String>) claims.get("roles", List.class);
+                        // JWT từ monolith đã chứa prefix ROLE_ (e.g. "ROLE_ADMIN")
+                        // không thêm prefix nữa để tránh double-prefix ROLE_ROLE_ADMIN
                         List<SimpleGrantedAuthority> authorities = roles == null ? List.of()
-                                : roles.stream().map(r -> new SimpleGrantedAuthority("ROLE_" + r))
+                                : roles.stream().map(SimpleGrantedAuthority::new)
                                        .collect(Collectors.toList());
 
                         SecurityContextHolder.getContext().setAuthentication(

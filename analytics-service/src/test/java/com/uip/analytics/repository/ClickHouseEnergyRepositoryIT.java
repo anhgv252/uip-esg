@@ -135,4 +135,44 @@ class ClickHouseEnergyRepositoryIT {
         // (0.9 + 0.85 + 0.92) / 3 ≈ 0.89
         assertThat(pf).isBetween(0.87, 0.91);
     }
+
+    @Test
+    @DisplayName("aggregatePowerFactor — empty result set returns 1.0 default (not NaN)")
+    void aggregatePowerFactor_emptySet_returnsDefault() {
+        // tenant không có dữ liệu — ClickHouse avg() trả NaN, phải được handle thành 1.0
+        double pf = repository.aggregatePowerFactor("tenant-no-data", List.of(), 0L, 9999L);
+
+        assertThat(pf).isNotNaN();
+        assertThat(pf).isEqualTo(1.0);
+    }
+
+    @Test
+    @DisplayName("aggregatePowerFactor — building filter scope matches only specified buildings")
+    void aggregatePowerFactor_withBuildingFilter() {
+        // Chỉ lấy B2 (pf=0.92), không lấy B1 (pf=0.9, 0.85)
+        double pf = repository.aggregatePowerFactor("t1", List.of("B2"), 0L, 9999L);
+
+        assertThat(pf).isBetween(0.91, 0.93);
+    }
+
+    @Test
+    @DisplayName("aggregateByBuilding — empty result set returns empty list")
+    void aggregateByBuilding_noData_returnsEmptyList() {
+        List<BuildingEnergyBreakdown> result = repository.aggregateByBuilding(
+                "tenant-no-data", List.of(), 0L, 9999L);
+
+        assertThat(result).isEmpty();
+    }
+
+    @Test
+    @DisplayName("aggregateByBuilding — time range filter excludes out-of-range rows")
+    void aggregateByBuilding_timeRangeFilter() {
+        // Chỉ lấy ts=1000 (B1, kwh=100), ts=1200 (B2) — loại ts=1500 (B1, kwh=200)
+        List<BuildingEnergyBreakdown> result = repository.aggregateByBuilding(
+                "t1", List.of(), 0L, 1100L);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).buildingId()).isEqualTo("B1");
+        assertThat(result.get(0).totalKwh()).isEqualTo(100.0);
+    }
 }
