@@ -338,6 +338,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/buildings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list"];
+        put?: never;
+        post: operations["create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/refresh": {
         parameters: {
             query?: never;
@@ -400,6 +416,22 @@ export interface paths {
         put?: never;
         /** Accept an invitation and set password (public endpoint) */
         post: operations["acceptInvite"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/analytics/cross-building/aggregate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["aggregate"];
         delete?: never;
         options?: never;
         head?: never;
@@ -979,6 +1011,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/buildings/{buildingCode}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getByCode"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/buildings/clusters/{clusterId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listByCluster"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/alerts": {
         parameters: {
             query?: never;
@@ -1349,6 +1413,30 @@ export interface components {
             /** Format: date-time */
             registeredAt?: string;
         };
+        BuildingCreateRequest: {
+            buildingCode: string;
+            buildingName: string;
+            clusterId?: string;
+            /** Format: int32 */
+            floorCount?: number;
+            /** Format: double */
+            totalAreaM2?: number;
+        };
+        BuildingResponse: {
+            /** Format: uuid */
+            id?: string;
+            buildingCode?: string;
+            buildingName?: string;
+            tenantId?: string;
+            clusterId?: string;
+            /** Format: int32 */
+            floorCount?: number;
+            /** Format: double */
+            totalAreaM2?: number;
+            isActive?: boolean;
+            /** Format: date-time */
+            createdAt?: string;
+        };
         RefreshRequest: {
             refreshToken: string;
         };
@@ -1367,6 +1455,25 @@ export interface components {
             /** Format: uuid */
             token: string;
             password: string;
+        };
+        CrossBuildingAggregationRequest: {
+            buildingCodes: string[];
+            metricType: string;
+            /** Format: date-time */
+            from: string;
+            /** Format: date-time */
+            to: string;
+        };
+        CrossBuildingAggregationResult: {
+            buildingCode?: string;
+            buildingName?: string;
+            /** Format: double */
+            totalValue?: number;
+            /** Format: double */
+            avgValue?: number;
+            /** Format: int64 */
+            dataPoints?: number;
+            unit?: string;
         };
         InviteUserRequest: {
             email: string;
@@ -1422,10 +1529,10 @@ export interface components {
             createdAt?: string;
         };
         PageProcessInstanceDto: {
-            /** Format: int32 */
-            totalPages?: number;
             /** Format: int64 */
             totalElements?: number;
+            /** Format: int32 */
+            totalPages?: number;
             first?: boolean;
             last?: boolean;
             /** Format: int32 */
@@ -1442,17 +1549,17 @@ export interface components {
         PageableObject: {
             /** Format: int32 */
             pageSize?: number;
-            paged?: boolean;
-            unpaged?: boolean;
             /** Format: int32 */
             pageNumber?: number;
+            paged?: boolean;
+            unpaged?: boolean;
             /** Format: int64 */
             offset?: number;
             sort?: components["schemas"]["SortObject"];
         };
         SortObject: {
-            unsorted?: boolean;
             sorted?: boolean;
+            unsorted?: boolean;
             empty?: boolean;
         };
         ProcessDefinitionDto: {
@@ -1466,10 +1573,10 @@ export interface components {
             suspended?: boolean;
         };
         PageTrafficIncidentDto: {
-            /** Format: int32 */
-            totalPages?: number;
             /** Format: int64 */
             totalElements?: number;
+            /** Format: int32 */
+            totalPages?: number;
             first?: boolean;
             last?: boolean;
             /** Format: int32 */
@@ -1648,10 +1755,10 @@ export interface components {
             paidAt?: string;
         };
         PageInvoiceDto: {
-            /** Format: int32 */
-            totalPages?: number;
             /** Format: int64 */
             totalElements?: number;
+            /** Format: int32 */
+            totalPages?: number;
             first?: boolean;
             last?: boolean;
             /** Format: int32 */
@@ -1681,10 +1788,10 @@ export interface components {
             district?: string;
         };
         PageAlertEventDto: {
-            /** Format: int32 */
-            totalPages?: number;
             /** Format: int64 */
             totalElements?: number;
+            /** Format: int32 */
+            totalPages?: number;
             first?: boolean;
             last?: boolean;
             /** Format: int32 */
@@ -1699,10 +1806,10 @@ export interface components {
             empty?: boolean;
         };
         PageUserSummaryDto: {
-            /** Format: int32 */
-            totalPages?: number;
             /** Format: int64 */
             totalElements?: number;
+            /** Format: int32 */
+            totalPages?: number;
             first?: boolean;
             last?: boolean;
             /** Format: int32 */
@@ -1742,10 +1849,10 @@ export interface components {
             branding?: components["schemas"]["Branding"];
         };
         PageErrorRecord: {
-            /** Format: int32 */
-            totalPages?: number;
             /** Format: int64 */
             totalElements?: number;
+            /** Format: int32 */
+            totalPages?: number;
             first?: boolean;
             last?: boolean;
             /** Format: int32 */
@@ -2342,6 +2449,54 @@ export interface operations {
             };
         };
     };
+    list: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Tenant-ID": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["BuildingResponse"][];
+                };
+            };
+        };
+    };
+    create: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Tenant-ID": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BuildingCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["BuildingResponse"];
+                };
+            };
+        };
+    };
     refresh: {
         parameters: {
             query?: never;
@@ -2428,6 +2583,32 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["AuthResponse"];
+                };
+            };
+        };
+    };
+    aggregate: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Tenant-ID": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CrossBuildingAggregationRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CrossBuildingAggregationResult"][];
                 };
             };
         };
@@ -3206,6 +3387,52 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["BuildingDto"][];
+                };
+            };
+        };
+    };
+    getByCode: {
+        parameters: {
+            query?: never;
+            header: {
+                "X-Tenant-ID": string;
+            };
+            path: {
+                buildingCode: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["BuildingResponse"];
+                };
+            };
+        };
+    };
+    listByCluster: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                clusterId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["BuildingResponse"][];
                 };
             };
         };
