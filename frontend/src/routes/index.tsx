@@ -27,6 +27,12 @@ const MobileBillsPage = lazy(() => import('@/pages/citizen/MobileBillsPage'))
 const MobileBillDetailPage = lazy(() => import('@/pages/citizen/MobileBillDetailPage'))
 const MobileAQIPage = lazy(() => import('@/pages/citizen/MobileAQIPage'))
 const MobileNotificationsPage = lazy(() => import('@/pages/citizen/MobileNotificationsPage'))
+const CrossBuildingDashboardPage = lazy(
+  () => import('@/pages/buildings/CrossBuildingDashboardPage').then((m) => ({ default: m.CrossBuildingDashboardPage }))
+)
+const CrossBuildingShell = lazy(
+  () => import('@/components/buildings/CrossBuildingShell').then((m) => ({ default: m.CrossBuildingShell }))
+)
 
 export const routes: RouteObject[] = [
   {
@@ -52,6 +58,14 @@ export const routes: RouteObject[] = [
       { path: '/traffic', element: <TrafficPage /> },
       { path: '/alerts', element: <AlertsPage /> },
       { path: '/city-ops', element: <CityOpsPage /> },
+      // Cross-Building Analytics (MVP3-Sprint1)
+      {
+        path: '/buildings',
+        element: <CrossBuildingShell />,
+        children: [
+          { index: true, element: <CrossBuildingDashboardPage /> },
+        ],
+      },
       // Citizen routes — all wrapped in MobileLayout to render bottom navigation
       {
         path: '/citizen',

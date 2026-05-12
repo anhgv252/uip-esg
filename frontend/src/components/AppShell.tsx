@@ -36,6 +36,7 @@ import {
   SettingsSuggest as WorkflowConfigIcon,
 } from '@mui/icons-material'
 import LocationCityIcon from '@mui/icons-material/LocationCity'
+import BusinessIcon from '@mui/icons-material/Business'
 import { useAuth } from '@/hooks/useAuth'
 import { useTenantConfig } from '@/contexts/TenantConfigContext'
 
@@ -54,6 +55,7 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { label: 'Dashboard', path: '/dashboard', icon: <DashboardIcon /> },
   { label: 'City Ops', path: '/city-ops', icon: <LocationCityIcon /> },
+  { label: 'Buildings', path: '/buildings', icon: <BusinessIcon /> },
   { label: 'Environment', path: '/environment', icon: <EnvironmentIcon /> },
   { label: 'ESG Metrics', path: '/esg', icon: <EsgIcon /> },
   { label: 'Traffic', path: '/traffic', icon: <TrafficIcon /> },

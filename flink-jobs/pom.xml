@@ -59,6 +59,18 @@
       <version>${postgresql.version}</version>
     </dependency>
 
+    <!-- ClickHouse JDBC — dual-sink target (ADR-026) -->
+    <dependency>
+      <groupId>com.clickhouse</groupId>
+      <artifactId>clickhouse-jdbc</artifactId>
+      <version>0.6.0</version>
+    </dependency>
+    <dependency>
+      <groupId>com.clickhouse</groupId>
+      <artifactId>clickhouse-http-client</artifactId>
+      <version>0.6.0</version>
+    </dependency>
+
     <!-- RocksDB state backend -->
     <dependency>
       <groupId>org.apache.flink</groupId>

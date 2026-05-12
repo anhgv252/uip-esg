@@ -1,0 +1,152 @@
+{
+  "id": "uip",
+  "realm": "uip",
+  "displayName": "UIP Smart City",
+  "enabled": true,
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": false,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": false,
+  "editUsernameAllowed": false,
+  "bruteForceProtected": false,
+  "accessTokenLifespan": 3600,
+  "accessTokenLifespanForImplicitFlow": 900,
+  "ssoSessionIdleTimeout": 1800,
+  "ssoSessionMaxLifespan": 36000,
+  "defaultSignatureAlgorithm": "RS256",
+
+  "clients": [
+    {
+      "id": "uip-api",
+      "clientId": "uip-api",
+      "name": "UIP API",
+      "description": "UIP Smart City backend API client",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "uip-api-secret-dev",
+      "bearerOnly": false,
+      "consentRequired": false,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": false,
+      "authorizationServicesEnabled": false,
+      "protocol": "openid-connect",
+      "attributes": {
+        "access.token.signed.response.alg": "RS256",
+        "use.refresh.tokens": "true",
+        "client.session.idle.timeout": "0",
+        "client.session.max.lifespan": "0"
+      },
+      "protocolMappers": [
+        {
+          "id": "tenant-id-mapper",
+          "name": "tenant-id-mapper",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "tenant_id",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "tenant_id",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "id": "is-aggregator-mapper",
+          "name": "is-aggregator-mapper",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "is_aggregator",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "is_aggregator",
+            "jsonType.label": "boolean"
+          }
+        },
+        {
+          "id": "building-ids-mapper",
+          "name": "building-ids-mapper",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "building_ids",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "building_ids",
+            "jsonType.label": "String",
+            "multivalued": "true"
+          }
+        },
+        {
+          "id": "parent-tenant-mapper",
+          "name": "parent-tenant-id-mapper",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "userinfo.token.claim": "false",
+            "user.attribute": "parent_tenant_id",
+            "id.token.claim": "false",
+            "access.token.claim": "true",
+            "claim.name": "parent_tenant_id",
+            "jsonType.label": "String"
+          }
+        }
+      ]
+    }
+  ],
+
+  "users": [
+    {
+      "id": "operator-hcm-id",
+      "username": "operator-hcm",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "operator@hcm.uip.local",
+      "firstName": "Operator",
+      "lastName": "HCM",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Operator#2026!",
+          "temporary": false
+        }
+      ],
+      "attributes": {
+        "tenant_id": ["hcm"],
+        "is_aggregator": ["false"],
+        "building_ids": ["BLD-HCM-001", "BLD-HCM-002"]
+      }
+    },
+    {
+      "id": "admin-aggregator-id",
+      "username": "admin-aggregator",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "admin@aggregator.uip.local",
+      "firstName": "Admin",
+      "lastName": "Aggregator",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Admin#2026!",
+          "temporary": false
+        }
+      ],
+      "attributes": {
+        "tenant_id": [""],
+        "is_aggregator": ["true"],
+        "parent_tenant_id": ["cluster-mgmt-corp"]
+      }
+    }
+  ]
+}

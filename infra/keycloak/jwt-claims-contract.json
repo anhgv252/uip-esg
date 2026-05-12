@@ -1,0 +1,70 @@
+{
+  "_doc": "Keycloak JWT claims contract — UIP Platform (ADR-027)",
+  "_sprint": "MVP3-1",
+  "issuer": "https://keycloak.uip.local/realms/uip",
+  "algorithm": "RS256",
+
+  "example_claims": {
+    "iss": "https://keycloak.uip.local/realms/uip",
+    "sub": "user-uuid-here",
+    "aud": ["uip-api", "uip-mobile"],
+    "exp": 1778512361,
+    "iat": 1778508761,
+    "tenant_id": "tenant-a",
+    "parent_tenant_id": "cluster-mgmt-corp",
+    "building_ids": ["bld-001", "bld-002"],
+    "is_aggregator": false,
+    "roles": ["OPERATOR"],
+    "email": "operator@tenant-a.local"
+  },
+
+  "kong_header_injection": {
+    "X-Tenant-ID": "JWT claim: tenant_id",
+    "X-Building-IDs": "JWT claim: building_ids (comma-separated)",
+    "X-Is-Aggregator": "JWT claim: is_aggregator"
+  },
+
+  "security_rules": [
+    "alg=none MUST be rejected by Kong jwt plugin (CI test: infra/kong/test-alg-none.sh)",
+    "Client-supplied X-Tenant-ID header MUST be stripped by Kong request-transformer (remove)",
+    "X-Tenant-ID injected by Kong ONLY after JWT signature validation passes",
+    "parent_tenant_id claim only present for aggregator tenants (is_aggregator=true)",
+    "building_ids restricts data scope; empty = full tenant scope for is_aggregator tenants"
+  ],
+
+  "keycloak_realm_config": {
+    "realm": "uip",
+    "client_id": "uip-api",
+    "mobile_client_id": "uip-mobile",
+    "token_lifespan_seconds": 3600,
+    "refresh_token_lifespan_seconds": 86400,
+    "custom_mappers": [
+      {
+        "name": "tenant-id-mapper",
+        "type": "user-attribute",
+        "claim": "tenant_id",
+        "attribute": "tenant_id"
+      },
+      {
+        "name": "building-ids-mapper",
+        "type": "user-attribute",
+        "claim": "building_ids",
+        "attribute": "building_ids",
+        "multivalued": true
+      },
+      {
+        "name": "is-aggregator-mapper",
+        "type": "user-attribute",
+        "claim": "is_aggregator",
+        "attribute": "is_aggregator"
+      }
+    ]
+  },
+
+  "spring_resource_server": {
+    "class": "UipJwtConverter (backend/src/main/java/com/uip/backend/...)",
+    "issuer_uri": "${KEYCLOAK_ISSUER_URI}",
+    "jwk_set_uri": "${KEYCLOAK_JWK_SET_URI}",
+    "dual_issuer_note": "Sprint 4-5: dual issuer (legacy + Keycloak). See ADR-027."
+  }
+}

@@ -1,0 +1,106 @@
+_format_version: "3.0"
+_transform: true
+
+# Kong DB-less declarative config — UIP Platform non-prod
+# Sprint MVP3-1 | ADR-028: Kong Gateway Scope — Extracted Services Only
+#
+# Kong scope = extracted services only (analytics-service, iot-ingestion-service)
+# Monolith vẫn qua nginx Ingress trực tiếp (ADR-028 constraint)
+#
+# Plugin order (BẤT BIẾN — BR-007):
+#   1. cors → 2. jwt → 3. request-transformer → 4. rate-limiting → 5. prometheus → 6. correlation-id
+
+services:
+  # ─── analytics-service (Tier 2 extracted) ───────────────────────────────────
+  - name: analytics-service
+    url: http://analytics-service:8081
+    connect_timeout: 5000
+    read_timeout: 30000
+    write_timeout: 30000
+    retries: 0
+    routes:
+      - name: analytics-cross-building
+        paths:
+          - /api/v1/analytics
+        strip_path: false
+        methods:
+          - GET
+          - POST
+    plugins:
+      - name: cors
+        config:
+          origins:
+            - "https://uip.local"
+            - "http://localhost:3000"
+          methods:
+            - GET
+            - POST
+            - OPTIONS
+          headers:
+            - Authorization
+            - Content-Type
+            - X-Tenant-ID
+          max_age: 3600
+          credentials: true
+
+      - name: jwt
+        config:
+          claims_to_verify:
+            - exp
+          key_claim_name: iss
+          secret_is_base64: false
+          # alg=none rejected: Kong jwt plugin requires valid signature
+          # Token với alg=none không có signature → verification fails → 401
+
+      - name: request-transformer
+        config:
+          add:
+            headers:
+              # Inject X-Tenant-ID từ JWT claim (Kong extracts, không spoofable từ client)
+              - "X-Tenant-ID:$(jwt_claims.tenant_id)"
+              - "X-Is-Aggregator:$(jwt_claims.is_aggregator)"
+          remove:
+            headers:
+              # Strip client-supplied headers (BR-008: X-Tenant-ID từ JWT only)
+              - X-Tenant-ID
+
+      - name: rate-limiting
+        config:
+          minute: 1000
+          policy: local
+          fault_tolerant: true
+          hide_client_headers: false
+
+      - name: prometheus
+        config:
+          status_code_metrics: true
+          latency_metrics: true
+          upstream_health_metrics: true
+
+      - name: correlation-id
+        config:
+          header_name: X-Correlation-ID
+          generator: uuid#counter
+          echo_downstream: true
+
+  # ─── iot-ingestion-service (Tier 2, Shadow mode Sprint 4) ───────────────────
+  # Placeholder — sẽ được enable Sprint 4 khi v3-EXT-06 hoàn thành
+  # - name: iot-ingestion-service
+  #   url: http://iot-ingestion-service:8083
+
+# ─── Consumers (Keycloak JWT issuer consumers) ────────────────────────────────
+consumers:
+  - username: keycloak-uip-realm
+    custom_id: keycloak-uip-realm
+
+jwt_secrets:
+  - consumer: keycloak-uip-realm
+    key: "https://keycloak.uip.local/realms/uip"
+    algorithm: RS256
+    # rsa_public_key: injected via env var KEYCLOAK_RS256_PUBLIC_KEY in production
+
+# ─── Global plugins (apply to all services) ──────────────────────────────────
+plugins:
+  - name: prometheus
+    config:
+      status_code_metrics: true

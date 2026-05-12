@@ -1,0 +1,90 @@
+_format_version: "3.0"
+_transform: true
+
+# Kong local dev config — HS512, dùng backend JWT_SECRET
+# Dành cho: Sprint MVP3-1 local testing (alg=none test + token grant p95)
+#
+# Khác với kong.poc.yml (RS256 + Keycloak):
+#   - Algorithm: HS512 (khớp với JwtTokenProvider.java dùng HMAC-SHA-512)
+#   - key_claim_name: sub (backend JWT không set iss)
+#   - Consumer key = username ("admin")
+#   - Secret được inject qua envsubst khi Kong start (xem docker-compose.yml)
+#
+# Sử dụng:
+#   TOKEN=$(curl -s -X POST http://localhost:8080/api/v1/auth/login \
+#     -H "Content-Type: application/json" \
+#     -d '{"username":"admin","password":"admin_Dev#2026!"}' \
+#     | python3 -c "import sys,json; print(json.load(sys.stdin)['accessToken'])")
+#   curl -w "%{time_total}\n" http://localhost:8000/api/v1/analytics \
+#     -H "Authorization: Bearer $TOKEN" -H "X-Tenant-ID: hcm"
+
+services:
+  # ─── analytics-service (Tier 2 extracted) ───────────────────────────────────
+  - name: analytics-service
+    url: http://analytics-service:8081
+    connect_timeout: 5000
+    read_timeout: 30000
+    write_timeout: 30000
+    retries: 0
+    routes:
+      - name: analytics-cross-building
+        paths:
+          - /api/v1/analytics
+        strip_path: false
+        methods:
+          - GET
+          - POST
+
+    plugins:
+      - name: cors
+        config:
+          origins:
+            - "http://localhost:3000"
+          methods:
+            - GET
+            - POST
+            - OPTIONS
+          headers:
+            - Authorization
+            - Content-Type
+            - X-Tenant-ID
+          max_age: 3600
+          credentials: true
+
+      - name: jwt
+        config:
+          claims_to_verify:
+            - exp
+          key_claim_name: sub      # backend JWT uses sub (không có iss)
+          secret_is_base64: false
+          # alg=none bị từ chối: không có signature → plugin reject → 401
+
+      - name: request-transformer
+        config:
+          remove:
+            headers:
+              - X-Tenant-ID   # Strip client-supplied header (BR-008)
+
+      - name: rate-limiting
+        config:
+          minute: 1000
+          policy: local
+          fault_tolerant: true
+
+      - name: correlation-id
+        config:
+          header_name: X-Correlation-ID
+          generator: uuid#counter
+          echo_downstream: true
+
+# ─── Consumers ────────────────────────────────────────────────────────────────
+# key = giá trị của sub claim trong JWT
+consumers:
+  - username: admin
+    custom_id: admin
+
+jwt_secrets:
+  - consumer: admin
+    key: "admin"             # phải khớp với sub claim trong JWT của user admin
+    algorithm: HS512
+    secret: "${KONG_JWT_SECRET}"   # được substitute bởi envsubst từ KONG_JWT_SECRET env var

@@ -29,8 +29,16 @@ analytics-service/.gradle/
 analytics-service/build/
 analytics-service/out/
 analytics-service/bin/
+applications/analytics-service/.gradle/
+applications/analytics-service/build/
+applications/analytics-service/out/
+applications/analytics-service/bin/
 *.jar
 *.war
+
+# Runtime / monitoring artifacts
+tests/performance/shadow-monitor.pid
+tests/performance/shadow-validation-log.txt
 
 # Flink jobs (Maven)
 flink-jobs/target/

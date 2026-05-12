@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<!-- ClickHouse POC config — single node, tuned for analytics workload -->
+<clickhouse>
+    <!-- Connection limits -->
+    <max_connections>100</max_connections>
+    <max_concurrent_queries>50</max_concurrent_queries>
+    <max_server_memory_usage_to_ram_ratio>0.7</max_server_memory_usage_to_ram_ratio>
+
+    <!-- Keep alive for JDBC connections -->
+    <keep_alive_timeout>10</keep_alive_timeout>
+
+    <!-- Logging: reduce noise in POC -->
+    <logger>
+        <level>warning</level>
+        <log>/var/log/clickhouse-server/clickhouse-server.log</log>
+        <errorlog>/var/log/clickhouse-server/clickhouse-server.err.log</errorlog>
+        <size>100M</size>
+        <count>3</count>
+    </logger>
+</clickhouse>
