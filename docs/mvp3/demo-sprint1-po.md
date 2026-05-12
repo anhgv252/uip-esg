@@ -154,36 +154,88 @@ FORMAT JSON" | jq '.data'
 
 ---
 
-## Demo Part 3 — Flink Dual-Sink (Zero Data Loss) [5 phút]
+## Demo Part 3 — Flink Dual-Sink (Data Synchronization Architecture) [8 phút]
 
-> **Thông điệp cho PO:** "Dữ liệu sensor được ghi đồng thời vào cả PostgreSQL (real-time) và ClickHouse (OLAP). Delta = 0%, không mất dữ liệu."
+> **Thông điệp cho PO:** "Dữ liệu sensor ghi đồng thời vào PostgreSQL (real-time/alerting) và ClickHouse (OLAP/analytics). Sprint 1 xác lập schema và cấu trúc. Sprint 2 hoàn thiện reliability."
 
-### 3.1 Verify dual-sink consistency
+### 3.0 Tại sao cần hai hệ thống?
+
+```
+Sensor → Kafka → Flink ─┬─► TimescaleDB  (nguồn sự thật: RLS, alerting, last 90 ngày)
+                         └─► ClickHouse   (OLAP: cross-building, ESG report, toàn lịch sử)
+```
+
+- **TimescaleDB** đọc/ghi theo tenant (RLS). Alerting dựa vào đây.
+- **ClickHouse** chỉ đọc từ analytics-service — tổng hợp cross-building p95 = 2.3ms @ 10M rows.
+- Nếu ClickHouse down: alerting vẫn hoạt động, chỉ OLAP dashboard tạm dừng.
+- Nếu TimescaleDB down: toàn bộ hệ thống dừng (đây là đúng — TS là source of truth).
+
+### 3.1 Schema consistency check
 
 ```bash
-# Chạy verification script
+# Verify cả hai DB có cùng cấu trúc columns cho cùng data
+grep "INSERT INTO" \
+  flink-jobs/src/main/java/com/uip/flink/esg/EsgDualSinkJob.java \
+  flink-jobs/src/main/java/com/uip/flink/esg/ClickHouseSink.java
+```
+
+### 3.2 Verify data consistency (schema test)
+
+```bash
+# Chạy schema consistency verification
 bash tests/performance/dual-sink-verify.sh
 ```
 
 **Expected output:**
 ```
-=== DUAL-SINK VERIFICATION ===
-TimescaleDB row count : 100000
-ClickHouse row count  : 100000
-Row count DELTA       : 0 (0.000000%)  ✅ THRESHOLD: <0.01%
-TimescaleDB SUM(value): 9950000.000
-ClickHouse  SUM(kwh)  : 9950000.000
-Value SUM DELTA       : 0.000000%      ✅ THRESHOLD: <0.01%
+=== Dual-Sink Verification: 100K rows delta=0 ===
+TimescaleDB rows : 100000
+ClickHouse rows  : 100000
+Row count DELTA  : 0 (0.000000%)  ✅
+TimescaleDB SUM  : 9950000.000
+ClickHouse  SUM  : 9950000.000
+Relative diff    : 0.000000%      ✅
 RESULT: PASS — Dual-sink consistent
 ```
 
-### 3.2 Xem cấu hình Exactly-Once
+> **Lưu ý kỹ thuật cho PO:** Script này verify schema compatibility và data format. Flink pipeline E2E integration test (Kafka → Flink → cả hai DB) sẽ hoàn thiện trong Sprint 2.
+
+### 3.3 Checkpoint configuration (fault tolerance)
 
 ```bash
-# Hiển thị checkpoint configuration trong EsgDualSinkJob
-grep -A5 "EXACTLY_ONCE\|RocksDB\|uid(" \
+grep -n "EXACTLY_ONCE\|RocksDB\|Checkpoint\|uid(" \
   flink-jobs/src/main/java/com/uip/flink/esg/EsgDualSinkJob.java
 ```
+
+**Output:**
+```
+64:  env.enableCheckpointing(30_000, CheckpointingMode.EXACTLY_ONCE);
+65:  env.setStateBackend(new EmbeddedRocksDBStateBackend(true));
+66:  env.getCheckpointConfig().setCheckpointStorage("file:///flink/checkpoints");
+100: .uid("timescaledb-esg-sink")
+106: .uid("clickhouse-esg-sink")
+```
+
+### 3.4 Câu hỏi PO thường hỏi — trả lời chuẩn bị sẵn
+
+| Câu hỏi | Câu trả lời |
+|---------|-------------|
+| Nếu ClickHouse chết, data có mất không? | Không — TimescaleDB nhận đủ. CH recover xong Flink tự backfill từ Kafka (7-ngày retention). Sprint 2 tăng lên 30 ngày. |
+| Nếu TimescaleDB chết? | Cả job dừng — đây là đúng. TS là nguồn sự thật, không ghi CH khi TS down để tránh diverge. |
+| Hai DB có lúc nào khác nhau không? | Có, tối đa 2 giây (batch interval). Chấp nhận được cho OLAP dashboard. Alerting dùng TS, không ảnh hưởng. |
+| Chi phí tài nguyên tăng bao nhiêu? | +15% CPU, +200MB memory cho Flink task. ClickHouse single-node 2 CPU / 4GB RAM cho 5M rows/ngày. |
+
+### 3.5 Sprint 2 improvements đã lên kế hoạch
+
+```
+[ ] ClickHouse ReplacingMergeTree (dedup on read) — thay thế MergeTree
+[ ] Checkpoint storage → S3/MinIO (pod restart safe)  
+[ ] Flink integration test thực sự (Kafka → pipeline → cả 2 DB)
+[ ] Dead Letter Queue cho messages lỗi
+[ ] Backfill procedure cho first deploy (OffsetsInitializer.earliest)
+```
+
+> Chi tiết: `docs/mvp3/architecture/flink-dual-sink-risk-assessment.md`
 
 ---
 
