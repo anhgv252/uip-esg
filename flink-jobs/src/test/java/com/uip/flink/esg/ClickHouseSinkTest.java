@@ -12,7 +12,16 @@ class ClickHouseSinkTest {
                 .contains("analytics.esg_readings")
                 .contains("tenant_id")
                 .contains("building_id")
+                .contains("source_id")
+                .contains("metric_type")
+                .contains("value")
                 .contains("recorded_at");
+    }
+
+    @Test
+    void insertSql_hasSevenPlaceholders() {
+        long count = ClickHouseSink.INSERT_SQL.chars().filter(c -> c == '?').count();
+        assertThat(count).isEqualTo(7);
     }
 
     @Test

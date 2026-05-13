@@ -1,4 +1,6 @@
 security:
+  jwt:
+    secret: test-secret-for-integration-tests-only-32chars
   login:
     rate-limit:
       capacity: 1000

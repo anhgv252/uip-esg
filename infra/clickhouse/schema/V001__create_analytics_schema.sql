@@ -47,6 +47,7 @@ GROUP BY tenant_id, building_id, metric_type, ts_hour;
 CREATE TABLE IF NOT EXISTS analytics.esg_readings (
     tenant_id    String                  COMMENT 'Tenant identifier (plain string)',
     building_id  String                  COMMENT 'Building code hoặc ID',
+    source_id    String                  DEFAULT ''  COMMENT 'Sensor device ID',
     metric_type  LowCardinality(String)  COMMENT 'energy | water | co2',
     value        Float64,
     unit         LowCardinality(String)  DEFAULT '',
@@ -55,7 +56,7 @@ CREATE TABLE IF NOT EXISTS analytics.esg_readings (
 )
 ENGINE = MergeTree()
 PARTITION BY toYYYYMM(recorded_at)
-ORDER BY (tenant_id, building_id, metric_type, recorded_at)
+ORDER BY (tenant_id, building_id, source_id, metric_type, recorded_at)
 TTL recorded_at + INTERVAL 2 YEAR DELETE
 SETTINGS index_granularity = 8192;
 

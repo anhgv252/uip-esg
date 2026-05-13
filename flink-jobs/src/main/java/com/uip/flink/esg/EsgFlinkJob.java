@@ -22,9 +22,12 @@ import java.time.Instant;
 import java.util.Map;
 
 /**
- * S1-08 — EsgFlinkJob
- * Consumes NGSI-LD messages from ngsi_ld_esg → writes to esg.clean_metrics
+ * @deprecated Replaced by {@link EsgDualSinkJob} which supports dual-write to TimescaleDB + ClickHouse
+ * with proper tenant_id/building_id columns and ON CONFLICT handling.
+ * Running both jobs simultaneously causes duplicate rows in esg.clean_metrics and broken RLS.
+ * This class will be removed in Sprint 3.
  */
+@Deprecated(since = "Sprint MVP3-1", forRemoval = true)
 public class EsgFlinkJob {
 
     private static final Logger LOG = LoggerFactory.getLogger(EsgFlinkJob.class);
@@ -46,6 +49,16 @@ public class EsgFlinkJob {
     );
 
     public static void main(String[] args) throws Exception {
+        if (!Boolean.parseBoolean(System.getenv().getOrDefault("UIP_ALLOW_OLD_FLINK_JOB", "false"))) {
+            System.err.println("╔═══════════════════════════════════════════════════════════════════╗");
+            System.err.println("║  BLOCKED: EsgFlinkJob is DEPRECATED.                            ║");
+            System.err.println("║  Use EsgDualSinkJob instead (dual-write TS + ClickHouse).        ║");
+            System.err.println("║  Running both jobs causes duplicate rows + broken RLS.           ║");
+            System.err.println("║  Set UIP_ALLOW_OLD_FLINK_JOB=true to override (NOT recommended). ║");
+            System.err.println("╚═══════════════════════════════════════════════════════════════════╝");
+            System.exit(1);
+        }
+
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
 
         env.enableCheckpointing(30_000, CheckpointingMode.EXACTLY_ONCE);
