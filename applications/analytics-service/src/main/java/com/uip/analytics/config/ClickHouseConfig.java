@@ -24,7 +24,7 @@ public class ClickHouseConfig {
     @Value("${clickhouse.password:}")
     private String password;
 
-    @Value("${clickhouse.database:uip_analytics}")
+    @Value("${clickhouse.database:analytics}")
     private String database;
 
     @Bean

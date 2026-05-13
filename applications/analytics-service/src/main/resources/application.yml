@@ -23,7 +23,7 @@ clickhouse:
   url: ${CLICKHOUSE_URL:jdbc:clickhouse://localhost:8123}
   username: ${CLICKHOUSE_USER:default}
   password: ${CLICKHOUSE_PASSWORD:}
-  database: ${CLICKHOUSE_DB:uip_analytics}
+  database: ${CLICKHOUSE_DB:analytics}
 
 # JWT secret — must match monolith's secret
 uip:

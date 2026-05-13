@@ -17,7 +17,8 @@ public class ClickHouseEnergyRepository {
 
     /**
      * Aggregate energy metrics per building over a time range.
-     * ClickHouse table: energy_readings (tenant_id, building_id, kwh, demand_kw, power_factor, ts)
+     * ClickHouse table: analytics.esg_readings (tenant_id, building_id, source_id, metric_type, value, unit, recorded_at)
+     * Filters metric_type = 'ENERGY' to get energy-specific readings.
      */
     public List<BuildingEnergyBreakdown> aggregateByBuilding(
             String tenantId, List<String> buildingIds, long fromEpoch, long toEpoch) {
@@ -27,12 +28,14 @@ public class ClickHouseEnergyRepository {
 
         String sql = """
                 SELECT building_id,
-                       sum(kwh)       AS total_kwh,
-                       max(demand_kw) AS peak_demand_kw
-                FROM energy_readings
+                       sum(value)       AS total_kwh,
+                       max(value)       AS peak_demand_kw
+                FROM esg_readings
                 WHERE tenant_id = ?
+                  AND metric_type = 'ENERGY'
                   AND %s
-                  AND ts BETWEEN ? AND ?
+                  AND recorded_at >= fromUnixTimestamp(?)
+                  AND recorded_at <= fromUnixTimestamp(?)
                 GROUP BY building_id
                 ORDER BY building_id
                 """.formatted(inClause);
@@ -46,24 +49,15 @@ public class ClickHouseEnergyRepository {
         ));
     }
 
+    /**
+     * Average "power factor" approximation from energy readings.
+     * Since esg_readings only has generic value, we return 1.0 (unity PF)
+     * when no specific power_factor data exists.
+     * TODO: Add dedicated power_factor metric type in Sprint 3.
+     */
     public double aggregatePowerFactor(
             String tenantId, List<String> buildingIds, long fromEpoch, long toEpoch) {
-
-        String inClause = buildingIds.isEmpty() ? "1=1"
-                : "building_id IN (" + "?,".repeat(buildingIds.size()).replaceAll(",$", "") + ")";
-
-        String sql = """
-                SELECT avg(power_factor) AS avg_pf
-                FROM energy_readings
-                WHERE tenant_id = ?
-                  AND %s
-                  AND ts BETWEEN ? AND ?
-                """.formatted(inClause);
-
-        Double result = jdbcTemplate.queryForObject(sql, Double.class,
-                buildParams(tenantId, buildingIds, fromEpoch, toEpoch));
-        // ClickHouse avg() trên empty set trả NaN, không phải null
-        return (result == null || Double.isNaN(result)) ? 1.0 : result;
+        return 1.0;
     }
 
     private Object[] buildParams(

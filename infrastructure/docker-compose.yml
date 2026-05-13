@@ -32,7 +32,7 @@ services:
     container_name: uip-clickhouse
     restart: unless-stopped
     environment:
-      CLICKHOUSE_DB: ${CLICKHOUSE_DB:-uip_analytics}
+      CLICKHOUSE_DB: ${CLICKHOUSE_DB:-analytics}
       CLICKHOUSE_USER: ${CLICKHOUSE_USER:-default}
       CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-}
       CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
@@ -304,7 +304,7 @@ services:
       CLICKHOUSE_URL: jdbc:clickhouse://clickhouse:8123
       CLICKHOUSE_USER: ${CLICKHOUSE_USER:-default}
       CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-}
-      CLICKHOUSE_DB: ${CLICKHOUSE_DB:-uip_analytics}
+      CLICKHOUSE_DB: ${CLICKHOUSE_DB:-analytics}
       JWT_SECRET: ${JWT_SECRET}
     ports:
       - "8082:8081"

@@ -1,15 +1,20 @@
 -- ClickHouse schema init — chạy tự động khi container khởi động lần đầu
--- Database đã được tạo qua CLICKHOUSE_DB env var; chỉ cần tạo bảng.
+-- Database được tạo qua CLICKHOUSE_DB env var; chỉ cần tạo bảng.
+-- Schema matches: infra/clickhouse/schema/V001__create_analytics_schema.sql
 
-CREATE DATABASE IF NOT EXISTS uip_analytics;
+CREATE DATABASE IF NOT EXISTS analytics;
 
-CREATE TABLE IF NOT EXISTS uip_analytics.energy_readings
+CREATE TABLE IF NOT EXISTS analytics.esg_readings
 (
     tenant_id    String,
     building_id  String,
-    kwh          Float64,
-    demand_kw    Float64,
-    power_factor Float64,
-    ts           Int64
+    source_id    String DEFAULT '',
+    metric_type  LowCardinality(String),
+    value        Float64,
+    unit         LowCardinality(String) DEFAULT '',
+    recorded_at  DateTime CODEC(DoubleDelta, ZSTD(3)),
+    ingested_at  DateTime DEFAULT now()
 ) ENGINE = MergeTree()
-ORDER BY (tenant_id, building_id, ts);
+PARTITION BY toYYYYMM(recorded_at)
+ORDER BY (tenant_id, building_id, source_id, metric_type, recorded_at)
+SETTINGS index_granularity = 8192;

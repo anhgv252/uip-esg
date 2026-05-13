@@ -28,7 +28,7 @@ autoscaling:
 clickhouse:
   url: "jdbc:clickhouse://clickhouse:8123"
   user: "default"
-  database: "uip_analytics"
+  database: "analytics"
   # password injected from Secret: uip-analytics-secrets
 
 # JWT secret shared with monolith — injected from Secret

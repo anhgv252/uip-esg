@@ -16,7 +16,6 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
-import java.sql.SQLException;
 import java.time.Duration;
 import java.util.List;
 import java.util.Properties;
@@ -27,8 +26,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 @DisplayName("ClickHouseEnergyRepository — integration test with Testcontainers")
 class ClickHouseEnergyRepositoryIT {
 
-    // GenericContainer avoids Testcontainers ClickHouseContainer JDBC health-check
-    // incompatibility with clickhouse-jdbc 0.6.x
     @Container
     @SuppressWarnings("resource")
     static final GenericContainer<?> clickhouse = new GenericContainer<>("clickhouse/clickhouse-server:23.8")
@@ -42,44 +39,59 @@ class ClickHouseEnergyRepositoryIT {
         String host = clickhouse.getHost();
         int port = clickhouse.getMappedPort(8123);
 
-        // Use HTTP API for DDL — JdbcTemplate.execute() triggers getUpdateCount() which
-        // ClickHouse JDBC 0.6.x throws UnsupportedOperationException for DDL statements
+        // Create database + table matching V001__create_analytics_schema.sql
+        httpPost(host, port, "CREATE DATABASE IF NOT EXISTS analytics");
+
         httpPost(host, port, """
-                CREATE TABLE IF NOT EXISTS energy_readings (
+                CREATE TABLE IF NOT EXISTS analytics.esg_readings (
                     tenant_id    String,
                     building_id  String,
-                    kwh          Float64,
-                    demand_kw    Float64,
-                    power_factor Float64,
-                    ts           Int64
+                    source_id    String DEFAULT '',
+                    metric_type  LowCardinality(String),
+                    value        Float64,
+                    unit         LowCardinality(String) DEFAULT '',
+                    recorded_at  DateTime CODEC(DoubleDelta, ZSTD(3)),
+                    ingested_at  DateTime DEFAULT now()
                 ) ENGINE = MergeTree()
-                ORDER BY (tenant_id, building_id, ts)
+                PARTITION BY toYYYYMM(recorded_at)
+                ORDER BY (tenant_id, building_id, source_id, metric_type, recorded_at)
+                SETTINGS index_granularity = 8192
                 """);
 
-        // Seed data via HTTP INSERT
+        // Seed data — matches the new schema (tenant_id, building_id, source_id, metric_type, value, unit, recorded_at)
+        // Tenant t1, Building B1 — 2 ENERGY rows: values 100.0 and 200.0
         httpPost(host, port,
-                "INSERT INTO energy_readings VALUES ('t1','B1',100.0,50.0,0.9,1000)");
+                "INSERT INTO analytics.esg_readings (tenant_id, building_id, source_id, metric_type, value, unit, recorded_at) " +
+                "VALUES ('t1','B1','src-b1-1','ENERGY',100.0,'kWh',fromUnixTimestamp(1000))");
         httpPost(host, port,
-                "INSERT INTO energy_readings VALUES ('t1','B1',200.0,60.0,0.85,1500)");
+                "INSERT INTO analytics.esg_readings (tenant_id, building_id, source_id, metric_type, value, unit, recorded_at) " +
+                "VALUES ('t1','B1','src-b1-2','ENERGY',200.0,'kWh',fromUnixTimestamp(1500))");
+        // Tenant t1, Building B2 — 1 ENERGY row: value 150.0
         httpPost(host, port,
-                "INSERT INTO energy_readings VALUES ('t1','B2',150.0,45.0,0.92,1200)");
+                "INSERT INTO analytics.esg_readings (tenant_id, building_id, source_id, metric_type, value, unit, recorded_at) " +
+                "VALUES ('t1','B2','src-b2-1','ENERGY',150.0,'kWh',fromUnixTimestamp(1200))");
+        // Tenant t1, Building B1 — 1 WATER row (should be excluded by metric_type='ENERGY' filter)
         httpPost(host, port,
-                "INSERT INTO energy_readings VALUES ('t2','B3',999.0,999.0,0.5,1300)");
+                "INSERT INTO analytics.esg_readings (tenant_id, building_id, source_id, metric_type, value, unit, recorded_at) " +
+                "VALUES ('t1','B1','src-b1-w','WATER',50.0,'m³',fromUnixTimestamp(1100))");
+        // Tenant t2, Building B3 — cross-tenant data (should not be visible to t1)
+        httpPost(host, port,
+                "INSERT INTO analytics.esg_readings (tenant_id, building_id, source_id, metric_type, value, unit, recorded_at) " +
+                "VALUES ('t2','B3','src-b3-1','ENERGY',999.0,'kWh',fromUnixTimestamp(1300))");
 
         // Give ClickHouse a moment to flush MergeTree parts
         Thread.sleep(500);
 
-        // Build JdbcTemplate — used by the repository for SELECT queries (no DDL)
-        String url = "jdbc:clickhouse://" + host + ":" + port;
+        // Build JdbcTemplate pointing to the 'analytics' database
+        String url = "jdbc:clickhouse://" + host + ":" + port + "/analytics";
         Properties props = new Properties();
         props.setProperty("user", "default");
         props.setProperty("password", "");
-        props.setProperty("compress", "0");   // LZ4 not on classpath in test env
+        props.setProperty("compress", "0");
         DataSource ds = new ClickHouseDataSource(url, props);
         repository = new ClickHouseEnergyRepository(new JdbcTemplate(ds));
     }
 
-    /** POST a SQL statement to ClickHouse HTTP interface. */
     private static void httpPost(String host, int port, String sql) throws Exception {
         URL url = new URL("http://" + host + ":" + port + "/");
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
@@ -95,16 +107,18 @@ class ClickHouseEnergyRepositoryIT {
     }
 
     @Test
-    @DisplayName("aggregateByBuilding returns sum/max per building for tenant")
+    @DisplayName("aggregateByBuilding returns sum/max per building for tenant (ENERGY only)")
     void aggregateByBuilding_sumAndPeak() {
         List<BuildingEnergyBreakdown> result = repository.aggregateByBuilding(
                 "t1", List.of(), 0L, 9999L);
 
+        // B1: sum=300.0 (100+200), max=200.0; B2: sum=150.0, max=150.0
+        // WATER row for B1 excluded by metric_type filter
         assertThat(result).hasSize(2);
         BuildingEnergyBreakdown b1 = result.stream()
                 .filter(b -> b.buildingId().equals("B1")).findFirst().orElseThrow();
         assertThat(b1.totalKwh()).isEqualTo(300.0);
-        assertThat(b1.peakDemandKw()).isEqualTo(60.0);
+        assertThat(b1.peakDemandKw()).isEqualTo(200.0);
     }
 
     @Test
@@ -128,31 +142,17 @@ class ClickHouseEnergyRepositoryIT {
     }
 
     @Test
-    @DisplayName("aggregatePowerFactor returns average across buildings")
-    void aggregatePowerFactor_average() throws SQLException {
+    @DisplayName("aggregatePowerFactor returns 1.0 (unity PF — no dedicated metric yet)")
+    void aggregatePowerFactor_returnsUnity() {
         double pf = repository.aggregatePowerFactor("t1", List.of(), 0L, 9999L);
-
-        // (0.9 + 0.85 + 0.92) / 3 ≈ 0.89
-        assertThat(pf).isBetween(0.87, 0.91);
-    }
-
-    @Test
-    @DisplayName("aggregatePowerFactor — empty result set returns 1.0 default (not NaN)")
-    void aggregatePowerFactor_emptySet_returnsDefault() {
-        // tenant không có dữ liệu — ClickHouse avg() trả NaN, phải được handle thành 1.0
-        double pf = repository.aggregatePowerFactor("tenant-no-data", List.of(), 0L, 9999L);
-
-        assertThat(pf).isNotNaN();
         assertThat(pf).isEqualTo(1.0);
     }
 
     @Test
-    @DisplayName("aggregatePowerFactor — building filter scope matches only specified buildings")
-    void aggregatePowerFactor_withBuildingFilter() {
-        // Chỉ lấy B2 (pf=0.92), không lấy B1 (pf=0.9, 0.85)
-        double pf = repository.aggregatePowerFactor("t1", List.of("B2"), 0L, 9999L);
-
-        assertThat(pf).isBetween(0.91, 0.93);
+    @DisplayName("aggregatePowerFactor — empty result set returns 1.0 default")
+    void aggregatePowerFactor_emptySet_returnsDefault() {
+        double pf = repository.aggregatePowerFactor("tenant-no-data", List.of(), 0L, 9999L);
+        assertThat(pf).isEqualTo(1.0);
     }
 
     @Test
@@ -167,12 +167,26 @@ class ClickHouseEnergyRepositoryIT {
     @Test
     @DisplayName("aggregateByBuilding — time range filter excludes out-of-range rows")
     void aggregateByBuilding_timeRangeFilter() {
-        // Chỉ lấy ts=1000 (B1, kwh=100), ts=1200 (B2) — loại ts=1500 (B1, kwh=200)
+        // Only rows with recorded_at in [0, 1100] epoch seconds
+        // B1 ENERGY row at epoch 1000 (value=100.0) is included
+        // B1 ENERGY row at epoch 1500 (value=200.0) is excluded
+        // B2 ENERGY row at epoch 1200 (value=150.0) is excluded
         List<BuildingEnergyBreakdown> result = repository.aggregateByBuilding(
                 "t1", List.of(), 0L, 1100L);
 
         assertThat(result).hasSize(1);
         assertThat(result.get(0).buildingId()).isEqualTo("B1");
         assertThat(result.get(0).totalKwh()).isEqualTo(100.0);
+    }
+
+    @Test
+    @DisplayName("aggregateByBuilding — WATER metric_type excluded when filtering ENERGY")
+    void aggregateByBuilding_waterMetricExcluded() {
+        List<BuildingEnergyBreakdown> result = repository.aggregateByBuilding(
+                "t1", List.of("B1"), 0L, 9999L);
+
+        // B1 has 2 ENERGY rows (100+200=300) + 1 WATER row (excluded)
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).totalKwh()).isEqualTo(300.0);
     }
 }
