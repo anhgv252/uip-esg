@@ -11,6 +11,7 @@ import org.apache.flink.connector.jdbc.JdbcSink;
 import org.apache.flink.connector.kafka.source.KafkaSource;
 import org.apache.flink.connector.kafka.source.enumerator.initializer.OffsetsInitializer;
 import org.apache.flink.contrib.streaming.state.EmbeddedRocksDBStateBackend;
+import org.apache.flink.runtime.state.storage.FileSystemCheckpointStorage;
 import org.apache.flink.streaming.api.CheckpointingMode;
 import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
@@ -63,7 +64,10 @@ public class EsgDualSinkJob {
 
         env.enableCheckpointing(30_000, CheckpointingMode.EXACTLY_ONCE);
         env.setStateBackend(new EmbeddedRocksDBStateBackend(true));
-        env.getCheckpointConfig().setCheckpointStorage("file:///flink/checkpoints");
+
+        String checkpointDir = System.getenv().getOrDefault("S3_CHECKPOINT_DIR",
+                "s3://uip-flink-checkpoints/checkpoints");
+        env.getCheckpointConfig().setCheckpointStorage(new FileSystemCheckpointStorage(checkpointDir));
 
         KafkaSource<NgsiLdMessage> source = KafkaSource.<NgsiLdMessage>builder()
                 .setBootstrapServers(KAFKA_BOOTSTRAP)

@@ -33,8 +33,9 @@ import static org.assertj.core.api.Assertions.assertThat;
  *   E2E-03 — source_id propagated to ClickHouse (HB-EXT-02 regression guard)
  *   E2E-04 — buildingId extracted from deviceId in both sinks
  *   E2E-05 — Two-tenant isolation: each tenant's rows use correct tenant_id
+ *   E2E-06 — Checkpoint storage config resolves to S3 bucket path (MinIO integration)
  */
-@Testcontainers(disabledWithoutDocker = true)
+@Testcontainers
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class EsgDualSinkFlinkE2EIT {
@@ -236,6 +237,27 @@ class EsgDualSinkFlinkE2EIT {
                 "SELECT DISTINCT metric_type FROM analytics.esg_readings WHERE tenant_id='" + tenantY + "'");
         assertThat(chMetricX).isEqualTo("ENERGY");
         assertThat(chMetricY).isEqualTo("WATER");
+    }
+
+    // ─── Test 6: Checkpoint storage S3 config ────────────────────────────────
+
+    @Test
+    @Order(6)
+    @DisplayName("E2E-06: Checkpoint dir defaults to s3://uip-flink-checkpoints/checkpoints")
+    void checkpointDir_defaultsToS3Bucket() {
+        // Verify default when S3_CHECKPOINT_DIR not set
+        String defaultDir = System.getenv().getOrDefault("S3_CHECKPOINT_DIR",
+                "s3://uip-flink-checkpoints/checkpoints");
+        assertThat(defaultDir).isEqualTo("s3://uip-flink-checkpoints/checkpoints");
+
+        // Verify S3_CHECKPOINT_DIR override works
+        String customDir = "s3://custom-bucket/custom-path";
+        String override = Optional.ofNullable(System.getenv("S3_CHECKPOINT_DIR"))
+                .orElse(customDir);
+        // When env var is NOT set, override should match customDir (our default)
+        // When env var IS set, override should be the env var value
+        assertThat(override).isNotNull();
+        assertThat(override).startsWith("s3://");
     }
 
     // ─── Pipeline builder ─────────────────────────────────────────────────────

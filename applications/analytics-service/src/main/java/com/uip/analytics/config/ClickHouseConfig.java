@@ -29,18 +29,20 @@ public class ClickHouseConfig {
 
     @Bean
     public DataSource clickHouseDataSource() throws SQLException {
+        String url = clickhouseUrl;
+        if (!url.contains("/analytics") && !url.contains("?database=")) {
+            url = url.endsWith("/") ? url + database : url + "/" + database;
+        }
+
         Properties props = new Properties();
         props.setProperty("user", username);
         props.setProperty("password", password);
-        props.setProperty("database", database);
         props.setProperty("socket_timeout", "30000");
         props.setProperty("connect_timeout", "10000");
-        // Disable LZ4 compression — requires lz4-java on classpath; use gzip in production
-        // if bandwidth is a concern: add lz4-java dependency and remove this line
         props.setProperty("compress", "0");
 
-        log.info("Connecting to ClickHouse: {}", clickhouseUrl);
-        return new ClickHouseDataSource(clickhouseUrl, props);
+        log.info("Connecting to ClickHouse: {}", url);
+        return new ClickHouseDataSource(url, props);
     }
 
     @Bean

@@ -78,6 +78,14 @@
       <version>${flink.version}</version>
     </dependency>
 
+    <!-- S3 filesystem (MinIO checkpoint storage) -->
+    <dependency>
+      <groupId>org.apache.flink</groupId>
+      <artifactId>flink-s3-fs-hadoop</artifactId>
+      <version>${flink.version}</version>
+      <scope>runtime</scope>
+    </dependency>
+
     <!-- JSON processing -->
     <dependency>
       <groupId>com.fasterxml.jackson.core</groupId>
@@ -155,6 +163,13 @@
       <classifier>tests</classifier>
       <scope>test</scope>
     </dependency>
+    <!-- SLF4J simple provider for Testcontainers debug logging -->
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-simple</artifactId>
+      <version>2.0.12</version>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 
   <build>
@@ -218,7 +233,12 @@
           <argLine>
             --add-opens java.base/java.util=ALL-UNNAMED
             --add-opens java.base/java.lang=ALL-UNNAMED
+            -Ddocker.host=unix:///Users/anhgv/Library/Containers/com.docker.docker/Data/docker-cli.sock
           </argLine>
+          <environmentVariables>
+            <DOCKER_HOST>unix:///Users/anhgv/Library/Containers/com.docker.docker/Data/docker-cli.sock</DOCKER_HOST>
+            <TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE>/Users/anhgv/Library/Containers/com.docker.docker/Data/docker-cli.sock</TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE>
+          </environmentVariables>
         </configuration>
       </plugin>
 

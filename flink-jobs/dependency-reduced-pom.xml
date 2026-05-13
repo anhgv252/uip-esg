@@ -57,6 +57,15 @@
       <plugin>
         <artifactId>maven-surefire-plugin</artifactId>
         <version>3.2.5</version>
+        <configuration>
+          <argLine>--add-opens java.base/java.util=ALL-UNNAMED
+            --add-opens java.base/java.lang=ALL-UNNAMED
+            -Ddocker.host=unix:///Users/anhgv/Library/Containers/com.docker.docker/Data/docker-cli.sock</argLine>
+          <environmentVariables>
+            <DOCKER_HOST>unix:///Users/anhgv/Library/Containers/com.docker.docker/Data/docker-cli.sock</DOCKER_HOST>
+            <TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE>/Users/anhgv/Library/Containers/com.docker.docker/Data/docker-cli.sock</TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE>
+          </environmentVariables>
+        </configuration>
       </plugin>
       <plugin>
         <groupId>org.jacoco</groupId>
@@ -227,6 +236,12 @@
       <artifactId>flink-streaming-java</artifactId>
       <version>1.19.0</version>
       <classifier>tests</classifier>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-simple</artifactId>
+      <version>2.0.12</version>
       <scope>test</scope>
     </dependency>
   </dependencies>
