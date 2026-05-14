@@ -621,7 +621,7 @@ Recommendation descope candidates:
 |---|------|-------|----------|-------|
 | A-01 | Confirm shadow 72h monitor all polls PASS | QA | 2026-05-15 | Check `shadow-validation-log.txt` |
 | ~~**A-17**~~ | ~~Remove hoặc @Deprecated EsgFlinkJob.java~~ | Backend Lead | ~~2026-05-26~~ | ✅ **DONE 2026-05-13** — HB-EXT-01 |
-| ~~**A-19**~~ | ~~Fix CH schema mismatch: analytics-service query `analytics.esg_readings`~~ | Backend Lead | ~~2026-05-26~~ | ✅ **DONE 2026-05-13** — HB-EXT-02 |
+| ~~**A-19**~~ | ~~Fix CH schema mismatch: analytics-service query `analytics.esg_readings`~~ | Backend Lead | ~~2026-05-26~~ | ✅ **DONE 2026-05-13** — HB-EXT-02 |   
 | ~~**A-18**~~ | ~~Viết Flink E2E test: Kafka → Flink → TS + CH~~ | Backend Eng 2 | ~~2026-05-27~~ | ✅ **DONE 2026-05-13** — HB-EXT-03 |
 | ~~**A-18b**~~ | ~~Rewrite dual-sink-verify.sh test actual Flink pipeline~~ | QA + BE2 | ~~2026-05-28~~ | ✅ **DONE 2026-05-13** — HB-EXT-04 |
 | **A-20** | **Shadow monitor re-run với real ingestion, 24h PASS** | QA | **2026-05-29** | Script fixed (HB-EXT-05) — QA cần chạy thực tế khi infra active |
