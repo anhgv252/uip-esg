@@ -422,6 +422,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/analytics/energy-aggregate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["energyAggregate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/analytics/emissions-aggregate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["emissionsAggregate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/analytics/cross-building/aggregate": {
         parameters: {
             query?: never;
@@ -432,6 +464,22 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["aggregate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/analytics/aqi-trend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["aqiTrend"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1533,34 +1581,34 @@ export interface components {
             totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
-            last?: boolean;
-            pageable?: components["schemas"]["PageableObject"];
-            first?: boolean;
-            /** Format: int32 */
-            numberOfElements?: number;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["ProcessInstanceDto"][];
             /** Format: int32 */
             number?: number;
             sort?: components["schemas"]["SortObject"];
+            first?: boolean;
+            last?: boolean;
+            pageable?: components["schemas"]["PageableObject"];
+            /** Format: int32 */
+            numberOfElements?: number;
             empty?: boolean;
         };
         PageableObject: {
-            paged?: boolean;
-            unpaged?: boolean;
-            /** Format: int32 */
-            pageNumber?: number;
-            /** Format: int32 */
-            pageSize?: number;
             /** Format: int64 */
             offset?: number;
             sort?: components["schemas"]["SortObject"];
+            /** Format: int32 */
+            pageSize?: number;
+            /** Format: int32 */
+            pageNumber?: number;
+            paged?: boolean;
+            unpaged?: boolean;
         };
         SortObject: {
-            sorted?: boolean;
-            unsorted?: boolean;
             empty?: boolean;
+            unsorted?: boolean;
+            sorted?: boolean;
         };
         ProcessDefinitionDto: {
             id?: string;
@@ -1577,17 +1625,17 @@ export interface components {
             totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
-            last?: boolean;
-            pageable?: components["schemas"]["PageableObject"];
-            first?: boolean;
-            /** Format: int32 */
-            numberOfElements?: number;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["TrafficIncidentDto"][];
             /** Format: int32 */
             number?: number;
             sort?: components["schemas"]["SortObject"];
+            first?: boolean;
+            last?: boolean;
+            pageable?: components["schemas"]["PageableObject"];
+            /** Format: int32 */
+            numberOfElements?: number;
             empty?: boolean;
         };
         TrafficCountDto: {
@@ -1759,17 +1807,17 @@ export interface components {
             totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
-            last?: boolean;
-            pageable?: components["schemas"]["PageableObject"];
-            first?: boolean;
-            /** Format: int32 */
-            numberOfElements?: number;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["InvoiceDto"][];
             /** Format: int32 */
             number?: number;
             sort?: components["schemas"]["SortObject"];
+            first?: boolean;
+            last?: boolean;
+            pageable?: components["schemas"]["PageableObject"];
+            /** Format: int32 */
+            numberOfElements?: number;
             empty?: boolean;
         };
         ConsumptionHistoryDto: {
@@ -1792,17 +1840,17 @@ export interface components {
             totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
-            last?: boolean;
-            pageable?: components["schemas"]["PageableObject"];
-            first?: boolean;
-            /** Format: int32 */
-            numberOfElements?: number;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["AlertEventDto"][];
             /** Format: int32 */
             number?: number;
             sort?: components["schemas"]["SortObject"];
+            first?: boolean;
+            last?: boolean;
+            pageable?: components["schemas"]["PageableObject"];
+            /** Format: int32 */
+            numberOfElements?: number;
             empty?: boolean;
         };
         PageUserSummaryDto: {
@@ -1810,17 +1858,17 @@ export interface components {
             totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
-            last?: boolean;
-            pageable?: components["schemas"]["PageableObject"];
-            first?: boolean;
-            /** Format: int32 */
-            numberOfElements?: number;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["UserSummaryDto"][];
             /** Format: int32 */
             number?: number;
             sort?: components["schemas"]["SortObject"];
+            first?: boolean;
+            last?: boolean;
+            pageable?: components["schemas"]["PageableObject"];
+            /** Format: int32 */
+            numberOfElements?: number;
             empty?: boolean;
         };
         TenantUserDto: {
@@ -1853,17 +1901,17 @@ export interface components {
             totalElements?: number;
             /** Format: int32 */
             totalPages?: number;
-            last?: boolean;
-            pageable?: components["schemas"]["PageableObject"];
-            first?: boolean;
-            /** Format: int32 */
-            numberOfElements?: number;
             /** Format: int32 */
             size?: number;
             content?: components["schemas"]["ErrorRecord"][];
             /** Format: int32 */
             number?: number;
             sort?: components["schemas"]["SortObject"];
+            first?: boolean;
+            last?: boolean;
+            pageable?: components["schemas"]["PageableObject"];
+            /** Format: int32 */
+            numberOfElements?: number;
             empty?: boolean;
         };
     };
@@ -2587,6 +2635,62 @@ export interface operations {
             };
         };
     };
+    energyAggregate: {
+        parameters: {
+            query?: never;
+            header?: {
+                Authorization?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    [key: string]: Record<string, never>;
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": Record<string, never>;
+                };
+            };
+        };
+    };
+    emissionsAggregate: {
+        parameters: {
+            query?: never;
+            header?: {
+                Authorization?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    [key: string]: Record<string, never>;
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": Record<string, never>;
+                };
+            };
+        };
+    };
     aggregate: {
         parameters: {
             query?: never;
@@ -2609,6 +2713,34 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["CrossBuildingAggregationResult"][];
+                };
+            };
+        };
+    };
+    aqiTrend: {
+        parameters: {
+            query?: never;
+            header?: {
+                Authorization?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    [key: string]: Record<string, never>;
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": Record<string, never>;
                 };
             };
         };
