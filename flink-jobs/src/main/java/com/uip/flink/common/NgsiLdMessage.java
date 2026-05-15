@@ -65,5 +65,8 @@ public class NgsiLdMessage implements Serializable {
         private String source;
         private String sensorType;
         private String tenantId;
+        private String buildingName;
+        private String district;
+        private String category;
     }
 }

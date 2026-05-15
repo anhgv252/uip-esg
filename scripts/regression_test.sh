@@ -158,7 +158,7 @@ BACKEND_UP=false
 FRONTEND_UP=false
 
 # ── Backend (required for all phases) ────────────────────────────────────────
-if wait_for_url "$BASE_URL/actuator/health" "Backend (Spring Boot)" 60; then
+if wait_for_url "$BASE_URL/api/v1/health" "Backend (Spring Boot)" 60; then
   BACKEND_UP=true
 else
   echo ""

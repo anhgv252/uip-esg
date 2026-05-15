@@ -645,7 +645,7 @@ Thresholds:
 | Thư mục | Nội dung |
 |---------|---------|
 | `project/` | Sprint plans chi tiết, demo scripts, roadmap |
-| `architecture/` | ADR-026 đến ADR-034 |
+| `architecture/` | [**System Architecture (Mermaid)**](architecture/system-architecture.md) · ADR-026 đến ADR-034 |
 | `qa/` | Test plans, performance reports |
 | `reports/` | Sprint reviews, UAT sign-off |
 | `deployment/` | Pilot deployment guide, runbook |

@@ -73,7 +73,8 @@ public class EsgDualSinkJob {
                 .setBootstrapServers(KAFKA_BOOTSTRAP)
                 .setTopics("ngsi_ld_esg")
                 .setGroupId("flink-esg-dual-sink-job")
-                .setStartingOffsets(OffsetsInitializer.latest())
+                // committedOffsets(EARLIEST): first deploy reads from beginning, restart resumes from committed
+                .setStartingOffsets(OffsetsInitializer.earliest())
                 .setValueOnlyDeserializer(new NgsiLdDeserializer())
                 .build();
 
@@ -85,6 +86,7 @@ public class EsgDualSinkJob {
                         "ngsi_ld_esg Source"
                 )
                 .filter(msg -> msg != null && msg.getDeviceIdValue() != null)
+                .process(new TenantIdValidator())
                 .flatMap((NgsiLdMessage msg, org.apache.flink.util.Collector<Object[]> out) -> {
                     String tenantId   = msg.getTenantId() != null ? msg.getTenantId() : "";
                     String deviceId   = msg.getDeviceIdValue();
@@ -150,15 +152,14 @@ public class EsgDualSinkJob {
      */
     static String extractBuildingId(String deviceId) {
         if (deviceId == null) return "";
-        // Pattern: SENSOR-{BUILDING_CODE}-{SENSOR_NUM} e.g. SENSOR-PERF-BLD-001-001
         if (deviceId.startsWith("SENSOR-")) {
             String rest = deviceId.substring("SENSOR-".length());
             int lastDash = rest.lastIndexOf('-');
             if (lastDash > 0) return rest.substring(0, lastDash);
         }
-        // Pattern: {BUILDING_CODE}-SENSOR-{NUM} e.g. BLD-001-SENSOR-01
         int sensorIdx = deviceId.indexOf("-SENSOR-");
         if (sensorIdx > 0) return deviceId.substring(0, sensorIdx);
+        LOG.warn("Could not extract building_id from deviceId={}", deviceId);
         return "";
     }
 

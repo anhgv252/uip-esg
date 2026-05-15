@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { apiClient } from '@/api/client'
 
 export interface Building {
   id: string
@@ -12,11 +13,8 @@ export interface Building {
 }
 
 async function fetchBuildings(): Promise<Building[]> {
-  const res = await fetch('/api/v1/buildings', {
-    headers: { 'Content-Type': 'application/json' },
-  })
-  if (!res.ok) throw new Error(`Failed to fetch buildings: ${res.status}`)
-  return res.json()
+  const res = await apiClient.get<Building[]>('/buildings')
+  return res.data
 }
 
 export function useBuildings() {

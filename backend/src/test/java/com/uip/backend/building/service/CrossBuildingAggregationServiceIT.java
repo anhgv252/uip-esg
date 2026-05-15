@@ -273,6 +273,110 @@ class CrossBuildingAggregationServiceIT {
                 .isLessThanOrEqualTo(500L);
     }
 
+    @Test
+    @Order(11)
+    @DisplayName("AGG-IT-11: Empty time range (from == to) returns empty")
+    void emptyTimeRange_sameFromTo_returnsEmpty() {
+        var req = new CrossBuildingAggregationRequest(
+                List.of(BLD_A1), "ENERGY",
+                BASE.minusDays(30), BASE.minusDays(30));
+
+        var results = aggregationService.aggregate(TENANT_A, req);
+
+        assertThat(results).isEmpty();
+    }
+
+    @Test
+    @Order(12)
+    @DisplayName("AGG-IT-12: Future time range returns empty")
+    void futureTimeRange_returnsEmpty() {
+        var req = new CrossBuildingAggregationRequest(
+                List.of(BLD_A1), "ENERGY",
+                BASE.plusDays(100), BASE.plusDays(101));
+
+        var results = aggregationService.aggregate(TENANT_A, req);
+
+        assertThat(results).isEmpty();
+    }
+
+    @Test
+    @Order(13)
+    @DisplayName("AGG-IT-13: Mixed metric types — WATER query on A1 (ENERGY-only) returns empty")
+    void mixedMetricTypes_waterQueryOnEnergyBuilding_returnsEmpty() {
+        var req = new CrossBuildingAggregationRequest(
+                List.of(BLD_A1), "WATER",
+                BASE.minusDays(7), BASE.plusMinutes(1));
+
+        var results = aggregationService.aggregate(TENANT_A, req);
+
+        assertThat(results).isEmpty();
+    }
+
+    @Test
+    @Order(14)
+    @DisplayName("AGG-IT-14: Zero-value metrics — SUM and AVG handle 0.0 correctly")
+    void zeroValueMetrics_sumAndAvgCorrect() {
+        insertMetric("src-zero", "ENERGY", BASE.minusMinutes(10), 0.0, "kWh", BLD_A1, TENANT_A);
+
+        var results = queryA1(BASE.minusMinutes(11), BASE.plusMinutes(1));
+
+        // 12 rows: 11 seeded rows (i=1..11, value=100.0 each) + 1 new zero-value row
+        // totalValue = 11*100.0 + 0.0 = 1100.0 — zero-value row is included (not skipped)
+        assertThat(results).hasSize(1);
+        assertThat(results.get(0).dataPoints()).isEqualTo(12L);
+        assertThat(results.get(0).totalValue()).isCloseTo(1100.0, offset(0.001));
+    }
+
+    @Test
+    @Order(15)
+    @DisplayName("AGG-IT-15: Cross-tenant reverse — Tenant B queries Tenant A building returns empty")
+    void crossTenant_reverse_tenantBQueriesTenantABuilding_returnsEmpty() {
+        var req = new CrossBuildingAggregationRequest(
+                List.of(BLD_A1), "ENERGY",
+                BASE.minusDays(7), BASE.plusMinutes(1));
+
+        var results = aggregationService.aggregate(TENANT_B, req);
+
+        assertThat(results).isEmpty();
+    }
+
+    @Test
+    @Order(16)
+    @DisplayName("AGG-IT-16: Max 5 buildings — all returned correctly")
+    void maxFiveBuildings_allReturned() {
+        seedBuilding("BLD-A4", "Tower A4", TENANT_A, true);
+        seedBuilding("BLD-A5", "Tower A5", TENANT_A, true);
+        insertMetric("src-a4", "ENERGY", BASE.minusMinutes(5), 300.0, "kWh", "BLD-A4", TENANT_A);
+        insertMetric("src-a5", "ENERGY", BASE.minusMinutes(5), 400.0, "kWh", "BLD-A5", TENANT_A);
+
+        var req = new CrossBuildingAggregationRequest(
+                List.of(BLD_A1, BLD_A2, BLD_A3, "BLD-A4", "BLD-A5"), "ENERGY",
+                BASE.minusDays(7), BASE.plusMinutes(1));
+
+        var results = aggregationService.aggregate(TENANT_A, req);
+
+        // A1, A2, A4, A5 have ENERGY data; A3 is WATER-only
+        assertThat(results).hasSize(4);
+        assertThat(findByCode(results, "BLD-A4").totalValue()).isCloseTo(300.0, offset(0.001));
+        assertThat(findByCode(results, "BLD-A5").totalValue()).isCloseTo(400.0, offset(0.001));
+    }
+
+    @Test
+    @Order(17)
+    @DisplayName("AGG-IT-17: Orphan building code — no matching building row, returns empty")
+    void orphanBuildingCode_noBuildingRow_returnsEmpty() {
+        insertMetric("src-orphan", "ENERGY", BASE.minusMinutes(5), 99.0, "kWh", "BLD-ORPHAN", TENANT_A);
+
+        var req = new CrossBuildingAggregationRequest(
+                List.of("BLD-ORPHAN"), "ENERGY",
+                BASE.minusDays(7), BASE.plusMinutes(1));
+
+        var results = aggregationService.aggregate(TENANT_A, req);
+
+        // BLD-ORPHAN not in buildings table → filtered by buildingMap
+        assertThat(results).isEmpty();
+    }
+
     // ─── helpers ────────────────────────────────────────────────────────────────
 
     private List<CrossBuildingAggregationResult> queryA1(OffsetDateTime from, OffsetDateTime to) {

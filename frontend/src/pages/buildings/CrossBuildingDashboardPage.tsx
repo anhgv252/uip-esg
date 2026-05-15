@@ -1,10 +1,16 @@
 import { useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Alert, Box, Typography } from '@mui/material'
-import { BuildingDashboardSkeleton } from '@/components/buildings/BuildingDashboardSkeleton'
+import { Alert, Box, Grid, Typography } from '@mui/material'
 import { MultiBuildingSelector } from '@/components/buildings/MultiBuildingSelector'
 import { useBuildingSelectionStore } from '@/stores/buildingSelectionStore'
 import { useBuildings } from '@/hooks/useBuildings'
+import { useEnergyAnalytics, useEmissionsAnalytics, useAqiTrend } from '@/hooks/useAnalytics'
+import { EnergyBarChart } from '@/components/analytics/EnergyBarChart'
+import { EmissionsBarChart } from '@/components/analytics/EmissionsBarChart'
+import { AqiTrendLineChart } from '@/components/analytics/AqiTrendLineChart'
+import { BuildingBreakdownTable } from '@/components/analytics/BuildingBreakdownTable'
+import { AnalyticsFilterPanel } from '@/components/analytics/AnalyticsFilterPanel'
+import { tenantStore } from '@/api/client'
 
 export function CrossBuildingDashboardPage() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -12,7 +18,6 @@ export function CrossBuildingDashboardPage() {
     useBuildingSelectionStore()
   const { data: allBuildings = [] } = useBuildings()
 
-  // Sync URL → Zustand on mount
   useEffect(() => {
     const idsParam = searchParams.get('ids')
     if (!idsParam || allBuildings.length === 0) return
@@ -33,7 +38,6 @@ export function CrossBuildingDashboardPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allBuildings])
 
-  // Sync Zustand → URL on selection change
   useEffect(() => {
     const ids = selectedBuildings.map((b) => b.id)
     if (ids.length > 0) {
@@ -43,16 +47,11 @@ export function CrossBuildingDashboardPage() {
     }
   }, [selectedBuildings, setSearchParams])
 
+  const buildingIds = selectedBuildings.map((b) => b.buildingCode)
+
   return (
     <Box>
-      <Box
-        sx={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          mb: 2,
-        }}
-      >
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
         <Box>
           <Typography variant="h5" fontWeight={600}>
             Cross-Building Analytics
@@ -64,24 +63,45 @@ export function CrossBuildingDashboardPage() {
         <MultiBuildingSelector />
       </Box>
 
-      {selectedBuildings.length === 0 ? (
+      {buildingIds.length === 0 ? (
         <Alert severity="info" sx={{ mt: 2 }}>
           Select up to 5 buildings from the button above to compare analytics across your cluster.
         </Alert>
       ) : (
         <Box>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Showing analytics for{' '}
-            <strong>
-              {selectedBuildings.length} building{selectedBuildings.length > 1 ? 's' : ''}
-            </strong>
-            :{' '}
-            {selectedBuildings.map((b) => b.buildingCode).join(', ')}
-          </Typography>
-          {/* Sprint 2: v3-FE-03 Analytics charts go here */}
-          <BuildingDashboardSkeleton />
+          <AnalyticsFilterPanel />
+          <AnalyticsPanel buildingIds={buildingIds} />
         </Box>
       )}
     </Box>
+  )
+}
+
+function AnalyticsPanel({ buildingIds }: { buildingIds: string[] }) {
+  const tenantId = tenantStore.get() ?? ''
+
+  const energy = useEnergyAnalytics(tenantId, buildingIds)
+  const emissions = useEmissionsAnalytics(tenantId, buildingIds)
+  const aqi = useAqiTrend(tenantId, buildingIds)
+
+  return (
+    <Grid container spacing={2}>
+      <Grid item xs={12} md={6}>
+        <EnergyBarChart buildings={energy.data?.buildings ?? []} loading={energy.isLoading} />
+      </Grid>
+      <Grid item xs={12} md={6}>
+        <EmissionsBarChart buildings={emissions.data?.buildings ?? []} loading={emissions.isLoading} />
+      </Grid>
+      <Grid item xs={12} md={6}>
+        <AqiTrendLineChart dataPoints={aqi.data?.dataPoints ?? []} loading={aqi.isLoading} />
+      </Grid>
+      <Grid item xs={12} md={6}>
+        <BuildingBreakdownTable
+          energy={energy.data}
+          emissions={emissions.data}
+          loading={energy.isLoading || emissions.isLoading}
+        />
+      </Grid>
+    </Grid>
   )
 }

@@ -33,6 +33,11 @@ public class CrossBuildingAggregationService {
             String tenantId,
             CrossBuildingAggregationRequest request) {
 
+        // Zero-duration or inverted range → no results
+        if (!request.to().isAfter(request.from())) {
+            return List.of();
+        }
+
         // Build lookup map: buildingCode → BuildingCluster
         Map<String, BuildingCluster> buildingMap = buildingRepository
             .findByTenantIdAndIsActiveTrue(tenantId)
