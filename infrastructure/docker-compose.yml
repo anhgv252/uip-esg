@@ -511,17 +511,27 @@ services:
       KC_HOSTNAME_STRICT: "false"
       KC_HOSTNAME_STRICT_HTTPS: "false"
       KC_LOG_LEVEL: WARN
+      KC_HEAP: 512m
+      KC_HEALTH_ENABLED: "true"
+      QUARKUS_TRANSACTION_MANAGER_ENABLE_RECOVERY: "true"
     volumes:
       - ../infra/keycloak/realm-uip-export.json:/opt/keycloak/data/import/realm-uip-export.json:ro
       - keycloak_data:/opt/keycloak/data
     ports:
       - "8085:8085"   # Keycloak HTTP
     healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:8085/realms/master || exit 1"]
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/8085 && echo -e 'GET /health/ready HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' >&3 && cat <&3 | grep -q 'UP'"]
       interval: 15s
-      timeout: 5s
+      timeout: 10s
       retries: 10
-      start_period: 60s
+      start_period: 90s
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+          cpus: '1.0'
+        reservations:
+          memory: 512m
     networks:
       - uip-network
 

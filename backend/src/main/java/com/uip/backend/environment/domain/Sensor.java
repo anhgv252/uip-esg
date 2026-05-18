@@ -24,7 +24,7 @@ public class Sensor implements TenantAware {
     @Column(name = "tenant_id", nullable = false)
     private String tenantId = "default";
 
-    @Column(name = "location_path", columnDefinition = "ltree")
+    @Column(name = "location_path", columnDefinition = "ltree", updatable = false)
     private String locationPath;
 
     @Column(name = "sensor_id", nullable = false, unique = true, length = 100)
