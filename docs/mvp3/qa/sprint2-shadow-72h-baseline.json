@@ -1,0 +1,22 @@
+{
+  "baseline_timestamp": "2026-05-19T08:23:46.248894+00:00",
+  "verification_target": "2026-05-22T08:23:46.249065+00:00",
+  "clickhouse": {
+    "total_rows": 302053,
+    "tenants": 10,
+    "buildings": 78,
+    "earliest": "2026-05-12 00:01:00",
+    "latest": "2026-07-20 10:40:00",
+    "enriched_rows": 200052,
+    "metric_types": 11
+  },
+  "timescaledb": {
+    "total_rows": 13351485,
+    "tenants": 10,
+    "earliest": "2024-01-01 00:00:00+00",
+    "latest": "2026-07-20 10:40:00+00"
+  },
+  "note": "TimescaleDB has significantly more rows due to seeded test data from MVP2. Delta comparison should focus on Flink dual-sink data (tenant: dual-sink-*, load-test*) where both sinks receive identical events.",
+  "delta_check_query_ch": "SELECT count() FROM analytics.esg_readings WHERE tenant_id IN ('dual-sink-1778578955', 'dual-sink-test', 'tenant-1', 'tenant-2')",
+  "delta_check_query_ts": "SELECT count(*) FROM esg.clean_metrics WHERE tenant_id IN ('dual-sink-1778578955', 'dual-sink-test', 'tenant-1', 'tenant-2')"
+}
