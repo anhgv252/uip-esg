@@ -52,7 +52,9 @@ CREATE TABLE IF NOT EXISTS analytics.esg_readings (
     value        Float64,
     unit         LowCardinality(String)  DEFAULT '',
     recorded_at  DateTime                CODEC(DoubleDelta, ZSTD(3)),
-    ingested_at  DateTime                DEFAULT now()
+    ingested_at  DateTime                DEFAULT now(),
+    building_name String                 DEFAULT ''  COMMENT 'Building name (enrichment)',
+    district     String                  DEFAULT ''  COMMENT 'District (enrichment)'
 )
 ENGINE = ReplacingMergeTree(ingested_at)
 PARTITION BY toYYYYMM(recorded_at)

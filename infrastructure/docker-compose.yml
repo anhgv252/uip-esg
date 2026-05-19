@@ -329,11 +329,16 @@ services:
     container_name: uip-flink-esg-job-submitter
     restart: "no"
     command: >
-      flink run
-      --detached
-      -m flink-jobmanager:8081
-      -c com.uip.flink.esg.EsgDualSinkJob
-      /opt/flink/usrlib/uip-flink-jobs-0.1.0-SNAPSHOT.jar
+      /bin/bash -c "
+        echo 'Checking for existing EsgDualSinkJob...';
+        EXISTING=$$(curl -sf http://flink-jobmanager:8081/jobs/overview | grep -o '\"name\":\"EsgDualSinkJob\".*\"state\":\"RUNNING\"' || true);
+        if [ -n \"$$EXISTING\" ]; then
+          echo 'EsgDualSinkJob already RUNNING — skipping submission.';
+        else
+          echo 'No running EsgDualSinkJob found — submitting...';
+          flink run --detached -m flink-jobmanager:8081 -c com.uip.flink.esg.EsgDualSinkJob /opt/flink/usrlib/uip-flink-jobs-0.1.0-SNAPSHOT.jar;
+        fi
+      "
     environment:
       KAFKA_BOOTSTRAP: kafka:9092
       DB_URL: jdbc:postgresql://timescaledb:5432/${POSTGRES_DB:-uip_smartcity}

@@ -13,8 +13,11 @@ CREATE TABLE IF NOT EXISTS analytics.esg_readings
     value        Float64,
     unit         LowCardinality(String) DEFAULT '',
     recorded_at  DateTime CODEC(DoubleDelta, ZSTD(3)),
-    ingested_at  DateTime DEFAULT now()
+    ingested_at  DateTime DEFAULT now(),
+    building_name String DEFAULT '',
+    district     String DEFAULT ''
 ) ENGINE = ReplacingMergeTree(ingested_at)
 PARTITION BY toYYYYMM(recorded_at)
 ORDER BY (tenant_id, building_id, source_id, metric_type, recorded_at)
+TTL recorded_at + toIntervalYear(2)
 SETTINGS index_granularity = 8192;
