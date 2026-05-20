@@ -16,6 +16,26 @@
   "ssoSessionMaxLifespan": 36000,
   "defaultSignatureAlgorithm": "RS256",
 
+  "roles": {
+    "realm": [
+      {
+        "id": "role-operator",
+        "name": "OPERATOR",
+        "description": "Building operator role"
+      },
+      {
+        "id": "role-admin",
+        "name": "ADMIN",
+        "description": "System administrator role"
+      },
+      {
+        "id": "role-viewer",
+        "name": "VIEWER",
+        "description": "Read-only viewer role"
+      }
+    ]
+  },
+
   "clients": [
     {
       "id": "uip-api",
@@ -102,6 +122,53 @@
           }
         }
       ]
+    },
+    {
+      "id": "uip-frontend",
+      "clientId": "uip-frontend",
+      "name": "UIP Frontend",
+      "description": "UIP Smart City frontend SPA client (PKCE-ready for Sprint 5)",
+      "enabled": true,
+      "publicClient": true,
+      "secret": "",
+      "bearerOnly": false,
+      "consentRequired": false,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "authorizationServicesEnabled": false,
+      "redirectUris": [
+        "http://localhost:3000/*",
+        "http://localhost:8080/*"
+      ],
+      "webOrigins": [
+        "http://localhost:3000",
+        "http://localhost:8080"
+      ],
+      "protocol": "openid-connect",
+      "attributes": {
+        "access.token.signed.response.alg": "RS256",
+        "pkce.code.challenge.method": "S256",
+        "use.refresh.tokens": "true"
+      },
+      "protocolMappers": [
+        {
+          "id": "frontend-tenant-id-mapper",
+          "name": "tenant-id-mapper",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "tenant_id",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "tenant_id",
+            "jsonType.label": "String"
+          }
+        }
+      ]
     }
   ],
 
@@ -121,6 +188,7 @@
           "temporary": false
         }
       ],
+      "realmRoles": ["OPERATOR"],
       "attributes": {
         "tenant_id": ["hcm"],
         "is_aggregator": ["false"],
@@ -142,6 +210,7 @@
           "temporary": false
         }
       ],
+      "realmRoles": ["ADMIN"],
       "attributes": {
         "tenant_id": [""],
         "is_aggregator": ["true"],

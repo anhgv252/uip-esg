@@ -32,6 +32,7 @@ public class DefaultXlsxExportAdapter implements EsgReportExportPort {
              ByteArrayOutputStream out = new ByteArrayOutputStream()) {
 
             CellStyle headerStyle = createHeaderStyle(wb);
+            CellStyle griHeaderStyle = createGriHeaderStyle(wb);
 
             Sheet summarySheet = wb.createSheet("ESG Summary");
             Row titleRow = summarySheet.createRow(0);
@@ -52,6 +53,13 @@ public class DefaultXlsxExportAdapter implements EsgReportExportPort {
 
             for (int i = 0; i < 4; i++) summarySheet.autoSizeColumn(i);
 
+            // GRI 302-1 Energy Disclosure sheet
+            buildGri302Sheet(wb, data, griHeaderStyle);
+
+            // GRI 305-4 Emissions Disclosure sheet
+            buildGri305Sheet(wb, data, griHeaderStyle);
+
+            // Detail sheets
             buildDetailSheet(wb, "Energy Data", data.energyMetrics(), "kWh", headerStyle);
             buildDetailSheet(wb, "Water Data", data.waterMetrics(), "m³", headerStyle);
             buildDetailSheet(wb, "Carbon Data", data.carbonMetrics(), "tCO₂e", headerStyle);
@@ -92,6 +100,85 @@ public class DefaultXlsxExportAdapter implements EsgReportExportPort {
         style.setFillForegroundColor(IndexedColors.LIGHT_BLUE.getIndex());
         style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
         return style;
+    }
+
+    private CellStyle createGriHeaderStyle(Workbook wb) {
+        CellStyle style = wb.createCellStyle();
+        Font font = wb.createFont();
+        font.setBold(true);
+        font.setFontHeightInPoints((short) 14);
+        style.setFont(font);
+        style.setFillForegroundColor(IndexedColors.DARK_BLUE.getIndex());
+        style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+        font.setColor(IndexedColors.WHITE.getIndex());
+        return style;
+    }
+
+    private void buildGri302Sheet(Workbook wb, EsgReportData data, CellStyle headerStyle) {
+        Sheet sheet = wb.createSheet("GRI 302-1 Energy");
+
+        Row titleRow = sheet.createRow(0);
+        createCell(titleRow, 0, "GRI 302-1: Energy Consumption (Disclosure)", headerStyle);
+        sheet.addMergedRegion(new CellRangeAddress(0, 0, 0, 3));
+
+        Row periodRow = sheet.createRow(1);
+        createCell(periodRow, 0, "Period:");
+        createCell(periodRow, 1, "Q%d %d".formatted(data.quarter(), data.year()));
+
+        Row summaryHeader = sheet.createRow(3);
+        createCell(summaryHeader, 0, "Metric", headerStyle);
+        createCell(summaryHeader, 1, "Value", headerStyle);
+        createCell(summaryHeader, 2, "Unit", headerStyle);
+
+        addMetricRow(sheet, 4, "Total Energy Consumption", data.energyTotal(), "kWh");
+        addMetricRow(sheet, 5, "Energy Intensity", data.energyIntensityKwhPerM2(), "kWh/m²");
+        addMetricRow(sheet, 6, "Data Quality", null, data.dataQuality() != null ? data.dataQuality() : "N/A");
+
+        // Per-building breakdown table
+        if (data.buildingBreakdown() != null && !data.buildingBreakdown().isEmpty()) {
+            Row breakTitle = sheet.createRow(8);
+            createCell(breakTitle, 0, "Per-Building Breakdown", headerStyle);
+            sheet.addMergedRegion(new CellRangeAddress(8, 0, 8, 3));
+
+            Row breakHeader = sheet.createRow(9);
+            createCell(breakHeader, 0, "Building ID", headerStyle);
+            createCell(breakHeader, 1, "kWh", headerStyle);
+            createCell(breakHeader, 2, "% of Total", headerStyle);
+
+            int rowNum = 10;
+            double totalKwh = data.energyTotal() != null ? data.energyTotal() : 0.0;
+            for (var entry : data.buildingBreakdown().entrySet()) {
+                Row row = sheet.createRow(rowNum++);
+                createCell(row, 0, entry.getKey());
+                createCell(row, 1, String.format("%.2f", entry.getValue()));
+                createCell(row, 2, totalKwh > 0 ? String.format("%.1f%%", (entry.getValue() / totalKwh) * 100) : "—");
+            }
+        }
+
+        for (int i = 0; i < 4; i++) sheet.autoSizeColumn(i);
+    }
+
+    private void buildGri305Sheet(Workbook wb, EsgReportData data, CellStyle headerStyle) {
+        Sheet sheet = wb.createSheet("GRI 305-4 Emissions");
+
+        Row titleRow = sheet.createRow(0);
+        createCell(titleRow, 0, "GRI 305-4: Emissions (Disclosure)", headerStyle);
+        sheet.addMergedRegion(new CellRangeAddress(0, 0, 0, 3));
+
+        Row periodRow = sheet.createRow(1);
+        createCell(periodRow, 0, "Period:");
+        createCell(periodRow, 1, "Q%d %d".formatted(data.quarter(), data.year()));
+
+        Row summaryHeader = sheet.createRow(3);
+        createCell(summaryHeader, 0, "Metric", headerStyle);
+        createCell(summaryHeader, 1, "Value", headerStyle);
+        createCell(summaryHeader, 2, "Unit", headerStyle);
+
+        addMetricRow(sheet, 4, "Total CO2 Emissions", data.carbonTotal(), "tCO₂e");
+        addMetricRow(sheet, 5, "CO2 Emissions Intensity", data.co2EmissionsPerM2(), "tCO₂e/m²");
+        addMetricRow(sheet, 6, "Data Quality", null, data.dataQuality() != null ? data.dataQuality() : "N/A");
+
+        for (int i = 0; i < 4; i++) sheet.autoSizeColumn(i);
     }
 
     private void createCell(Row row, int col, String value) {

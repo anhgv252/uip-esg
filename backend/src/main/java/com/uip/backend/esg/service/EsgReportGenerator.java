@@ -1,6 +1,7 @@
 package com.uip.backend.esg.service;
 
 import com.uip.backend.esg.domain.EsgReport;
+import com.uip.backend.esg.domain.EsgMetric;
 import com.uip.backend.esg.export.*;
 import com.uip.backend.esg.repository.EsgMetricRepository;
 import com.uip.backend.esg.repository.EsgReportRepository;
@@ -72,6 +73,27 @@ public class EsgReportGenerator {
         Double water  = esgMetricRepository.sumByTypeAndRange(tenantId, "WATER",  range[0], range[1]);
         Double carbon = esgMetricRepository.sumByTypeAndRange(tenantId, "CARBON", range[0], range[1]);
 
+        List<EsgMetric> energyMetrics = esgMetricRepository.findByTypeAndRange(tenantId, "ENERGY", range[0], range[1]);
+        List<EsgMetric> carbonMetrics = esgMetricRepository.findByTypeAndRange(tenantId, "CARBON", range[0], range[1]);
+
+        // GRI 302-1: per-building energy breakdown
+        Map<String, Double> buildingBreakdown = energyMetrics.stream()
+                .filter(m -> m.getBuildingId() != null && !m.getBuildingId().isBlank())
+                .collect(Collectors.groupingBy(EsgMetric::getBuildingId,
+                        Collectors.summingDouble(EsgMetric::getValue)));
+
+        // GRI 302-1: energy intensity (kWh/m²) — use building count as proxy when area unavailable
+        long buildingCount = buildingBreakdown.size();
+        double energyIntensity = (energy != null && buildingCount > 0)
+                ? energy / buildingCount : 0.0;
+
+        // GRI 305-4: CO2 emissions intensity
+        double co2Intensity = (carbon != null && buildingCount > 0)
+                ? carbon / buildingCount : 0.0;
+
+        // Data quality assessment
+        String dataQuality = assessDataQuality(energyMetrics, carbonMetrics, buildingCount);
+
         EsgReportData data = EsgReportData.builder()
                 .reportId(report.getId())
                 .tenantId(tenantId)
@@ -82,12 +104,25 @@ public class EsgReportGenerator {
                 .energyTotal(energy)
                 .waterTotal(water)
                 .carbonTotal(carbon)
-                .energyMetrics(esgMetricRepository.findByTypeAndRange(tenantId, "ENERGY", range[0], range[1]))
+                .energyMetrics(energyMetrics)
                 .waterMetrics(esgMetricRepository.findByTypeAndRange(tenantId, "WATER", range[0], range[1]))
-                .carbonMetrics(esgMetricRepository.findByTypeAndRange(tenantId, "CARBON", range[0], range[1]))
+                .carbonMetrics(carbonMetrics)
+                .energyIntensityKwhPerM2(energyIntensity)
+                .buildingBreakdown(buildingBreakdown)
+                .dataQuality(dataQuality)
+                .co2EmissionsPerM2(co2Intensity)
                 .build();
 
         return adapter.export(data);
+    }
+
+    private String assessDataQuality(List<EsgMetric> energy, List<EsgMetric> carbon, long buildingCount) {
+        if (buildingCount == 0 || (energy.isEmpty() && carbon.isEmpty())) {
+            return "PARTIAL";
+        }
+        boolean hasGaps = energy.stream().anyMatch(m -> m.getValue() == null || m.getValue() == 0.0)
+                       || carbon.stream().anyMatch(m -> m.getValue() == null || m.getValue() == 0.0);
+        return hasGaps ? "ESTIMATED" : "COMPLETE";
     }
 
     @Value("${esg.report.output-dir:${java.io.tmpdir}/uip-reports}")

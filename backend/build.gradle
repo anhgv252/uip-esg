@@ -62,7 +62,8 @@ dependencies {
     runtimeOnly    'io.opentelemetry:opentelemetry-exporter-otlp'
     implementation 'org.springframework.kafka:spring-kafka'
 
-    // JWT
+    // JWT + OAuth2 Resource Server (NimbusJwtDecoder for RSA/HMAC dual-issuer)
+    implementation 'org.springframework.boot:spring-boot-starter-oauth2-resource-server'
     implementation 'io.jsonwebtoken:jjwt-api:0.12.3'
     runtimeOnly    'io.jsonwebtoken:jjwt-impl:0.12.3'
     runtimeOnly    'io.jsonwebtoken:jjwt-jackson:0.12.3'
@@ -91,6 +92,8 @@ dependencies {
 
     // ESG report generation (Apache POI — XLSX)
     implementation 'org.apache.poi:poi-ooxml:5.2.5'
+    // ESG report generation (OpenPDF — PDF, LGPL-licensed)
+    implementation 'com.github.librepdf:openpdf:2.0.3'
 
     // Camunda 7 — embedded BPM engine (Spring Boot 3.2 compatible)
     implementation platform('org.camunda.bpm:camunda-bom:7.22.0')

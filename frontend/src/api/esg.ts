@@ -84,7 +84,7 @@ export const triggerReportGeneration = (year: number, quarter: number, period = 
 export const getReportStatus = (id: string, tenantId?: string) =>
   apiClient.get<EsgReport>(`/esg/reports/${id}/status`, { params: { tenantId } }).then((r) => r.data);
 
-export const downloadReport = (id: string) =>
+export const downloadReport = (id: string, format = 'xlsx') =>
   apiClient
-    .get(`/esg/reports/${id}/download`, { responseType: 'blob' })
+    .get(`/esg/reports/${id}/download`, { params: { format }, responseType: 'blob' })
     .then((r) => r.data as Blob);

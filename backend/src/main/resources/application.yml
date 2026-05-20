@@ -120,6 +120,9 @@ security:
     secret: ${JWT_SECRET:changeme_jwt_secret_must_be_at_least_256_bits_long_for_hmac_sha256}
     expiration-ms: ${JWT_EXPIRATION_MS:900000}
     refresh-expiration-ms: ${JWT_REFRESH_EXPIRATION_MS:604800000}
+    hmac-issuer: ${JWT_HMAC_ISSUER:uip-legacy}
+    keycloak-issuer: ${JWT_KEYCLOAK_ISSUER:http://localhost:8085/realms/uip}
+    keycloak-jwk-set-uri: ${JWT_KEYCLOAK_JWK_SET_URI:http://localhost:8085/realms/uip/protocol/openid-connect/certs}
 
 camunda:
   bpm:

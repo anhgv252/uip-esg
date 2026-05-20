@@ -38,5 +38,6 @@ export function useAqiTrend(tenantId: string, buildingIds: string[]) {
     queryFn: () => fetchAqiTrend({ tenantId, buildingIds, fromEpoch, toEpoch }),
     enabled: !!tenantId && buildingIds.length > 0,
     staleTime: 2 * 60 * 1000,
+    refetchInterval: 15_000,
   })
 }

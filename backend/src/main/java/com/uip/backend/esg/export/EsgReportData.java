@@ -5,6 +5,7 @@ import lombok.Builder;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Builder
@@ -20,5 +21,11 @@ public record EsgReportData(
         Double carbonTotal,
         List<EsgMetric> energyMetrics,
         List<EsgMetric> waterMetrics,
-        List<EsgMetric> carbonMetrics
+        List<EsgMetric> carbonMetrics,
+        // GRI 302-1 fields
+        double energyIntensityKwhPerM2,
+        Map<String, Double> buildingBreakdown,
+        String dataQuality,
+        // GRI 305-4 fields
+        double co2EmissionsPerM2
 ) {}

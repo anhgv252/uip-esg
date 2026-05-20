@@ -21,6 +21,7 @@
     <jackson.version>2.16.1</jackson.version>
     <postgresql.version>42.7.2</postgresql.version>
     <hikaricp.version>5.1.0</hikaricp.version>
+    <caffeine.version>3.1.8</caffeine.version>
     <lombok.version>1.18.30</lombok.version>
     <junit.version>5.10.2</junit.version>
     <testcontainers.version>1.19.6</testcontainers.version>
@@ -65,6 +66,13 @@
       <groupId>com.zaxxer</groupId>
       <artifactId>HikariCP</artifactId>
       <version>${hikaricp.version}</version>
+    </dependency>
+
+    <!-- Caffeine — local cache for BuildingMetadataAsyncFunction (ADR-035) -->
+    <dependency>
+      <groupId>com.github.ben-manes.caffeine</groupId>
+      <artifactId>caffeine</artifactId>
+      <version>${caffeine.version}</version>
     </dependency>
 
     <!-- ClickHouse JDBC — dual-sink target (ADR-026) -->

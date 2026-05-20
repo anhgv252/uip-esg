@@ -58,6 +58,8 @@ export function EsgBarChart({ data, metricLabel, unit }: EsgBarChartProps) {
           <XAxis dataKey="date" tick={{ fontSize: 11 }} />
           <YAxis tick={{ fontSize: 11 }} unit={` ${unit}`} />
           <Tooltip
+            wrapperStyle={{ zIndex: 1300 }}
+            contentStyle={{ maxWidth: '300px', wordBreak: 'break-word' }}
             formatter={(value: number, name: string) => [`${value.toFixed(1)} ${unit}`, name]}
           />
           <Legend />

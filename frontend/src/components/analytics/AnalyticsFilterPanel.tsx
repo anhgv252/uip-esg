@@ -1,4 +1,4 @@
-import { useCallback } from 'react'
+import { useCallback, useState } from 'react'
 import { Box, Button, FormControl, InputLabel, MenuItem, Select, Chip, OutlinedInput, Typography, TextField } from '@mui/material'
 import { useSearchParams } from 'react-router-dom'
 import { useBuildings } from '@/hooks/useBuildings'
@@ -36,6 +36,7 @@ function thirtyDaysAgo(): string {
 export function AnalyticsFilterPanel() {
   const [searchParams, setSearchParams] = useSearchParams()
   const { data: allBuildings = [] } = useBuildings()
+  const [resetting, setResetting] = useState(false)
 
   const buildingIds = searchParams.get('ids')?.split(',').filter(Boolean) ?? []
   const metric = (searchParams.get('metric') as MetricType) ?? 'energy'
@@ -58,10 +59,14 @@ export function AnalyticsFilterPanel() {
     [searchParams, setSearchParams],
   )
 
-  const handleReset = () => setSearchParams({}, { replace: true })
+  const handleReset = () => {
+    setResetting(true)
+    setSearchParams({}, { replace: true })
+    requestAnimationFrame(() => setResetting(false))
+  }
 
   return (
-    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, alignItems: 'center', mb: 2 }}>
+    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, alignItems: 'center', mb: 2, '& .MuiOutlinedInput-root': { transition: resetting ? 'none' : undefined } }}>
       <FormControl size="small" sx={{ minWidth: 200 }}>
         <InputLabel>Buildings</InputLabel>
         <Select

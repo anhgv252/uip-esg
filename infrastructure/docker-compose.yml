@@ -388,7 +388,9 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       JWT_EXPIRATION_MS: ${JWT_EXPIRATION_MS:-900000}
       JWT_REFRESH_EXPIRATION_MS: ${JWT_REFRESH_EXPIRATION_MS:-604800000}
-      UIP_ANALYTICS_SERVICE_URL: http://analytics-service:8081/api/v1/analytics
+      JWT_HMAC_ISSUER: ${JWT_HMAC_ISSUER:-uip-legacy}
+      JWT_KEYCLOAK_ISSUER: ${JWT_KEYCLOAK_ISSUER:-http://keycloak:8085/realms/uip}
+      JWT_KEYCLOAK_JWK_SET_URI: ${JWT_KEYCLOAK_JWK_SET_URI:-http://keycloak:8085/realms/uip/protocol/openid-connect/certs}
     ports:
       - "8080:8080"
       - "8086:8081"  # management/actuator port (container 8081 → host 8086; host 8081 used by Flink)
@@ -452,6 +454,8 @@ services:
     restart: unless-stopped
     ports:
       - "3000:80"
+    volumes:
+      - ../frontend/nginx.conf:/etc/nginx/conf.d/default.conf:ro
     depends_on:
       backend:
         condition: service_healthy
@@ -459,17 +463,14 @@ services:
       - uip-network
 
   # ─────────────────────────────────────────────────────────────────────────────
-  # Kong API Gateway (DB-less, non-prod — Sprint MVP3-1)
+  # Kong API Gateway (DB-less, non-prod — Sprint MVP3-3)
   # Proxy port 8000, Admin API 8001
-  # Config: ../infra/kong/kong.local.yml (HS512 local dev)
-  # Đổi sang kong.poc.yml khi test RS256 + Keycloak
-  # Note: envsubst inject KONG_JWT_SECRET vào config trước khi Kong start
+  # Config: ../infra/kong/kong.poc.yml (RS256 + Keycloak JWT, ADR-028 analytics-only)
   # ─────────────────────────────────────────────────────────────────────────────
   kong:
     image: kong:3.6
     container_name: uip-kong
     restart: unless-stopped
-    entrypoint: ["/bin/sh", "/etc/kong/entrypoint.sh"]
     environment:
       KONG_DATABASE: "off"
       KONG_DECLARATIVE_CONFIG: /tmp/kong.yml
@@ -478,10 +479,8 @@ services:
       KONG_ADMIN_ACCESS_LOG: /dev/stdout
       KONG_PROXY_ERROR_LOG: /dev/stderr
       KONG_ADMIN_ERROR_LOG: /dev/stderr
-      KONG_JWT_SECRET: ${JWT_SECRET}
     volumes:
-      - ../infra/kong/kong.local.yml:/etc/kong/kong.tpl:ro
-      - ../infra/kong/docker-entrypoint-local.sh:/etc/kong/entrypoint.sh:ro
+      - ../infra/kong/kong.poc.yml:/tmp/kong.yml:ro
     ports:
       - "8000:8000"   # Kong proxy
       - "8001:8001"   # Kong admin API

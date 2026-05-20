@@ -137,6 +137,7 @@ public class JwtTokenProvider {
         return Jwts.builder()
                 .subject(subject)
                 .claims(extraClaims)
+                .issuer(jwtProperties.getHmacIssuer())
                 .issuedAt(now)
                 .expiration(expiry)
                 .signWith(getSigningKey())

@@ -1,5 +1,7 @@
 package com.uip.flink.esg;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import com.uip.flink.common.NgsiLdMessage;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.functions.async.ResultFuture;
@@ -14,13 +16,14 @@ import java.util.Collections;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Async lookup of building metadata (name, district, category) from PostgreSQL.
  * ADR-035: Flink Enrichment — Building Metadata Join Pattern.
  *
- * Uses a bounded thread pool for JDBC lookups. Building count is small (~5-100)
- * so connection pool of 5 is sufficient.
+ * Uses Caffeine cache (5 min TTL, max 1000 entries) to avoid repeated JDBC lookups.
+ * Building count is small (~5-100) so connection pool of 5 is sufficient.
  */
 public class BuildingMetadataAsyncFunction
         extends RichAsyncFunction<NgsiLdMessage, NgsiLdMessage> {
@@ -34,6 +37,7 @@ public class BuildingMetadataAsyncFunction
             LIMIT 1
             """;
 
+    private transient Cache<String, BuildingMetadata> cache;
     private transient ExecutorService executor;
     private transient javax.sql.DataSource dataSource;
 
@@ -50,6 +54,11 @@ public class BuildingMetadataAsyncFunction
     @Override
     public void open(Configuration parameters) throws Exception {
         super.open(parameters);
+        cache = Caffeine.newBuilder()
+                .expireAfterWrite(5, TimeUnit.MINUTES)
+                .maximumSize(1000)
+                .recordStats()
+                .build();
         executor = Executors.newFixedThreadPool(5);
         var pool = new com.zaxxer.hikari.HikariConfig();
         pool.setJdbcUrl(dbUrl);
@@ -69,19 +78,27 @@ public class BuildingMetadataAsyncFunction
                 if (buildingCode.isEmpty()) {
                     return msg;
                 }
+
+                // Check cache first
+                BuildingMetadata cached = cache.getIfPresent(buildingCode);
+                if (cached != null) {
+                    enrichMessage(msg, cached);
+                    return msg;
+                }
+
+                // Cache miss — JDBC lookup
                 try (Connection conn = dataSource.getConnection();
                      PreparedStatement ps = conn.prepareStatement(LOOKUP_SQL)) {
                     ps.setString(1, buildingCode);
                     try (ResultSet rs = ps.executeQuery()) {
                         if (rs.next()) {
-                            NgsiLdMessage.Meta meta = msg.getMeta();
-                            if (meta == null) {
-                                meta = new NgsiLdMessage.Meta();
-                                msg.setMeta(meta);
-                            }
-                            meta.setBuildingName(rs.getString("building_name"));
-                            meta.setDistrict(rs.getString("district"));
-                            meta.setCategory(rs.getString("category"));
+                            BuildingMetadata bm = new BuildingMetadata(
+                                    rs.getString("building_name"),
+                                    rs.getString("district"),
+                                    rs.getString("category")
+                            );
+                            cache.put(buildingCode, bm);
+                            enrichMessage(msg, bm);
                         }
                     }
                 }
@@ -100,10 +117,27 @@ public class BuildingMetadataAsyncFunction
         });
     }
 
+    private void enrichMessage(NgsiLdMessage msg, BuildingMetadata bm) {
+        NgsiLdMessage.Meta meta = msg.getMeta();
+        if (meta == null) {
+            meta = new NgsiLdMessage.Meta();
+            msg.setMeta(meta);
+        }
+        meta.setBuildingName(bm.buildingName());
+        meta.setDistrict(bm.district());
+        meta.setCategory(bm.category());
+    }
+
+    Cache<String, BuildingMetadata> getCache() {
+        return cache;
+    }
+
     @Override
     public void close() throws Exception {
         if (executor != null) executor.shutdownNow();
         if (dataSource instanceof AutoCloseable ac) ac.close();
         super.close();
     }
+
+    public record BuildingMetadata(String buildingName, String district, String category) {}
 }

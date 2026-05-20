@@ -13,6 +13,7 @@ import org.apache.flink.connector.kafka.source.enumerator.initializer.OffsetsIni
 import org.apache.flink.contrib.streaming.state.EmbeddedRocksDBStateBackend;
 import org.apache.flink.runtime.state.storage.FileSystemCheckpointStorage;
 import org.apache.flink.streaming.api.CheckpointingMode;
+import org.apache.flink.streaming.api.datastream.AsyncDataStream;
 import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.slf4j.Logger;
@@ -21,6 +22,7 @@ import org.slf4j.LoggerFactory;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 /**
  * EsgDualSinkJob — dual-write ESG readings to TimescaleDB AND ClickHouse (ADR-026).
@@ -78,7 +80,7 @@ public class EsgDualSinkJob {
                 .setValueOnlyDeserializer(new NgsiLdDeserializer())
                 .build();
 
-        SingleOutputStreamOperator<Object[]> stream = env
+        SingleOutputStreamOperator<NgsiLdMessage> validatedStream = env
                 .fromSource(
                         source,
                         WatermarkStrategy.<NgsiLdMessage>forBoundedOutOfOrderness(Duration.ofSeconds(10))
@@ -86,7 +88,17 @@ public class EsgDualSinkJob {
                         "ngsi_ld_esg Source"
                 )
                 .filter(msg -> msg != null && msg.getDeviceIdValue() != null)
-                .process(new TenantIdValidator())
+                .process(new TenantIdValidator());
+
+        // Enrich with building metadata (async lookup, ADR-035)
+        SingleOutputStreamOperator<NgsiLdMessage> enrichedStream = AsyncDataStream.unorderedWait(
+                validatedStream,
+                new BuildingMetadataAsyncFunction(DB_URL, DB_USER, DB_PASSWORD),
+                5, TimeUnit.SECONDS,
+                100
+        );
+
+        SingleOutputStreamOperator<Object[]> stream = enrichedStream
                 .flatMap((NgsiLdMessage msg, org.apache.flink.util.Collector<Object[]> out) -> {
                     String tenantId   = msg.getTenantId() != null ? msg.getTenantId() : "";
                     String deviceId   = msg.getDeviceIdValue();

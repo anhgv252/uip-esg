@@ -48,18 +48,17 @@ export function ReportGenerationPanel() {
     },
   });
 
-  const handleDownload = async () => {
+  const handleDownload = async (format: 'xlsx' | 'pdf' = 'xlsx') => {
     if (!activeReportId) return;
     if (reportStatus?.downloadUrl) {
-      // Use backend-provided download URL if available
-      window.location.href = reportStatus.downloadUrl;
+      window.location.href = `${reportStatus.downloadUrl}?format=${format}`;
       return;
     }
-    const blob = await downloadReport(activeReportId);
+    const blob = await downloadReport(activeReportId, format);
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `esg-report-q${selectedQuarter}-${selectedYear}.xlsx`;
+    a.download = `esg-report-q${selectedQuarter}-${selectedYear}.${format}`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -117,14 +116,26 @@ export function ReportGenerationPanel() {
         </Tooltip>
 
         {isDone && (
-          <Button
-            variant="outlined"
-            startIcon={<DownloadIcon />}
-            onClick={handleDownload}
-            color="success"
-          >
-            Download XLSX
-          </Button>
+          <>
+            <Button
+              variant="outlined"
+              startIcon={<DownloadIcon />}
+              onClick={() => handleDownload('xlsx')}
+              color="success"
+              aria-label="Download Excel report"
+            >
+              Download XLSX
+            </Button>
+            <Button
+              variant="outlined"
+              startIcon={<DownloadIcon />}
+              onClick={() => handleDownload('pdf')}
+              color="info"
+              aria-label="Download PDF report"
+            >
+              Download PDF
+            </Button>
+          </>
         )}
       </Stack>
 
@@ -140,7 +151,7 @@ export function ReportGenerationPanel() {
 
       {isDone && (
         <Alert severity="success" sx={{ mt: 2 }}>
-          Report ready! Click <strong>Download XLSX</strong> to save.
+          Report ready! Click <strong>Download XLSX</strong> or <strong>Download PDF</strong> to save.
           {reportStatus?.generatedAt && (
             <Typography variant="caption" display="block">
               Completed: {new Date(reportStatus.generatedAt).toLocaleString()}
