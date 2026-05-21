@@ -12,6 +12,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.Acknowledgment;
 
 import java.time.Duration;
@@ -34,6 +35,7 @@ class AlertEventKafkaConsumerTest {
     @Mock private ValueOperations<String, String> valueOps;
     @Mock private ObjectMapper                objectMapper;
     @Mock private Acknowledgment              ack;
+    @Mock private KafkaTemplate<String, String> kafkaTemplate;
 
     @InjectMocks
     private AlertEventKafkaConsumer consumer;
@@ -56,7 +58,7 @@ class AlertEventKafkaConsumerTest {
         when(alertEventRepository.save(any(AlertEvent.class))).thenReturn(saved);
         when(objectMapper.writeValueAsString(saved)).thenReturn("{\"id\":\"abc\"}");
 
-        consumer.consume(fullPayload(), ack);
+        consumer.consume(fullPayload(), ack, AlertEventKafkaConsumer.TOPIC, 0);
 
         verify(alertEventRepository).save(any(AlertEvent.class));
         verify(redisTemplate).convertAndSend(
@@ -74,7 +76,7 @@ class AlertEventKafkaConsumerTest {
         when(alertEventRepository.save(any(AlertEvent.class))).thenReturn(saved);
         when(objectMapper.writeValueAsString(any())).thenReturn("{}");
 
-        consumer.consume(payload, ack);
+        consumer.consume(payload, ack, AlertEventKafkaConsumer.TOPIC, 0);
 
         verify(alertEventRepository).save(argThat((AlertEvent e) ->
                 e.getValue() != null && e.getValue() == 55.2));
@@ -91,7 +93,7 @@ class AlertEventKafkaConsumerTest {
         when(alertEventRepository.save(any(AlertEvent.class))).thenReturn(saved);
         when(objectMapper.writeValueAsString(any())).thenReturn("{}");
 
-        consumer.consume(payload, ack);
+        consumer.consume(payload, ack, AlertEventKafkaConsumer.TOPIC, 0);
 
         verify(alertEventRepository).save(argThat((AlertEvent e) ->
                 e.getValue() != null && e.getValue() == 42.0));
@@ -109,7 +111,7 @@ class AlertEventKafkaConsumerTest {
         when(alertEventRepository.save(any(AlertEvent.class))).thenReturn(saved);
         when(objectMapper.writeValueAsString(any())).thenReturn("{}");
 
-        consumer.consume(payload, ack);
+        consumer.consume(payload, ack, AlertEventKafkaConsumer.TOPIC, 0);
 
         Instant after = Instant.now();
         verify(alertEventRepository).save(argThat((AlertEvent e) ->
@@ -129,7 +131,7 @@ class AlertEventKafkaConsumerTest {
         // Redis returns false → this alert was already processed within dedup window
         when(valueOps.setIfAbsent(anyString(), anyString(), any(Duration.class))).thenReturn(false);
 
-        consumer.consume(fullPayload(), ack);
+        consumer.consume(fullPayload(), ack, AlertEventKafkaConsumer.TOPIC, 0);
 
         verify(alertEventRepository, never()).save(any());
         verify(redisTemplate, never()).convertAndSend(anyString(), anyString());
@@ -142,7 +144,7 @@ class AlertEventKafkaConsumerTest {
         when(alertEventRepository.save(any())).thenReturn(savedEvent());
         when(objectMapper.writeValueAsString(any())).thenReturn("{}");
 
-        consumer.consume(fullPayload(), ack);
+        consumer.consume(fullPayload(), ack, AlertEventKafkaConsumer.TOPIC, 0);
 
         verify(valueOps).setIfAbsent(
                 eq("alert:dedup:kafka:ENV-001:AQI:CRITICAL"),
@@ -160,7 +162,7 @@ class AlertEventKafkaConsumerTest {
         when(alertEventRepository.save(any(AlertEvent.class))).thenReturn(saved);
         when(objectMapper.writeValueAsString(any())).thenReturn("{}");
 
-        consumer.consume(fullPayload(), ack);
+        consumer.consume(fullPayload(), ack, AlertEventKafkaConsumer.TOPIC, 0);
 
         // !Boolean.TRUE.equals(null) = true → proceeds normally
         verify(alertEventRepository).save(any(AlertEvent.class));
@@ -177,7 +179,7 @@ class AlertEventKafkaConsumerTest {
         when(alertEventRepository.save(any(AlertEvent.class)))
                 .thenThrow(new RuntimeException("DB timeout"));
 
-        consumer.consume(fullPayload(), ack);
+        consumer.consume(fullPayload(), ack, AlertEventKafkaConsumer.TOPIC, 0);
 
         verify(redisTemplate, never()).convertAndSend(anyString(), anyString());
         verify(ack, never()).acknowledge();
@@ -191,7 +193,7 @@ class AlertEventKafkaConsumerTest {
         doThrow(new com.fasterxml.jackson.core.JsonProcessingException("fail") {})
                 .when(objectMapper).writeValueAsString(any());
 
-        consumer.consume(fullPayload(), ack);
+        consumer.consume(fullPayload(), ack, AlertEventKafkaConsumer.TOPIC, 0);
 
         // publishToRedis swallows JsonProcessingException → still acks
         verify(ack).acknowledge();
@@ -208,7 +210,7 @@ class AlertEventKafkaConsumerTest {
         when(alertEventRepository.save(any(AlertEvent.class))).thenReturn(saved);
         when(objectMapper.writeValueAsString(any())).thenReturn("{}");
 
-        consumer.consume(payload, ack);
+        consumer.consume(payload, ack, AlertEventKafkaConsumer.TOPIC, 0);
 
         verify(alertEventRepository).save(argThat((AlertEvent e) ->
                 e.getSensorId() == null && e.getValue() == null));

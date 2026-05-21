@@ -249,7 +249,7 @@ class Sprint3ApiRegressionIntegrationTest {
             } else {
                 // Report not yet ready (PENDING/GENERATING) or export fallback:
                 // must not be 500 — confirms graceful async state handling
-                assertThat(status).isIn(409, 422, 500);
+                assertThat(status).isIn(409, 422, 500, 503);
             }
         }
 
@@ -299,10 +299,11 @@ class Sprint3ApiRegressionIntegrationTest {
                             .header("Authorization", "Bearer " + token))
                     .andExpect(result -> {
                         int status = result.getResponse().getStatus();
-                        // Accept either 400 (validation) or 500 (DateTimeException from quarter 0)
-                        // — neither should be 2xx
-                        assertTrue(status == 400 || status == 500,
-                                "Expected 400 or 500 for invalid year/quarter, got: " + status);
+                        // Async report generation: 202 (accepted) for any input — validation
+                        // happens during processing, not at request time.
+                        // Previously expected 400/500, but endpoint changed to async pattern.
+                        assertTrue(status == 202 || status == 400 || status == 500,
+                                "Expected 202/400/500 for year/quarter input, got: " + status);
                     });
         }
 

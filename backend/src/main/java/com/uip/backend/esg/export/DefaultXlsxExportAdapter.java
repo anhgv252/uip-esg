@@ -138,7 +138,7 @@ public class DefaultXlsxExportAdapter implements EsgReportExportPort {
         if (data.buildingBreakdown() != null && !data.buildingBreakdown().isEmpty()) {
             Row breakTitle = sheet.createRow(8);
             createCell(breakTitle, 0, "Per-Building Breakdown", headerStyle);
-            sheet.addMergedRegion(new CellRangeAddress(8, 0, 8, 3));
+            sheet.addMergedRegion(new CellRangeAddress(8, 8, 0, 3));
 
             Row breakHeader = sheet.createRow(9);
             createCell(breakHeader, 0, "Building ID", headerStyle);

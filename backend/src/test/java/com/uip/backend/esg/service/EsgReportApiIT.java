@@ -187,60 +187,64 @@ class EsgReportApiIT {
     // ─── Helper: build EsgReportData from DB data for a tenant ─────────────
 
     private EsgReportData buildReportData(String tenantId, int year, int quarter) {
-        EsgReport report = new EsgReport();
-        report.setTenantId(tenantId);
-        report.setYear(year);
-        report.setQuarter(quarter);
-        report.setPeriodType("QUARTERLY");
+        TransactionTemplate txTemplate = new TransactionTemplate(txManager);
 
-        // Save to get a UUID, then use reportGenerator
-        EsgReport saved = reportRepository.save(report);
-        byte[] exported = reportGenerator.exportReport(saved, "xlsx");
+        return txTemplate.execute(status -> {
+            jdbc.execute("SET LOCAL app.tenant_id = '" + tenantId + "'");
 
-        // For the tests that need the data object, re-derive from the generator logic
-        // by directly calling the export adapter with constructed data
-        Instant[] range = quarterRange(year, quarter);
+            EsgReport report = new EsgReport();
+            report.setTenantId(tenantId);
+            report.setYear(year);
+            report.setQuarter(quarter);
+            report.setPeriodType("QUARTERLY");
 
-        Double energy = jdbc.queryForObject(
-                "SELECT SUM(value) FROM esg.clean_metrics WHERE tenant_id = ? AND metric_type = 'ENERGY' AND timestamp >= ? AND timestamp < ?",
-                Double.class, tenantId, range[0], range[1]);
-        Double water = jdbc.queryForObject(
-                "SELECT SUM(value) FROM esg.clean_metrics WHERE tenant_id = ? AND metric_type = 'WATER' AND timestamp >= ? AND timestamp < ?",
-                Double.class, tenantId, range[0], range[1]);
-        Double carbon = jdbc.queryForObject(
-                "SELECT SUM(value) FROM esg.clean_metrics WHERE tenant_id = ? AND metric_type = 'CARBON' AND timestamp >= ? AND timestamp < ?",
-                Double.class, tenantId, range[0], range[1]);
+            EsgReport saved = reportRepository.save(report);
+            byte[] exported = reportGenerator.exportReport(saved, "xlsx");
 
-        // Building breakdown
-        Map<String, Double> buildingBreakdown = new LinkedHashMap<>();
-        jdbc.query(
-                "SELECT building_id, SUM(value) as total FROM esg.clean_metrics WHERE tenant_id = ? AND metric_type = 'ENERGY' AND timestamp >= ? AND timestamp < ? AND building_id IS NOT NULL GROUP BY building_id",
-                rs -> { buildingBreakdown.put(rs.getString("building_id"), rs.getDouble("total")); },
-                tenantId, range[0], range[1]);
+            Instant[] range = quarterRange(year, quarter);
+            Timestamp fromTs = Timestamp.from(range[0]);
+            Timestamp toTs = Timestamp.from(range[1]);
 
-        long buildingCount = buildingBreakdown.size();
-        double energyIntensity = (energy != null && buildingCount > 0) ? energy / buildingCount : 0.0;
-        double co2Intensity = (carbon != null && buildingCount > 0) ? carbon / buildingCount : 0.0;
-        String dataQuality = (buildingCount == 0 || (energy == null && carbon == null)) ? "PARTIAL" : "COMPLETE";
+            Double energy = jdbc.queryForObject(
+                    "SELECT SUM(value) FROM esg.clean_metrics WHERE tenant_id = ? AND metric_type = 'ENERGY' AND timestamp >= ? AND timestamp < ?",
+                    Double.class, tenantId, fromTs, toTs);
+            Double water = jdbc.queryForObject(
+                    "SELECT SUM(value) FROM esg.clean_metrics WHERE tenant_id = ? AND metric_type = 'WATER' AND timestamp >= ? AND timestamp < ?",
+                    Double.class, tenantId, fromTs, toTs);
+            Double carbon = jdbc.queryForObject(
+                    "SELECT SUM(value) FROM esg.clean_metrics WHERE tenant_id = ? AND metric_type = 'CARBON' AND timestamp >= ? AND timestamp < ?",
+                    Double.class, tenantId, fromTs, toTs);
 
-        return EsgReportData.builder()
-                .reportId(saved.getId())
-                .tenantId(tenantId)
-                .year(year)
-                .quarter(quarter)
-                .from(range[0])
-                .to(range[1])
-                .energyTotal(energy)
-                .waterTotal(water)
-                .carbonTotal(carbon)
-                .energyMetrics(List.of())
-                .waterMetrics(List.of())
-                .carbonMetrics(List.of())
-                .energyIntensityKwhPerM2(energyIntensity)
-                .buildingBreakdown(buildingBreakdown)
-                .dataQuality(dataQuality)
-                .co2EmissionsPerM2(co2Intensity)
-                .build();
+            Map<String, Double> buildingBreakdown = new LinkedHashMap<>();
+            jdbc.query(
+                    "SELECT building_id, SUM(value) as total FROM esg.clean_metrics WHERE tenant_id = ? AND metric_type = 'ENERGY' AND timestamp >= ? AND timestamp < ? AND building_id IS NOT NULL GROUP BY building_id",
+                    rs -> { buildingBreakdown.put(rs.getString("building_id"), rs.getDouble("total")); },
+                    tenantId, fromTs, toTs);
+
+            long buildingCount = buildingBreakdown.size();
+            double energyIntensity = (energy != null && buildingCount > 0) ? energy / buildingCount : 0.0;
+            double co2Intensity = (carbon != null && buildingCount > 0) ? carbon / buildingCount : 0.0;
+            String dataQuality = (buildingCount == 0 || (energy == null && carbon == null)) ? "PARTIAL" : "COMPLETE";
+
+            return EsgReportData.builder()
+                    .reportId(saved.getId())
+                    .tenantId(tenantId)
+                    .year(year)
+                    .quarter(quarter)
+                    .from(range[0])
+                    .to(range[1])
+                    .energyTotal(energy)
+                    .waterTotal(water)
+                    .carbonTotal(carbon)
+                    .energyMetrics(List.of())
+                    .waterMetrics(List.of())
+                    .carbonMetrics(List.of())
+                    .energyIntensityKwhPerM2(energyIntensity)
+                    .buildingBreakdown(buildingBreakdown)
+                    .dataQuality(dataQuality)
+                    .co2EmissionsPerM2(co2Intensity)
+                    .build();
+        });
     }
 
     private Instant[] quarterRange(int year, int quarter) {
