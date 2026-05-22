@@ -146,7 +146,8 @@ test {
     environment 'RYUK_DISABLED', 'true'
     // Sequential forks: @SpringBootTest contexts share DB pool; parallel forks exhaust connections
     maxParallelForks = 1
-    jvmArgs '-Xmx2g', '-Xms256m'
+    // JaCoCo overhead: 100+ test classes + 24 @SpringBootTest contexts require 3.5GB for instrumentation
+    jvmArgs '-Xmx3500m', '-Xms512m', '-XX:+UseG1GC', '-XX:+ParallelRefProcEnabled'
     finalizedBy jacocoTestReport
 }
 
@@ -187,6 +188,53 @@ jacocoTestCoverageVerification {
         }
     }
 }
+
+// Split test suite: unit tests only (exclude *IT, *IntegrationTest)
+tasks.register('testUnit', Test) {
+    useJUnitPlatform {
+        excludeTags 'integration'
+    }
+    exclude '**/*IT.class', '**/*IntegrationTest.class'
+    jvmArgs '-Xmx2g', '-Xms256m', '-XX:+UseG1GC'
+    finalizedBy 'jacocoTestUnitReport'
+}
+
+// JaCoCo report for unit tests only (faster, smaller memory footprint)
+tasks.register('jacocoTestUnitReport', JacocoReport) {
+    dependsOn testUnit
+    classDirectories.setFrom(files(classDirectories.files.collect {
+        fileTree(dir: it, exclude: jacocoExclusions)
+    }))
+    sourceDirectories.setFrom(files(sourceSets.main.allSource.srcDirs))
+    executionData.setFrom(fileTree(buildDir).include('/jacoco/testUnit.exec'))
+    reports {
+        xml.required = true
+        html.required = true
+        html.outputLocation = layout.buildDirectory.dir('reports/jacoco/testUnit/html')
+    }
+}
+
+tasks.register('jacocoTestUnitCoverageVerification', JacocoCoverageVerification) {
+    dependsOn jacocoTestUnitReport
+    classDirectories.setFrom(files(classDirectories.files.collect {
+        fileTree(dir: it, exclude: jacocoExclusions)
+    }))
+    executionData.setFrom(fileTree(buildDir).include('/jacoco/testUnit.exec'))
+    violationRules {
+        rule {
+            limit {
+                minimum = 0.80  // Stricter for unit tests
+            }
+        }
+    }
+}
+
+// Quick coverage check: unit tests only
+tasks.register('coverageUnit') {
+    dependsOn 'jacocoTestUnitCoverageVerification'
+    doLast { println("✓ Unit test coverage >= 80%") }
+}
+
 
 bootJar {
     archiveFileName = 'app.jar'
