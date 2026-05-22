@@ -23,6 +23,7 @@ interface UseMapSSEOptions {
 export function useMapSSE(options: UseMapSSEOptions) {
   const { onSensorUpdate, onAlert } = options
   const esRef = useRef<EventSource | null>(null)
+  const retryCountRef = useRef(0)
 
   const connect = useCallback(() => {
     if (esRef.current) return
@@ -32,6 +33,7 @@ export function useMapSSE(options: UseMapSSEOptions) {
     esRef.current = es
 
     es.onmessage = (event) => {
+      retryCountRef.current = 0
       try {
         const msg: MapSSEMessage = JSON.parse(event.data)
         if (msg.type === 'SENSOR_UPDATE' && msg.sensor && onSensorUpdate) {
@@ -48,8 +50,10 @@ export function useMapSSE(options: UseMapSSEOptions) {
     es.onerror = () => {
       es.close()
       esRef.current = null
-      // reconnect after 5s
-      setTimeout(connect, 5000)
+      retryCountRef.current++
+      // Exponential backoff: 1s, 2s, 4s, 8s, 16s, capped at 30s
+      const delay = Math.min(1000 * Math.pow(2, retryCountRef.current - 1), 30_000)
+      setTimeout(connect, delay)
     }
   }, [onSensorUpdate, onAlert])
 

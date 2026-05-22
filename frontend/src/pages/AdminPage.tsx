@@ -63,7 +63,12 @@ function UsersTab() {
                     value=""
                     displayEmpty
                     renderValue={() => 'Set role…'}
-                    onChange={(e) => changeRole.mutate({ username: u.username, role: e.target.value as string })}
+                    onChange={(e) => {
+                      const newRole = e.target.value as string
+                      if (window.confirm(`Change role of ${u.username} to ${newRole.replace('ROLE_', '')}?`)) {
+                        changeRole.mutate({ username: u.username, role: newRole })
+                      }
+                    }}
                     disabled={changeRole.isPending}
                     sx={{ minWidth: 140, fontSize: '0.75rem' }}
                   >
@@ -79,7 +84,12 @@ function UsersTab() {
                   <span>
                     <IconButton size="small" color="error"
                       disabled={!u.active || deactivate.isPending}
-                      onClick={() => deactivate.mutate(u.username)}>
+                      onClick={() => {
+                        if (window.confirm(`Deactivate user ${u.username}? This action cannot be undone.`)) {
+                          deactivate.mutate(u.username)
+                        }
+                      }}
+                      aria-label={`Deactivate user ${u.username}`}>
                       ✕
                     </IconButton>
                   </span>
@@ -129,6 +139,7 @@ function SensorsTab() {
                   checked={s.active}
                   disabled={toggle.isPending}
                   onChange={() => toggle.mutate({ id: s.id, active: !s.active })}
+                  aria-label={`Toggle sensor ${s.sensorName}`}
                 />
               </TableCell>
             </TableRow>

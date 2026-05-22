@@ -8,7 +8,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.Acknowledgment;
+import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
@@ -36,9 +38,14 @@ public class AlertEventKafkaConsumer {
 
     public static final String ALERT_REDIS_CHANNEL = "uip:alerts";
 
+    /** DLQ topic for messages that fail processing after max retries */
+    public static final String DLQ_TOPIC = "UIP.flink.alert.detected.v1.dlq";
+    private static final int MAX_RETRIES = 3;
+
     private final AlertEventRepository alertEventRepository;
     private final StringRedisTemplate  redisTemplate;
     private final ObjectMapper         objectMapper;
+    private final KafkaTemplate<String, String> kafkaTemplate;
 
     /**
      * Dedup TTL: 5 phút — cửa sổ đủ rộng để hấp thụ Kafka retry / at-least-once redelivery.
@@ -52,7 +59,9 @@ public class AlertEventKafkaConsumer {
         groupId          = "uip-backend-alerts",
         containerFactory = "kafkaListenerContainerFactory"
     )
-    public void consume(Map<String, Object> payload, Acknowledgment ack) {
+    public void consume(Map<String, Object> payload, Acknowledgment ack,
+                        @Header(value = "kafka_receivedTopic", required = false) String topic,
+                        @Header(value = "x-retry-count", required = false, defaultValue = "0") int retryCount) {
         try {
             AlertEvent event = mapToAlertEvent(payload);
 
@@ -76,8 +85,19 @@ public class AlertEventKafkaConsumer {
                     saved.getSensorId(), saved.getSeverity());
             ack.acknowledge();
         } catch (Exception e) {
-            log.error("Failed to process alert event from Kafka: {}", e.getMessage(), e);
-            // Do not ack — will be retried
+            log.error("Failed to process alert event from Kafka (attempt {}/{}): {}",
+                    retryCount + 1, MAX_RETRIES, e.getMessage(), e);
+            if (retryCount + 1 >= MAX_RETRIES) {
+                try {
+                    String json = objectMapper.writeValueAsString(payload);
+                    kafkaTemplate.send(DLQ_TOPIC, json);
+                    log.warn("Alert sent to DLQ after {} failed attempts", MAX_RETRIES);
+                } catch (Exception dlqEx) {
+                    log.error("Failed to send alert to DLQ: {}", dlqEx.getMessage());
+                }
+                ack.acknowledge();
+            }
+            // else: do not ack — Kafka will redeliver
         }
     }
 

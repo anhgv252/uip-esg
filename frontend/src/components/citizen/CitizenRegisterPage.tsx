@@ -7,7 +7,7 @@ import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useNavigate } from 'react-router-dom'
-import { useBuildings, useRegister, useLinkHousehold } from '@/hooks/useCitizenData'
+import { useCitizenBuildings, useRegister, useLinkHousehold } from '@/hooks/useCitizenData'
 import { tokenStore } from '@/api/client'
 import type { CitizenProfileDto } from '@/api/citizen'
 
@@ -33,7 +33,7 @@ export default function CitizenRegisterPage() {
   const [registered, setRegistered] = useState<CitizenProfileDto | null>(null)
   const [serverError, setServerError] = useState<string | null>(null)
 
-  const { data: buildings = [] } = useBuildings()
+  const { data: buildings = [] } = useCitizenBuildings()
   const { mutate: register, isPending: registering } = useRegister()
   const { mutate: linkHousehold, isPending: linkingHousehold } = useLinkHousehold()
 
@@ -57,8 +57,10 @@ export default function CitizenRegisterPage() {
         setRegistered(res.profile)
         setActiveStep(1)
       },
-      onError: (err: any) => {
-        setServerError(err?.response?.data?.message ?? err.message ?? 'Registration failed')
+      onError: (err: unknown) => {
+        const msg = err instanceof Error ? err.message : 'Registration failed'
+        const axiosMsg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+        setServerError(axiosMsg ?? msg)
       },
     })
   })
@@ -67,8 +69,9 @@ export default function CitizenRegisterPage() {
     setServerError(null)
     linkHousehold(data, {
       onSuccess: () => setActiveStep(2),
-      onError: (err: any) => {
-        setServerError(err?.response?.data?.message ?? 'Failed to link household')
+      onError: (err: unknown) => {
+        const axiosMsg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+        setServerError(axiosMsg ?? 'Failed to link household')
       },
     })
   })

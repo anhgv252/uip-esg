@@ -17,6 +17,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -37,6 +39,9 @@ public class CitizenController {
     private final JwtTokenProvider jwtTokenProvider;
     private final UipUserDetailsService userDetailsService;
 
+    @Value("${server.ssl.enabled:false}")
+    private boolean secureCookie;
+
     /**
      * Register a new citizen account (public endpoint, no auth required).
      * Creates both a CitizenAccount (citizen module) and an AppUser (auth module)
@@ -47,6 +52,7 @@ public class CitizenController {
      */
     @PostMapping("/register")
     @Operation(summary = "Register a new citizen account and receive a JWT")
+    @Transactional
     public ResponseEntity<CitizenRegistrationResponse> register(
             @Valid @RequestBody CitizenRegistrationRequest request,
             HttpServletResponse response) {
@@ -75,7 +81,7 @@ public class CitizenController {
         // 4. Set httpOnly cookie (mirrors AuthController)
         Cookie cookie = new Cookie("access_token", accessToken);
         cookie.setHttpOnly(true);
-        cookie.setSecure(false);
+        cookie.setSecure(secureCookie);
         cookie.setPath("/");
         cookie.setMaxAge((int) expiresIn);
         response.addCookie(cookie);

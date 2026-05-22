@@ -51,9 +51,9 @@ export interface EsgReport {
   generatedAt: string | null;
 }
 
-export const getEsgSummary = (year?: number, quarter?: number, tenantId?: string) =>
+export const getEsgSummary = (year?: number, quarter?: number) =>
   apiClient
-    .get<EsgSummary>('/esg/summary', { params: { year, quarter, tenantId } })
+    .get<EsgSummary>('/esg/summary', { params: { year, quarter } })
     .then((r) => r.data);
 
 function mapMetricEntry(raw: EsgMetricApiEntry): EsgMetricEntry {
@@ -66,23 +66,23 @@ function mapMetricEntry(raw: EsgMetricApiEntry): EsgMetricEntry {
   };
 }
 
-export const getEsgEnergy = (from?: string, to?: string, tenantId?: string) =>
+export const getEsgEnergy = (from?: string, to?: string) =>
   apiClient
-    .get<EsgMetricApiEntry[]>('/esg/energy', { params: { from, to, tenantId } })
+    .get<EsgMetricApiEntry[]>('/esg/energy', { params: { from, to } })
     .then((r) => r.data.map(mapMetricEntry));
 
-export const getEsgCarbon = (from?: string, to?: string, tenantId?: string) =>
+export const getEsgCarbon = (from?: string, to?: string) =>
   apiClient
-    .get<EsgMetricApiEntry[]>('/esg/carbon', { params: { from, to, tenantId } })
+    .get<EsgMetricApiEntry[]>('/esg/carbon', { params: { from, to } })
     .then((r) => r.data.map(mapMetricEntry));
 
-export const triggerReportGeneration = (year: number, quarter: number, period = 'quarterly', tenantId?: string) =>
+export const triggerReportGeneration = (year: number, quarter: number, period = 'quarterly') =>
   apiClient
-    .post<EsgReport>('/esg/reports/generate', null, { params: { year, quarter, period, tenantId } })
+    .post<EsgReport>('/esg/reports/generate', null, { params: { year, quarter, period } })
     .then((r) => r.data);
 
-export const getReportStatus = (id: string, tenantId?: string) =>
-  apiClient.get<EsgReport>(`/esg/reports/${id}/status`, { params: { tenantId } }).then((r) => r.data);
+export const getReportStatus = (id: string) =>
+  apiClient.get<EsgReport>(`/esg/reports/${id}/status`).then((r) => r.data);
 
 export const downloadReport = (id: string, format = 'xlsx') =>
   apiClient

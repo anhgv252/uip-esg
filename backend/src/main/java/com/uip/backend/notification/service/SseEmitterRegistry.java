@@ -19,9 +19,12 @@ public class SseEmitterRegistry {
 
     private final Map<String, SseEmitter> emitters = new ConcurrentHashMap<>();
 
+    /** 30-minute timeout — long enough for real sessions, avoids zombie connections */
+    private static final long SSE_TIMEOUT_MS = 30 * 60 * 1000L;
+
     public SseEmitter register() {
         String clientId = UUID.randomUUID().toString();
-        SseEmitter emitter = new SseEmitter(0L); // no timeout
+        SseEmitter emitter = new SseEmitter(SSE_TIMEOUT_MS);
 
         emitters.put(clientId, emitter);
 

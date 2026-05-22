@@ -24,7 +24,12 @@ export const authApi = {
     return data
   },
 
-  logout: () => {
+  logout: async () => {
+    try {
+      await apiClient.post('/auth/logout')
+    } catch {
+      // Backend logout best-effort — clear client tokens regardless
+    }
     tokenStore.clear()
   },
 }

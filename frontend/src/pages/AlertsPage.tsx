@@ -70,9 +70,10 @@ interface AlertDetailDrawerProps {
   acknowledging: boolean
   escalating: boolean
   isMobile: boolean
+  canEscalate: boolean
 }
 
-function AlertDetailDrawer({ alert, onClose, onAcknowledge, onEscalate, acknowledging, escalating, isMobile }: AlertDetailDrawerProps) {
+function AlertDetailDrawer({ alert, onClose, onAcknowledge, onEscalate, acknowledging, escalating, isMobile, canEscalate }: AlertDetailDrawerProps) {
   const [note, setNote] = useState('')
   const actionLabel = alert?.status === 'ACKNOWLEDGED' ? 'Acknowledged by' : 'Escalated by'
   return (
@@ -140,7 +141,7 @@ function AlertDetailDrawer({ alert, onClose, onAcknowledge, onEscalate, acknowle
                 )}
                 <Button
                   variant="outlined" fullWidth startIcon={<ArrowUpwardIcon />}
-                  disabled={acknowledging || escalating}
+                  disabled={acknowledging || escalating || !canEscalate}
                   onClick={() => onEscalate(String(alert.id), note)}
                   color="warning"
                   sx={{ minHeight: 44 }}
@@ -156,11 +157,12 @@ function AlertDetailDrawer({ alert, onClose, onAcknowledge, onEscalate, acknowle
   )
 }
 
-function MobileAlertCard({ alert, onAck, onEscalate, canAck, acknowledging, escalating }: {
+function MobileAlertCard({ alert, onAck, onEscalate, canAck, canEscalate, acknowledging, escalating }: {
   alert: AlertEvent
   onAck: (id: string) => void
   onEscalate: (id: string) => void
   canAck: boolean
+  canEscalate: boolean
   acknowledging: boolean
   escalating: boolean
 }) {
@@ -195,7 +197,7 @@ function MobileAlertCard({ alert, onAck, onEscalate, canAck, acknowledging, esca
           {(alert.status === 'OPEN' || alert.status === 'ESCALATED') && (
             <Button
               size="small" color="warning" startIcon={<ArrowUpwardIcon />}
-              onClick={() => onEscalate(String(alert.id))} disabled={escalating}
+              onClick={() => onEscalate(String(alert.id))} disabled={!canEscalate || escalating}
               sx={{ minHeight: 44 }}
             >
               Escalate
@@ -216,6 +218,7 @@ export default function AlertsPage() {
   const [page, setPage] = useState(0)
   const [filters, setFilters] = useState({ status: '', severity: '' })
   const canAck = useScope('alert:ack')
+  const canEscalate = useScope('alert:escalate')
 
   const { data, isLoading, error } = useAlerts({
     status: filters.status || undefined,
@@ -291,6 +294,7 @@ export default function AlertsPage() {
                 onAck={(id) => handleAck(id)}
                 onEscalate={(id) => handleEscalate(id)}
                 canAck={canAck}
+                canEscalate={canEscalate}
                 acknowledging={acknowledging}
                 escalating={escalating}
               />
@@ -368,10 +372,12 @@ export default function AlertsPage() {
                         </Tooltip>
                       )}
                       {(alert.status === 'OPEN' || alert.status === 'ACKNOWLEDGED') && (
-                        <Tooltip title="Escalate">
-                          <IconButton size="small" color="warning" onClick={() => handleEscalate(String(alert.id))}>
+                        <Tooltip title={!canEscalate ? 'You need alert:escalate scope' : 'Escalate'}>
+                          <span>
+                            <IconButton size="small" color="warning" onClick={() => handleEscalate(String(alert.id))} disabled={!canEscalate}>
                             <ArrowUpwardIcon fontSize="small" />
                           </IconButton>
+                          </span>
                         </Tooltip>
                       )}
                     </Box>
@@ -394,7 +400,7 @@ export default function AlertsPage() {
         alert={selectedAlert} onClose={() => setSelectedAlert(null)}
         onAcknowledge={handleAck} onEscalate={handleEscalate}
         acknowledging={acknowledging} escalating={escalating}
-        isMobile={isMobile}
+        isMobile={isMobile} canEscalate={canEscalate}
       />
     </Box>
   )

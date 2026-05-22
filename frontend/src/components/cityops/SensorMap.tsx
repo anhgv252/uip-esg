@@ -49,7 +49,10 @@ function getSavedViewport(): { center: [number, number]; zoom: number } {
   try {
     const raw = sessionStorage.getItem(VIEWPORT_KEY)
     if (raw) {
-      const { lat, lng, zoom } = JSON.parse(raw)
+      const parsed = JSON.parse(raw)
+      const lat = typeof parsed.lat === 'number' && Number.isFinite(parsed.lat) ? parsed.lat : HCMC_CENTER[0]
+      const lng = typeof parsed.lng === 'number' && Number.isFinite(parsed.lng) ? parsed.lng : HCMC_CENTER[1]
+      const zoom = typeof parsed.zoom === 'number' && Number.isInteger(parsed.zoom) && parsed.zoom >= 1 && parsed.zoom <= 22 ? parsed.zoom : 12
       return { center: [lat, lng], zoom }
     }
   } catch {

@@ -26,6 +26,9 @@ public class TokenBlacklistService {
      * @param expiresAt Unix timestamp (ms) when the token would naturally expire
      */
     public void invalidate(String token, long expiresAt) {
+        if (blacklist.size() > 100_000) {
+            evictExpired();
+        }
         blacklist.put(token, expiresAt);
         log.debug("Token invalidated, blacklist size={}", blacklist.size());
     }

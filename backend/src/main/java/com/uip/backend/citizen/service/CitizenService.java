@@ -143,18 +143,20 @@ public class CitizenService {
     }
     
     /**
-     * Generate username from email (format: email prefix + random 4 digits)
+     * Generate username from email (format: email prefix + random 4 digits).
+     * Loops until a unique username is found to handle TOCTOU race conditions.
      */
     private String generateUsername(String email) {
-        String prefix = email.split("@")[0];
-        String username = prefix.replaceAll("[^a-zA-Z0-9]", "");
-        
-        // Ensure uniqueness by appending random suffix if needed
-        if (citizenRepository.existsByUsername(username)) {
-            username = username + SECURE_RANDOM.nextInt(10000);
+        String prefix = email.split("@")[0].replaceAll("[^a-zA-Z0-9]", "");
+        String username = prefix;
+        for (int attempt = 0; attempt < 10; attempt++) {
+            if (!citizenRepository.existsByUsername(username)) {
+                return username;
+            }
+            username = prefix + SECURE_RANDOM.nextInt(10_000);
         }
-        
-        return username;
+        // Fallback with UUID suffix after 10 failed attempts
+        return prefix + UUID.randomUUID().toString().substring(0, 8);
     }
     
     private CitizenProfileDto mapToProfileDto(CitizenAccount citizen, Household household) {

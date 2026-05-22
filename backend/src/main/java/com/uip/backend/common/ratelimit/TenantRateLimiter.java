@@ -11,7 +11,6 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.RedisScript;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.util.HashMap;
@@ -64,7 +63,6 @@ public class TenantRateLimiter {
     }
 
     @Scheduled(fixedDelay = 300_000)
-    @Transactional(readOnly = true)
     public void reloadTenantRpm() {
         if (tenantConfigRepository == null) return;
         Map<String, Integer> map = new HashMap<>();

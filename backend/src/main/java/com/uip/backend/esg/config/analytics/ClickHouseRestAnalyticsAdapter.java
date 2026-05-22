@@ -30,7 +30,7 @@ public class ClickHouseRestAnalyticsAdapter implements AnalyticsPort {
     private final String analyticsServiceUrl;
 
     public ClickHouseRestAnalyticsAdapter(
-            @Value("${uip.analytics-service.url}") String analyticsServiceUrl) {
+            @Value("${uip.analytics-service.url:http://localhost:8082}") String analyticsServiceUrl) {
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
         factory.setConnectTimeout(5_000);
         factory.setReadTimeout(30_000);

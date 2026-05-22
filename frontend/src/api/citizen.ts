@@ -107,7 +107,9 @@ export const getCitizenProfile = (tenantId?: string) => {
 
 export const registerMeter = (data: MeterRequest, tenantId?: string) => {
   const headers = tenantId ? { 'X-Tenant-Override': tenantId } : {}
-  return apiClient.post<MeterDto>('/citizen/meters', data, { headers }).then((r) => r.data)
+  return apiClient
+    .post<MeterDto>('/citizen/meters', null, { params: { meterCode: data.meterCode, meterType: data.meterType }, headers })
+    .then((r) => r.data)
 }
 
 export const getInvoices = (

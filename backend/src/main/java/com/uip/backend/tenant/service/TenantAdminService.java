@@ -3,7 +3,6 @@ package com.uip.backend.tenant.service;
 import com.uip.backend.auth.domain.AppUser;
 import com.uip.backend.auth.domain.UserRole;
 import com.uip.backend.auth.repository.AppUserRepository;
-import com.uip.backend.common.service.AuditLogService;
 import com.uip.backend.tenant.api.dto.*;
 import com.uip.backend.tenant.context.TenantContext;
 import com.uip.backend.tenant.domain.Tenant;

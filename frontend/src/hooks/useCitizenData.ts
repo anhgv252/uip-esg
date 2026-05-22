@@ -13,9 +13,9 @@ import {
   type MeterRequest,
 } from '@/api/citizen'
 
-export function useBuildings() {
+export function useCitizenBuildings() {
   return useQuery({
-    queryKey: ['buildings'],
+    queryKey: ['citizen-buildings'],
     queryFn: () => getBuildings(),
     staleTime: 5 * 60_000,
   })

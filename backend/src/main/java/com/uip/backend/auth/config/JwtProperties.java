@@ -8,13 +8,13 @@ import org.springframework.stereotype.Component;
 @Getter
 public class JwtProperties {
 
-    @Value("${security.jwt.secret}")
+    @Value("${security.jwt.secret:changeme_jwt_secret_must_be_at_least_256_bits_long_for_hmac_sha256}")
     private String secret;
 
-    @Value("${security.jwt.expiration-ms}")
+    @Value("${security.jwt.expiration-ms:3600000}")
     private long expirationMs;
 
-    @Value("${security.jwt.refresh-expiration-ms}")
+    @Value("${security.jwt.refresh-expiration-ms:86400000}")
     private long refreshExpirationMs;
 
     @Value("${security.jwt.hmac-issuer:uip-legacy}")

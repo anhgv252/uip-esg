@@ -14,6 +14,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -28,6 +29,9 @@ public class AuthController {
     private final LoginRateLimitService rateLimitService;
     private final JwtTokenProvider jwtTokenProvider;
     private final TokenBlacklistService tokenBlacklistService;
+
+    @Value("${server.ssl.enabled:false}")
+    private boolean secureCookie;
 
     @PostMapping("/login")
     @Operation(summary = "Login and receive JWT tokens")
@@ -45,7 +49,7 @@ public class AuthController {
 
         Cookie accessTokenCookie = new Cookie("access_token", authResponse.accessToken());
         accessTokenCookie.setHttpOnly(true);
-        accessTokenCookie.setSecure(false); // true in production (HTTPS)
+        accessTokenCookie.setSecure(secureCookie);
         accessTokenCookie.setPath("/");
         accessTokenCookie.setMaxAge((int) authResponse.expiresIn());
         response.addCookie(accessTokenCookie);
@@ -63,7 +67,7 @@ public class AuthController {
 
         Cookie accessTokenCookie = new Cookie("access_token", authResponse.accessToken());
         accessTokenCookie.setHttpOnly(true);
-        accessTokenCookie.setSecure(false); // true in production (HTTPS)
+        accessTokenCookie.setSecure(secureCookie);
         accessTokenCookie.setPath("/");
         accessTokenCookie.setMaxAge((int) authResponse.expiresIn());
         response.addCookie(accessTokenCookie);
@@ -87,7 +91,7 @@ public class AuthController {
 
         Cookie expiredCookie = new Cookie("access_token", "");
         expiredCookie.setHttpOnly(true);
-        expiredCookie.setSecure(false);
+        expiredCookie.setSecure(secureCookie);
         expiredCookie.setPath("/");
         expiredCookie.setMaxAge(0);
         response.addCookie(expiredCookie);

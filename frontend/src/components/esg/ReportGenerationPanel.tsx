@@ -60,7 +60,7 @@ export function ReportGenerationPanel() {
     a.href = url;
     a.download = `esg-report-q${selectedQuarter}-${selectedYear}.${format}`;
     a.click();
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
   const isGenerating = reportStatus?.status === 'GENERATING' || reportStatus?.status === 'PENDING';
