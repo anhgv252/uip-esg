@@ -260,8 +260,8 @@ class TenantContextFilterTest {
 
         filter.doFilterInternal(request, response, chain);
 
-        // after filter, context must be cleared
-        assertThat(TenantContext.getCurrentTenant()).isEqualTo(TenantContext.getDefaultTenant());
+        // after filter, context must be cleared (TenantContext.clear() → CURRENT_TENANT.remove() → null)
+        assertThat(TenantContext.getCurrentTenant()).isNull();
     }
 
     @Test
@@ -280,7 +280,8 @@ class TenantContextFilterTest {
             // expected
         }
 
-        assertThat(TenantContext.getCurrentTenant()).isEqualTo(TenantContext.getDefaultTenant());
+        // clear() calls CURRENT_TENANT.remove() → null, not "default"
+        assertThat(TenantContext.getCurrentTenant()).isNull();
     }
 
     // ─── helpers ──────────────────────────────────────────────────────────────

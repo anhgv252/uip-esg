@@ -66,7 +66,8 @@ class AuthServiceTest {
             when(tokenProvider.generateAccessToken(any(), eq("hcm"), argThat(s -> s.contains("tenant:admin")), any()))
                     .thenReturn("admin-token");
             when(tokenProvider.generateRefreshToken(any())).thenReturn("refresh-token");
-            when(tokenProvider.getJwtProperties()).thenReturn(mockJwtProperties(900_000L));
+            var jwtProps1 = mockJwtProperties(900_000L);
+            when(tokenProvider.getJwtProperties()).thenReturn(jwtProps1);
 
             AuthResponse response = authService.login(new LoginRequest("alice", "pw"));
 
@@ -88,7 +89,8 @@ class AuthServiceTest {
                     argThat(s -> s.contains("esg:read") && !s.contains("tenant:admin")), any()))
                     .thenReturn("operator-token");
             when(tokenProvider.generateRefreshToken(any())).thenReturn("rt");
-            when(tokenProvider.getJwtProperties()).thenReturn(mockJwtProperties(900_000L));
+            var jwtProps2 = mockJwtProperties(900_000L);
+            when(tokenProvider.getJwtProperties()).thenReturn(jwtProps2);
 
             AuthResponse response = authService.login(new LoginRequest("bob", "pw"));
 
@@ -106,7 +108,8 @@ class AuthServiceTest {
                     argThat(s -> s.contains("environment:read") && !s.contains("environment:write")), any()))
                     .thenReturn("citizen-token");
             when(tokenProvider.generateRefreshToken(any())).thenReturn("rt");
-            when(tokenProvider.getJwtProperties()).thenReturn(mockJwtProperties(900_000L));
+            var jwtProps3 = mockJwtProperties(900_000L);
+            when(tokenProvider.getJwtProperties()).thenReturn(jwtProps3);
 
             AuthResponse response = authService.login(new LoginRequest("carol", "pw"));
 
@@ -121,7 +124,8 @@ class AuthServiceTest {
             when(tokenProvider.generateAccessToken(any(), eq("default"), eq(List.of()), eq(List.of())))
                     .thenReturn("ghost-token");
             when(tokenProvider.generateRefreshToken(any())).thenReturn("rt");
-            when(tokenProvider.getJwtProperties()).thenReturn(mockJwtProperties(900_000L));
+            var jwtProps4 = mockJwtProperties(900_000L);
+            when(tokenProvider.getJwtProperties()).thenReturn(jwtProps4);
 
             AuthResponse response = authService.login(new LoginRequest("ghost", "pw"));
 
@@ -157,7 +161,8 @@ class AuthServiceTest {
             when(appUserRepository.findByUsername("alice")).thenReturn(Optional.of(operator));
             when(tokenProvider.generateAccessToken(any(), eq("hcm"), any(), any()))
                     .thenReturn("new-access-token");
-            when(tokenProvider.getJwtProperties()).thenReturn(mockJwtProperties(900_000L));
+            var jwtProps5 = mockJwtProperties(900_000L);
+            when(tokenProvider.getJwtProperties()).thenReturn(jwtProps5);
 
             AuthResponse response = authService.refresh("rt");
 
@@ -186,7 +191,8 @@ class AuthServiceTest {
             when(appUserRepository.findByUsername("ghost")).thenReturn(Optional.empty());
             when(tokenProvider.generateAccessToken(any(), eq("default"), eq(List.of()), eq(List.of())))
                     .thenReturn("new-token");
-            when(tokenProvider.getJwtProperties()).thenReturn(mockJwtProperties(900_000L));
+            var jwtProps6 = mockJwtProperties(900_000L);
+            when(tokenProvider.getJwtProperties()).thenReturn(jwtProps6);
 
             AuthResponse response = authService.refresh("rt");
 
