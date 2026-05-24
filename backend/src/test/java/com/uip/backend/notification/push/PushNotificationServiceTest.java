@@ -8,6 +8,7 @@ import com.uip.backend.notification.service.NotificationChannel;
 import nl.martijndwars.webpush.PushService;
 import org.apache.http.HttpResponse;
 import org.apache.http.StatusLine;
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -75,6 +76,10 @@ class PushNotificationServiceTest {
 
     @BeforeEach
         void setUp() throws Exception {
+                // Register BouncyCastle so webpush Notification constructor can decode EC keys
+                if (java.security.Security.getProvider("BC") == null) {
+                        java.security.Security.addProvider(new BouncyCastleProvider());
+                }
                 // Generate real P-256 key pair so Notification constructor succeeds
                 java.security.KeyPairGenerator kpg = java.security.KeyPairGenerator.getInstance("EC");
                 kpg.initialize(new java.security.spec.ECGenParameterSpec("secp256r1"));

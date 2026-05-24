@@ -38,6 +38,7 @@ import static org.mockito.Mockito.when;
 
 import com.uip.backend.esg.service.EsgCacheWarmupService;
 
+@Tag("integration")
 @SpringBootTest(properties = {
     "security.jwt.secret=test-secret-for-integration-tests-only-32chars",
     "spring.cache.type=none",

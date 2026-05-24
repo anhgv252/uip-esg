@@ -20,7 +20,7 @@ import { useScope } from '../../hooks/useScope';
 
 const CURRENT_YEAR = new Date().getFullYear();
 const QUARTERS = [1, 2, 3, 4];
-const YEARS = [CURRENT_YEAR, CURRENT_YEAR - 1, CURRENT_YEAR - 2];
+const YEARS = [CURRENT_YEAR, CURRENT_YEAR - 1, CURRENT_YEAR - 2, CURRENT_YEAR - 3];
 
 export function ReportGenerationPanel() {
   const [selectedYear, setSelectedYear] = useState(CURRENT_YEAR);

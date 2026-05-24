@@ -8,6 +8,8 @@ import com.uip.backend.esg.service.EsgService;
 import com.uip.backend.tenant.context.TenantContext;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.PathResource;
@@ -17,6 +19,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.File;
@@ -30,6 +33,7 @@ import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 @RestController
 @RequestMapping("/api/v1/esg")
 @RequiredArgsConstructor
+@Validated
 @Tag(name = "ESG", description = "Environmental, Social, and Governance metrics and reports")
 public class EsgController {
 
@@ -76,8 +80,8 @@ public class EsgController {
     @PreAuthorize("hasAnyRole('OPERATOR', 'ADMIN') and hasAuthority('esg:write')")
     public ResponseEntity<EsgReportDto> generateReport(
             @RequestParam(defaultValue = "quarterly") String period,
-            @RequestParam(defaultValue = "2026")      int year,
-            @RequestParam(defaultValue = "1")          int quarter) {
+            @RequestParam(defaultValue = "2026") @Min(value = 2020, message = "year must be 2020 or later") int year,
+            @RequestParam(defaultValue = "1") @Min(value = 1, message = "quarter must be between 1 and 4") @Max(value = 4, message = "quarter must be between 1 and 4") int quarter) {
         String tenantId = TenantContext.getCurrentTenant();
         EsgReportDto dto = esgService.triggerReportGeneration(tenantId, period, year, quarter);
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(dto);

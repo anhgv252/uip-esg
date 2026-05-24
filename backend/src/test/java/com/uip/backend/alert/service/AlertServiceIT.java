@@ -33,6 +33,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+@Tag("integration")
 @SpringBootTest(properties = {
     "security.jwt.secret=test-secret-for-integration-tests-only-32chars",
     "spring.cache.type=simple",

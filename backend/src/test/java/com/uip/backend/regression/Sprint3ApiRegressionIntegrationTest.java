@@ -31,6 +31,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * Gate: all 9 tests must pass before Sprint 3 closeout.
  * Containers: raw Docker CLI for TimescaleDB + Redis (consistent with Sprint2 pattern).
  */
+@Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureMockMvc
 class Sprint3ApiRegressionIntegrationTest {
@@ -297,14 +298,7 @@ class Sprint3ApiRegressionIntegrationTest {
                             .param("year", "2019")
                             .param("quarter", "0")
                             .header("Authorization", "Bearer " + token))
-                    .andExpect(result -> {
-                        int status = result.getResponse().getStatus();
-                        // Async report generation: 202 (accepted) for any input — validation
-                        // happens during processing, not at request time.
-                        // Previously expected 400/500, but endpoint changed to async pattern.
-                        assertTrue(status == 202 || status == 400 || status == 500,
-                                "Expected 202/400/500 for year/quarter input, got: " + status);
-                    });
+                    .andExpect(status().isBadRequest());
         }
 
         @Test

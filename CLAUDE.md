@@ -37,9 +37,36 @@ Sau khi Backend/Frontend agent hoàn thành implementation, **PHẢI chạy SA C
 
 ### Output: `docs/mvp3/reports/sprint{N}-code-review.md`
 
-## Tool Selection for Codebase Analysis
+## Code Navigation — BẮT BUỤC dùng MCP tools trước grep/read
 
-Before reading code, score the task on 3 signals:
+Project này có `.codegraph/` (CodeGraph) và `java-graph` MCP server. **KHÔNG dùng grep/glob/read để tìm code** khi MCP tools có thể trả lời nhanh hơn.
+
+### Quy tắc ưu tiên tool:
+
+| Nhu cầu | Tool dùng đầu tiên | Fallback |
+|---|---|---|
+| Tìm symbol/class/method theo tên | `codegraph_search` | `Grep` |
+| Hiểu flow: ai gọi ai, call chain | `codegraph_callers` / `codegraph_callees` | `java-graph get_resolved_callees` (bytecode truth) |
+| Impact analysis trước khi sửa | `java-graph impact_analysis` (⚠️ cần fix bug) | `codegraph_impact` (fallback) |
+| Xem tổng quan kiến trúc / vùng code | `codegraph_explore` (trong Explore agent) | Nhiều lần `Read` |
+| Spring bean injection, @Transactional flow | `java-graph get_resolved_callees` | `codegraph_callees` |
+| Quick file structure | `codegraph_files` | `find` / `Glob` |
+
+### Luồng bắt buộc trước khi sửa code:
+
+```
+Bước 1 — Định vị nhanh:   codegraph_search("symbol")         → không bao giờ miss, polyglot
+Bước 2 — java-graph impact: impact_analysis("Symbol")          → CHỈ KHI tool work (cần fix bug trước)
+Bước 3 — Bytecode truth:   java-graph get_resolved_callees    → CHỈ cho Java core refactor
+Bước 4 — Đọc detail:       Read file                          → khi đã biết chính xác
+```
+
+### Khi nào KHÔNG cần MCP tools:
+- Đã biết chính xác file path và line cần sửa (score 0)
+- Viết unit test cho method cụ thể (score 0)
+- Fix bug ở method đã biết vị trí (score 0)
+
+### Scoring:
 
 | Signal | 0 | +1 | +2 |
 |---|---|---|---|
@@ -47,13 +74,21 @@ Before reading code, score the task on 3 signals:
 | **File count** | 1–3 files | 4–7 files | 8+ files or unknown |
 | **Info needed** | code body / logic | structure / class overview | callers / dependency chain |
 
-**Decision:**
-- Score **0–1** → `Read` / `Glob` / `Grep` only
-- Score **2–3** → `java-graph` to navigate, then `Read` key files to implement
-- Score **4–6** → `java-graph` as primary tool
+- Score **0–1** → `Read` trực tiếp, không cần MCP
+- Score **2–3** → `codegraph_search` → `Read` để implement
+- Score **4–6** → `codegraph_context` hoặc `codegraph_explore` (Explore agent)
 
-**Examples:**
-- "Viết unit test cho ServiceX" → score 0 → Read trực tiếp
-- "Refactor DTO, đổi field type" → score 5 → java-graph trước
-- "Fix NPE trong method cụ thể" → score 0 → Read trực tiếp
-- "Thêm feature end-to-end" → score 4–5 → java-graph trước
+## java-graph — Trạng thái & lưu ý
+
+### java-graph hiện có bug lookup mismatch
+- `find_class` / `search_package` → **OK** (dùng SQLite FTS)
+- `impact_analysis` / `get_class_members` / `get_field_accesses` → **FAIL** (Neo4j node ID mismatch)
+- `get_resolved_callees` / `get_resolved_callers` → **OK** (bytecode accuracy, depth=2)
+- `summarize_project` → **FAIL** (MCP_SAMPLING_UNSUPPORTED với model hiện tại)
+- `find_class("AlertEngine")` → **MISS** (không index class này)
+
+### Chỉ dùng java-graph khi:
+- Cần **bytecode-accurate call chain** (depth=2) cho Java core — `get_resolved_callees`
+- `codegraph` không cover đủ → fallback `find_class`, `search_package`
+- **KHÔNG** dùng `impact_analysis`, `get_class_members`, `get_field_accesses` cho đến khi fix bug
+

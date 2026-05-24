@@ -3,6 +3,7 @@ package com.uip.backend.building.service;
 import com.uip.backend.building.api.dto.CrossBuildingAggregationRequest;
 import com.uip.backend.building.api.dto.CrossBuildingAggregationResult;
 import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
@@ -34,6 +35,7 @@ import static org.assertj.core.data.Offset.offset;
  *
  * Follows TenantIsolationIT / CrossBuildingConcurrentRLSIT patterns.
  */
+@Tag("integration")
 @SpringBootTest(properties = "security.jwt.secret=test-secret-for-integration-tests-only-32chars")
 @Testcontainers(disabledWithoutDocker = true)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)

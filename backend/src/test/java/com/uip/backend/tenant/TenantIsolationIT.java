@@ -30,6 +30,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * Creates a restricted PostgreSQL role (not table owner) to ensure RLS policies
  * are enforced — table owners bypass RLS by default.
  */
+@Tag("integration")
 @SpringBootTest
 @Testcontainers(disabledWithoutDocker = true)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)

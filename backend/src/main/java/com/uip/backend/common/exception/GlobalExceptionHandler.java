@@ -2,8 +2,10 @@ package com.uip.backend.common.exception;
 
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
@@ -29,6 +31,40 @@ public class GlobalExceptionHandler {
     public ProblemDetail handleAccessDenied(AccessDeniedException ex, HttpServletRequest request) {
         ProblemDetail detail = ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, "Access denied");
         detail.setType(URI.create("/errors/access-denied"));
+        enrich(detail, request);
+        return detail;
+    }
+
+    // Spring 6.1 (Spring Boot 3.2): @Validated @RequestParam constraints throw HandlerMethodValidationException
+    @ExceptionHandler(HandlerMethodValidationException.class)
+    public ProblemDetail handleHandlerMethodValidation(HandlerMethodValidationException ex, HttpServletRequest request) {
+        Map<String, String> errors = new java.util.LinkedHashMap<>();
+        ex.getAllValidationResults().forEach(result -> {
+            String name = result.getMethodParameter().getParameterName();
+            String message = result.getResolvableErrors().stream()
+                    .map(e -> e.getDefaultMessage())
+                    .filter(m -> m != null)
+                    .collect(Collectors.joining(", "));
+            errors.put(name != null ? name : "param", message);
+        });
+        ProblemDetail detail = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Validation failed");
+        detail.setType(URI.create("/errors/validation"));
+        detail.setProperty("errors", errors);
+        enrich(detail, request);
+        return detail;
+    }
+
+    // Service-level / AOP-based constraint violations (non-controller contexts)
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ProblemDetail handleConstraintViolation(ConstraintViolationException ex, HttpServletRequest request) {
+        Map<String, String> errors = ex.getConstraintViolations().stream()
+                .collect(Collectors.toMap(
+                        cv -> cv.getPropertyPath().toString(),
+                        cv -> cv.getMessage(),
+                        (a, b) -> a));
+        ProblemDetail detail = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Validation failed");
+        detail.setType(URI.create("/errors/validation"));
+        detail.setProperty("errors", errors);
         enrich(detail, request);
         return detail;
     }

@@ -35,6 +35,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * Redis and Kafka are mocked since they are not needed for push subscription CRUD.
  * Covers: CRUD lifecycle, tenant isolation via RLS, endpoint unique constraint, max limit.
  */
+@Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureMockMvc
 @Testcontainers(disabledWithoutDocker = true)

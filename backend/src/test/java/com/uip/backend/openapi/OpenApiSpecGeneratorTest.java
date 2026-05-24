@@ -41,6 +41,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureMockMvc
 @Tag("openapi-gen")
+@EnabledIfSystemProperty(named = "generate.openapi", matches = "true",
+        disabledReason = "Spec generation only runs with -Dgenerate.openapi=true")
 class OpenApiSpecGeneratorTest {
 
     private static final boolean DOCKER_EXISTS = new File("/usr/local/bin/docker").exists()

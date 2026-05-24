@@ -189,14 +189,29 @@ jacocoTestCoverageVerification {
     }
 }
 
-// Split test suite: unit tests only (exclude *IT, *IntegrationTest)
+// Split test suite: unit tests only (exclude @Tag("integration") + *IT/*IntegrationTest by name)
 tasks.register('testUnit', Test) {
     useJUnitPlatform {
         excludeTags 'integration'
     }
     exclude '**/*IT.class', '**/*IntegrationTest.class'
+    environment 'RYUK_DISABLED', 'true'
+    maxParallelForks = 1
     jvmArgs '-Xmx2g', '-Xms256m', '-XX:+UseG1GC'
     finalizedBy 'jacocoTestUnitReport'
+}
+
+// Integration tests only (requires Docker + running infra for Testcontainers)
+tasks.register('integrationTest', Test) {
+    useJUnitPlatform {
+        includeTags 'integration'
+    }
+    include '**/*IT.class', '**/*IntegrationTest.class'
+    environment 'RYUK_DISABLED', 'true'
+    maxParallelForks = 1
+    jvmArgs '-Xmx3500m', '-Xms512m', '-XX:+UseG1GC', '-XX:+ParallelRefProcEnabled'
+    // Do not run as part of the default 'check' lifecycle
+    shouldRunAfter testUnit
 }
 
 // JaCoCo report for unit tests only (faster, smaller memory footprint)

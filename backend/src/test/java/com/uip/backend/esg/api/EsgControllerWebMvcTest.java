@@ -218,6 +218,45 @@ class EsgControllerWebMvcTest {
         verifyNoInteractions(esgService);
     }
 
+    @Test
+    @WithMockUser(username = "operator", authorities = {"ROLE_OPERATOR", "esg:write"})
+    @DisplayName("POST /esg/reports/generate — year=2019 → 400 Bad Request (BUG-S3-001)")
+    void generateReport_invalidYear_returns400() throws Exception {
+        mockMvc.perform(post("/api/v1/esg/reports/generate")
+                .with(csrf())
+                .param("year", "2019").param("quarter", "1")
+                .contentType(MediaType.APPLICATION_JSON))
+            .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(esgService);
+    }
+
+    @Test
+    @WithMockUser(username = "operator", authorities = {"ROLE_OPERATOR", "esg:write"})
+    @DisplayName("POST /esg/reports/generate — quarter=0 → 400 Bad Request (BUG-S3-002)")
+    void generateReport_invalidQuarter_returns400() throws Exception {
+        mockMvc.perform(post("/api/v1/esg/reports/generate")
+                .with(csrf())
+                .param("year", "2026").param("quarter", "0")
+                .contentType(MediaType.APPLICATION_JSON))
+            .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(esgService);
+    }
+
+    @Test
+    @WithMockUser(username = "operator", authorities = {"ROLE_OPERATOR", "esg:write"})
+    @DisplayName("POST /esg/reports/generate — quarter=5 → 400 Bad Request (BUG-S3-002)")
+    void generateReport_quarterAboveMax_returns400() throws Exception {
+        mockMvc.perform(post("/api/v1/esg/reports/generate")
+                .with(csrf())
+                .param("year", "2026").param("quarter", "5")
+                .contentType(MediaType.APPLICATION_JSON))
+            .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(esgService);
+    }
+
     // ─── GET /reports/{id}/status ─────────────────────────────────────────────
 
     @Test

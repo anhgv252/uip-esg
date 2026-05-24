@@ -60,6 +60,7 @@ import static org.mockito.Mockito.when;
  *   GR-IT-13: Report generation p95 <30s with 48 buildings
  *   GR-IT-14: Report cache hit on 2nd identical request
  */
+@Tag("integration")
 @SpringBootTest(properties = {
     "security.jwt.secret=test-secret-for-integration-tests-only-32chars",
     "spring.cache.type=none",

@@ -31,6 +31,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * - NEW: Tenant Admin endpoints regression
  * - NEW: RLS covers push_subscriptions table
  */
+@Tag("integration")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureMockMvc
 class Sprint5ApiRegressionIntegrationTest {

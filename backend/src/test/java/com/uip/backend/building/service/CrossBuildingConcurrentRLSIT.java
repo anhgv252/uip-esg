@@ -35,6 +35,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  *
  * Follows TenantIsolationIT pattern: Testcontainers PG, @MockBean infra.
  */
+@Tag("integration")
 @SpringBootTest(properties = "security.jwt.secret=test-secret-for-integration-tests-only-32chars")
 @Testcontainers(disabledWithoutDocker = true)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
