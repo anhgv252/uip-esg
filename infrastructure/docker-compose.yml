@@ -426,6 +426,7 @@ services:
       CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-}
       CLICKHOUSE_DB: ${CLICKHOUSE_DB:-analytics}
       JWT_SECRET: ${JWT_SECRET}
+      UIP_SECURITY_KEYCLOAK_PUBLIC_KEY: ${KEYCLOAK_RS256_PUBLIC_KEY:-}
     ports:
       - "8082:8081"
     healthcheck:

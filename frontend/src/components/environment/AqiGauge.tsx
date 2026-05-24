@@ -1,5 +1,7 @@
-import { Box, Typography, CircularProgress } from '@mui/material';
+import { Box, Typography, CircularProgress, Tooltip } from '@mui/material';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
+
+const STALE_THRESHOLD_MS = 30_000;
 
 interface AqiGaugeProps {
   aqi: number;
@@ -8,6 +10,7 @@ interface AqiGaugeProps {
   sensorName: string;
   district: string;
   dominantPollutant: string;
+  calculatedAt?: string;
 }
 
 const AQI_MAX = 500;
@@ -17,7 +20,8 @@ function toDeg(value: number): number {
   return -180 + Math.min(value / AQI_MAX, 1) * 180;
 }
 
-export function AqiGauge({ aqi, category, color, sensorName, district, dominantPollutant }: AqiGaugeProps) {
+export function AqiGauge({ aqi, category, color, sensorName, district, dominantPollutant, calculatedAt }: AqiGaugeProps) {
+  const isStale = !!calculatedAt && (Date.now() - new Date(calculatedAt).getTime()) > STALE_THRESHOLD_MS;
   // Build arc segments matching EPA breakpoints
   const segments = [
     { limit: 50, color: '#00E400' },    // Good
@@ -106,6 +110,19 @@ export function AqiGauge({ aqi, category, color, sensorName, district, dominantP
       <Typography variant="caption" display="block" color="text.secondary" mt={0.5}>
         Dominant: {dominantPollutant}
       </Typography>
+
+      {isStale && (
+        <Tooltip title={`Last updated: ${new Date(calculatedAt!).toLocaleTimeString()}`}>
+          <Typography
+            variant="caption"
+            display="block"
+            sx={{ color: 'warning.main', cursor: 'default', mt: 0.5 }}
+            aria-label="Data may be stale"
+          >
+            ⚠ Data may be outdated
+          </Typography>
+        </Tooltip>
+      )}
     </Box>
   );
 }

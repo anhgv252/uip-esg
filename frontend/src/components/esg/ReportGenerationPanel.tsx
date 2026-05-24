@@ -171,6 +171,17 @@ export function ReportGenerationPanel() {
           Failed to start report generation. Please try again.
         </Alert>
       )}
+
+      {!activeReportId && !triggerMutation.isPending && !triggerMutation.isError && (
+        <Typography
+          variant="body2"
+          color="text.secondary"
+          sx={{ mt: 2, fontStyle: 'italic' }}
+          aria-label="Report generation hint"
+        >
+          Select period and click Generate to create an ESG report.
+        </Typography>
+      )}
     </Box>
   );
 }

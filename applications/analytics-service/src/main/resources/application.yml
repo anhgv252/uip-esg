@@ -29,6 +29,7 @@ clickhouse:
 uip:
   security:
     jwt-secret: ${JWT_SECRET:changeme_jwt_secret_min_32_characters_long}
+    keycloak-public-key: ${UIP_SECURITY_KEYCLOAK_PUBLIC_KEY:}
 
 # Actuator
 management:

@@ -138,6 +138,7 @@ export default function EnvironmentPage() {
                         sensorName={sensor?.name ?? item.sensorName}
                         district={sensor?.district ?? item.district}
                         dominantPollutant={item.dominantPollutant}
+                        calculatedAt={item.calculatedAt}
                       />
                     </CardContent>
                   </Card>

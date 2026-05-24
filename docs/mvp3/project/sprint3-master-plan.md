@@ -93,7 +93,7 @@
 - [x] New login qua Keycloak → RSA token issued — **VERIFIED 2026-05-23** (`alg=RS256`, `kid`, `tenant_id=hcm`)
 - [x] Old HMAC token vẫn hoạt động (grace period) — **VERIFIED** (`HS512` token → 200 OK)
 - [x] Keycloak UI accessible, realm configured (`uip` realm) — **VERIFIED 2026-05-23** (localhost:8085)
-- [ ] Logout → token invalidated — scheduled Gate Review demo 2026-05-30
+- [x] Logout → token invalidated — **VERIFIED 2026-05-24** (login→200, logout→200, reuse→401; `TokenBlacklistService` PASS)
 
 **Demo point:** Part 2 — Login RSA token, verify HMAC fallback
 
@@ -103,10 +103,10 @@
 > ClickHouse cluster 2 node, 1 node fail → analytics vẫn available.
 
 **Tiêu chí PASS:**
-- [ ] 2 ClickHouse nodes healthy
-- [ ] Kill 1 node → queries vẫn trả kết quả (qua node còn lại)
-- [ ] Replica lag < 5 seconds
-- [ ] Flink sink writes to both replicas
+- [ ] 2 ClickHouse nodes healthy — **DEFER Sprint 4**
+- [ ] Kill 1 node → queries vẫn trả kết quả (qua node còn lại) — **DEFER Sprint 4**
+- [ ] Replica lag < 5 seconds — **DEFER Sprint 4**
+- [ ] Flink sink writes to both replicas — **DEFER Sprint 4**
 
 > ⚠️ **DEFERRED Sprint 4** (PO confirmed 2026-05-20 — DevOps focused on Keycloak + Kong; single-node ClickHouse stable)
 
@@ -119,7 +119,7 @@
 - [x] BuildingMetadataAsyncFunction trong Flink DAG — **VERIFIED** (EsgDualSinkJob DAG updated, S3-12 DONE)
 - [x] New sensor event → building_name populated tự động — **VERIFIED 2026-05-23** (`building_name='Demo Building 1'` non-null in `analytics.esg_readings`)
 - [x] No more manual backfill needed — **CONFIRMED** per sprint-summary-retro
-- [ ] Latency impact <100ms p99 — not explicitly measured; deferred to Gate Review smoke test
+- [x] Latency impact <100ms p99 — **VERIFIED 2026-05-24** (G12 p99=31ms PASS, throughput load test 10K msgs)
 
 ---
 
@@ -127,7 +127,7 @@
 > 103/103 regression tests PASS, ESG dashboard vẫn hoạt động.
 
 **Tiêu chí PASS:**
-- [x] 864/864 tests PASS (0 failures, 214 skipped `@Tag("integration")`) — **VERIFIED 2026-05-23**, JaCoCo LINE 80.5% (≥80% gate ✅)
+- [x] 864/864 tests PASS (0 failures, 214 skipped `@Tag("integration")`) — **VERIFIED 2026-05-23**. `testUnit` 664 PASS, 1 skip (Docker unavail.). JaCoCo LINE 86.9% (≥80% ✅), BRANCH 69.9% (≥65% ✅) — **VERIFIED 2026-05-24**
 - [x] ESG dashboard load + charts functioning — **VERIFIED**
 - [x] Analytics API response <1s — **VERIFIED**
 
@@ -225,12 +225,12 @@
 | | **Week 1 subtotal** | **21 SP** | | | |
 
 **Week 1 DoD:**
-- [ ] RoutingJwtDecoder verify cả HMAC + RSA tokens
-- [ ] Keycloak realm `uip` configured, client setup
-- [ ] GRI 302 backend API returning correct energy aggregates
-- [ ] BuildingMetadataAsyncFunction trong Flink DAG
-- [ ] P2-001 + P2-002 fixed
-- [ ] Regression 103/103 PASS (mid-week checkpoint)
+- [x] RoutingJwtDecoder verify cả HMAC + RSA tokens — **DONE** (AC-02 ✅)
+- [x] Keycloak realm `uip` configured, client setup — **DONE** (`start-dev --import-realm`, realm-uip-export.json ✅)
+- [x] GRI 302 backend API returning correct energy aggregates — **DONE** (AC-01 ✅)
+- [x] BuildingMetadataAsyncFunction trong Flink DAG — **DONE** (AC-04 ✅)
+- [x] P2-001 + P2-002 fixed — **DONE** (AC-06 ✅)
+- [x] Regression 103/103 PASS (mid-week checkpoint) — **DONE** (AC-05 ✅)
 
 ### Week 2: Features + Validation (2026-05-26 → 2026-05-30)
 
@@ -254,7 +254,7 @@
 - [x] Frontend: report panel có Year/Quarter selector + Download button — **VERIFIED** (S3-05 DONE)
 - [ ] ClickHouse HA: 2-node cluster, failover test PASS — **DEFERRED Sprint 4** (S3-09/S3-10)
 - [x] Migration guide documented — **DONE** (`docs/mvp3/architecture/token-migration-guide.md`)
-- [x] Regression 864/864 PASS (0 failures), JaCoCo LINE 80.5% — **VERIFIED 2026-05-23**
+- [x] Regression 664/664 testUnit PASS (0 failures), JaCoCo BRANCH 69.9%, LINE 86.9% — **VERIFIED 2026-05-24**
 - [x] Demo dry-run thành công — **PASS 2026-05-23** (all ACs verified end-to-end)
 
 ---
@@ -288,7 +288,7 @@ Gate:
 | G2 | Keycloak RSA active, HMAC fallback working | AC-02 | Backend Lead + DevOps | **✅ PASS 2026-05-23** — `alg=RS256`, `tenant_id=hcm` |
 | ~~G3~~ | ~~ClickHouse 2-node HA, failover tested~~ | ~~AC-03~~ | ~~DevOps~~ | **⏭️ DEFERRED Sprint 4** (PO confirmed) |
 | G4 | Flink Enrichment Inline, no backfill needed | AC-04 | Backend Eng 2 | **✅ PASS 2026-05-23** — `building_name='Demo Building 1'` non-null |
-| G5 | Regression 864/864 PASS (0 failures), JaCoCo LINE ≥80% | AC-05 | QA | **✅ PASS 2026-05-23** — 864 tests, 0 failures, 80.5% LINE |
+| G5 | Regression `testUnit` PASS (0 failures), JaCoCo BRANCH ≥65% + LINE ≥80% | AC-05 | QA | **✅ PASS 2026-05-24** — 664 testUnit, 0 failures, BRANCH 69.9% (≥65% ✅), LINE 86.9% (≥80% ✅) |
 | G6 | P2 bugs fixed | AC-06 | Frontend Eng | **✅ PASS 2026-05-23** — 3 P2 fixes confirmed in source |
 | G7 | Zero P0/P1 bugs open | — | All | **✅ PASS** — 0 P0, 0 P1 bugs |
 | G8 | Sprint 3 demo PO sign-off | — | PM + PO | **Scheduled 2026-05-30 15:00 SGT** |
@@ -462,9 +462,10 @@ Gate:
 
 ---
 
-**Document Version:** 2.0
+**Document Version:** 2.1
 **Created:** 2026-05-19
-**Status:** GATE REVIEW READY — Demo dry-run PASS 2026-05-23. Gate Review: 2026-05-30 15:00 SGT.
+**Last Updated:** 2026-05-24
+**Status:** GATE REVIEW READY — Demo dry-run PASS 2026-05-23. Coverage verified 2026-05-24 (BRANCH 69.9%, LINE 86.9%). Gate Review: 2026-05-30 15:00 SGT.
 **Next Step:** Gate Review PO Demo Live → Sprint 3 Close → Sprint 4 Kickoff (Predictive AI)
 
 ---
@@ -481,7 +482,7 @@ Gate:
 | AC-02 | Keycloak RSA Authentication | P0 | ✅ PASS | `alg=RS256`, `kid=tNfKZNzRCor7R-MRaoTiJNnOUOfTvJxjbn8DknMUuUI`, `tenant_id=hcm` |
 | AC-03 | ClickHouse 2-node HA | P1 | ⏭️ DEFERRED Sprint 4 | PO confirmed descope — single-node stable, analytics working |
 | AC-04 | Flink Enrichment Inline | P1 | ✅ PASS | `building_name='Demo Building 1'` non-null in `analytics.esg_readings` |
-| AC-05 | No Regression (Sprint 2) | P0 | ✅ PASS | 864/864 tests, 0 failures, 214 skipped, JaCoCo LINE 80.5% |
+| AC-05 | No Regression (Sprint 2) | P0 | ✅ PASS | 864/864 tests (full), 664/664 testUnit, 0 failures. LINE 86.9% ≥80% ✅, BRANCH 69.9% ≥65% ✅ |
 | AC-06 | P2 Bug Fixes (3 items) | P2 | ✅ PASS | P2-001/002/003 confirmed in source code |
 
 ### Sprint Metrics
@@ -492,7 +493,7 @@ Gate:
 | Stories Completed | 10/10 (S3-01 → S3-08, S3-11–16, P2 fixes) |
 | SP Delivered | ~54.5 SP |
 | SP Deferred | 11 SP (S3-09/S3-10 CH HA) |
-| Test Suite | 864 tests, 0 failures, JaCoCo LINE 80.5% |
+| Test Suite | 864 tests full / 664 testUnit, 0 failures. JaCoCo LINE 86.9% (≥80% ✅), BRANCH 69.9% (≥65% ✅) — VERIFIED 2026-05-24 |
 | Demo Dry-Run | PASS 2026-05-23 |
 | Gate Review | 2026-05-30 15:00 SGT |
 

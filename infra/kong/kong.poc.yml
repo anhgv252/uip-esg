@@ -54,15 +54,12 @@ services:
 
       - name: request-transformer
         config:
-          add:
-            headers:
-              # Inject X-Tenant-ID từ JWT claim (Kong extracts, không spoofable từ client)
-              - "X-Tenant-ID:$(jwt_claims.tenant_id)"
-              - "X-Is-Aggregator:$(jwt_claims.is_aggregator)"
           remove:
             headers:
-              # Strip client-supplied headers (BR-008: X-Tenant-ID từ JWT only)
+              # Strip client-supplied X-Tenant-ID (BR-008: prevent header spoofing)
+              # Tenant validation is enforced inside analytics-service via JWT claim
               - X-Tenant-ID
+              - X-Is-Aggregator
 
       - name: rate-limiting
         config:
@@ -95,9 +92,18 @@ consumers:
 
 jwt_secrets:
   - consumer: keycloak-uip-realm
-    key: "https://keycloak.uip.local/realms/uip"
+    key: "http://localhost:8085/realms/uip"
     algorithm: RS256
-    # rsa_public_key: injected via env var KEYCLOAK_RS256_PUBLIC_KEY in production
+    rsa_public_key: |
+      -----BEGIN PUBLIC KEY-----
+      MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA2eK1Blwq77iHHhticJc0
+      A3ueME50EF2TAlEpm41iq1Q4mht3P1dK6p6YtE7f97F3rfbxjNkxE0iB9xGRG1MR
+      4mCzwWw2imK/1ITutcWTnNaA/J2P0mH7ih6KxcVcPqeUpO2wHl+ZGk59dEG1BUTo
+      jbAFPZT8UqeRzcpDKHG+at3miXyz9mVM2GhferCSe2c5SIgYNb3Zo1WNX4urKq7p
+      x1PVSvGTfvi12jZfyEEFFU1sJS+6rnuIbnyUTscSqBOEqN7isYh8bOmygzrpS1hp
+      a3pH6LPtEoP095Cm2GzQrEBeg9B9rsqv3Tk/il71060yfImK6vpelN3szs6NSq8v
+      2wIDAQAB
+      -----END PUBLIC KEY-----
 
 # ─── Global plugins (apply to all services) ──────────────────────────────────
 plugins:

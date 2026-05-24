@@ -48,6 +48,7 @@ dependencies {
     // ClickHouse JDBC — driver cho analytics queries
     implementation 'com.clickhouse:clickhouse-jdbc:0.6.0'
     implementation 'com.clickhouse:clickhouse-http-client:0.6.0'
+    implementation 'org.apache.httpcomponents.client5:httpclient5:5.3.1'
 
     // Logging
     implementation 'net.logstash.logback:logstash-logback-encoder:7.4'

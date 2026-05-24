@@ -9,9 +9,14 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/analytics")
@@ -29,6 +34,9 @@ public class AnalyticsController {
     @PreAuthorize("hasAnyRole('ADMIN', 'OPERATOR', 'ANALYTICS_READ')")
     public ResponseEntity<EnergyAggregateResponse> energyAggregate(
             @Valid @RequestBody EnergyAggregateRequest request) {
+        if (isCrossTenantViolation(request.tenantId())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
         return ResponseEntity.ok(energyService.aggregate(request));
     }
 
@@ -38,6 +46,9 @@ public class AnalyticsController {
     @PreAuthorize("hasAnyRole('ADMIN', 'OPERATOR', 'ANALYTICS_READ')")
     public ResponseEntity<EmissionsAggregateResponse> emissionsAggregate(
             @Valid @RequestBody EmissionsAggregateRequest request) {
+        if (isCrossTenantViolation(request.tenantId())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
         return ResponseEntity.ok(emissionsService.aggregate(request));
     }
 
@@ -47,6 +58,23 @@ public class AnalyticsController {
     @PreAuthorize("hasAnyRole('ADMIN', 'OPERATOR', 'ANALYTICS_READ')")
     public ResponseEntity<AqiTrendResponse> aqiTrend(
             @Valid @RequestBody AqiTrendRequest request) {
+        if (isCrossTenantViolation(request.tenantId())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
         return ResponseEntity.ok(aqiTrendService.getTrend(request));
+    }
+
+    /**
+     * Returns true when the authenticated user's tenant_id (from JWT) does not match
+     * the requested tenantId. Only enforced for Keycloak RS256 tokens (which carry
+     * tenant_id in claims). Internal HMAC service tokens bypass this check.
+     */
+    private boolean isCrossTenantViolation(String requestedTenantId) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getDetails() instanceof Map<?, ?> details) {
+            Object jwtTenantId = details.get("tenant_id");
+            return jwtTenantId != null && !jwtTenantId.equals(requestedTenantId);
+        }
+        return false; // HMAC tokens (no details map) bypass cross-tenant check
     }
 }

@@ -155,8 +155,12 @@ def jacocoExclusions = [
     // Lombok-generated: DTOs, domain entities (getters/setters không được unit test)
     '**/api/dto/**',
     '**/domain/**',
+    // Workflow DTOs — Lombok @Data/@Builder generated equals/hashCode/toString
+    '**/workflow/dto/**',
     // Spring config beans — không có business logic
     '**/config/**',
+    // Partner config — @ConfigurationProperties, Lombok-generated
+    '**/partner/PartnerConfig*',
     // Spring Boot entry point
     '**/UipApplication*',
     // Spring MVC controllers — covered bởi integration tests, không unit test
@@ -217,11 +221,11 @@ tasks.register('integrationTest', Test) {
 // JaCoCo report for unit tests only (faster, smaller memory footprint)
 tasks.register('jacocoTestUnitReport', JacocoReport) {
     dependsOn testUnit
-    classDirectories.setFrom(files(classDirectories.files.collect {
+    classDirectories.setFrom(files(sourceSets.main.output.classesDirs).collect {
         fileTree(dir: it, exclude: jacocoExclusions)
-    }))
+    })
     sourceDirectories.setFrom(files(sourceSets.main.allSource.srcDirs))
-    executionData.setFrom(fileTree(buildDir).include('/jacoco/testUnit.exec'))
+    executionData.setFrom(fileTree(buildDir).include('jacoco/testUnit.exec'))
     reports {
         xml.required = true
         html.required = true
@@ -231,10 +235,10 @@ tasks.register('jacocoTestUnitReport', JacocoReport) {
 
 tasks.register('jacocoTestUnitCoverageVerification', JacocoCoverageVerification) {
     dependsOn jacocoTestUnitReport
-    classDirectories.setFrom(files(classDirectories.files.collect {
+    classDirectories.setFrom(files(sourceSets.main.output.classesDirs).collect {
         fileTree(dir: it, exclude: jacocoExclusions)
-    }))
-    executionData.setFrom(fileTree(buildDir).include('/jacoco/testUnit.exec'))
+    })
+    executionData.setFrom(fileTree(buildDir).include('jacoco/testUnit.exec'))
     violationRules {
         rule {
             limit {

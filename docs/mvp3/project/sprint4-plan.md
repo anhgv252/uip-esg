@@ -53,15 +53,17 @@ Team will achieve HARD PASS by 2026-06-13 15:00 SGT by delivering ClickHouse 2-n
 |---|---|---|---|---|---|
 | **S4-01** | ClickHouse 2-node HA cluster (ReplicatedMergeTree + Keeper) | 8 | DevOps | **P0** | C20 deferred |
 | **S4-02** | ClickHouse HA failover test (kill node-1, verify analytics) | 3 | DevOps + QA | **P0** | C20 deferred |
-| **S4-03** | Integration test isolation: `@Tag("integration")` profile + CI unit-only build | 3 | Backend Lead | **P0** | Retro A1 |
-| **S4-04** | Fix + re-tag 15 infra-dep. IT tests (mock or `@DisabledIf`) | 3 | Backend Eng | **P0** | Retro A2 |
-| **S4-05** | JaCoCo clean run → confirm branch coverage ≥65% | 1 | Backend Lead | P1 | Retro A3/A8 |
+| ~~**S4-03**~~ | ~~Integration test isolation: `@Tag("integration")` profile + CI unit-only build~~ | ~~3~~ | ~~Backend Lead~~ | ~~P0~~ | **✅ DONE Sprint 3** — `testUnit` + `integrationTest` Gradle tasks exist, 19 IT classes tagged, 864/864 pass (2026-05-23) |
+| ~~**S4-04**~~ | ~~Fix + re-tag 15 infra-dep. IT tests (mock or `@DisabledIf`)~~ | ~~3~~ | ~~Backend Eng~~ | ~~P0~~ | **✅ DONE Sprint 3** — Fixed 2026-05-22 (AuthServiceTest + TenantContextFilterTest + PushNotificationServiceHttpStatusTest), 0 failures |
+| ~~**S4-05**~~ | ~~JaCoCo branch coverage ≥65% (unit test suite)~~ | ~~1~~ | ~~Backend Lead~~ | ~~P1~~ | **✅ DONE Sprint 3** — 69.9% BRANCH (549/785), 86.9% LINE. `jacocoExclusions` fix + `PushSubscriptionServiceTest` (2026-05-24) |
 | **S4-06** | Caffeine cache eviction report (Kafka listener + cache stats endpoint) | 2 | Backend Eng | P1 | GAP-4 |
 | **S4-07** | HPA config: analytics-service (v3-EXT-05) | 2 | DevOps | P1 | GAP-1 |
 | **S4-08** | ISO 37120 waterIntensityM3PerPerson metric | 1 | Backend Eng | P2 | GAP-3 |
 | **S4-09** | OpenAPI spec update (S3-01 DoD) | 0.5 | Backend Eng | P3 | Minor DoD |
 
-**Carry-over total: ~23.5 SP**
+> **Note:** S4-03, S4-04, và S4-05 đã hoàn thành trong Sprint 3 — KHÔNG carry-over. Xem verification: `build.gradle` tasks `testUnit`/`integrationTest` + `docs/mvp3/reports/jacoco-coverage-report-2026-05-22.md` + BRANCH 69.9% verified 2026-05-24.
+
+**Carry-over total: ~16.5 SP** *(giảm từ 23.5 SP — S4-03/S4-04/S4-05 đã DONE Sprint 3)*
 
 ### 4.2 New Stories (Sprint 4)
 
@@ -77,11 +79,11 @@ Team will achieve HARD PASS by 2026-06-13 15:00 SGT by delivering ClickHouse 2-n
 
 | Category | SP |
 |---|---|
-| Carry-over P0 (mandatory) | 14 SP |
-| Carry-over P1/P2/P3 | ~9.5 SP |
+| Carry-over P0 (mandatory) | 11 SP *(S4-01 + S4-02 only; S4-03/S4-04/S4-05 DONE Sprint 3)* |
+| Carry-over P1/P2/P3 | ~5.5 SP |
 | New stories | 9 SP |
-| **Total Committed** | **~32.5 SP** |
-| **Buffer remaining** | ~14.5 SP (stretch: Predictive AI spike if time permits) |
+| **Total Committed** | **~25.5 SP** *(giảm 7 SP so với draft — S4-03/S4-04/S4-05 DONE Sprint 3)* |
+| **Buffer remaining** | ~21.5 SP (stretch: Predictive AI spike nếu có thời gian) |
 
 ---
 
@@ -97,15 +99,17 @@ Team will achieve HARD PASS by 2026-06-13 15:00 SGT by delivering ClickHouse 2-n
 - [ ] Kill node-1 → analytics queries vẫn trả data từ node-2 (< 5s failover)
 - [ ] Named volumes configured (`ch-node1-data`, `ch-node2-data`, `keeper-data`)
 
-### AC-02 (P0): Clean CI Test Suite
-> PR build chỉ chạy unit tests. Integration tests chạy riêng (manual / nightly). 0 infra-dep. failures trong `./gradlew unitTest`.
+### AC-02 (P1): JaCoCo Branch Coverage ≥65%
+> Unit test branch coverage đạt ≥65% sau clean `./gradlew testUnit jacocoTestUnitReport`.
+
+> **Note:** Phần lớn AC-02 (test isolation + branch coverage) đã DONE trong Sprint 3: `@Tag("integration")` applied (19 classes), Gradle `testUnit`/`integrationTest` tasks live, 664/664 unit tests pass, JaCoCo BRANCH 69.9% (≥65% ✅), LINE 86.9% (≥80% ✅). **AC-02 đã PASS toàn bộ trong Sprint 3.**
 
 **PASS criteria:**
-- [ ] `@Tag("integration")` trên tất cả IT / `*IntegrationTest` classes
-- [ ] Gradle task `unitTest` exclude `@Tag("integration")` — 0 failures
-- [ ] Gradle task `integrationTest` run IT suite với docker infra
-- [ ] 15 previously-failing tests: fixed (mock/disabled) hoặc re-tagged
-- [ ] JaCoCo branch coverage ≥65% sau clean `unitTest` run
+- [x] `@Tag("integration")` trên tất cả IT / `*IntegrationTest` classes — **DONE Sprint 3**
+- [x] Gradle task `testUnit` exclude `@Tag("integration")` — 0 failures — **DONE Sprint 3**
+- [x] Gradle task `integrationTest` run IT suite với docker infra — **DONE Sprint 3**
+- [x] 15 previously-failing tests: fixed — **DONE Sprint 3 (2026-05-22)**
+- [x] JaCoCo branch coverage ≥65% sau clean `./gradlew testUnit` — **DONE Sprint 3 (2026-05-24): 69.9% BRANCH, 86.9% LINE**
 
 ### AC-03 (P1): Observability Baseline
 > Kong + analytics-service SLIs visible trong Grafana (p95 latency, error rate, throughput).

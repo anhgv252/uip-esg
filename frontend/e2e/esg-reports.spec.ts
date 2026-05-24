@@ -45,4 +45,11 @@ test.describe('ESG Report Generation', () => {
     const hasControls = await page.getByRole('combobox').count();
     expect(hasControls).toBeGreaterThan(0);
   });
+
+  test('should show empty state hint before generating', async ({ page }) => {
+    // Before any report is generated, show hint message
+    await expect(
+      page.getByText(/select period and click generate/i)
+    ).toBeVisible({ timeout: 10000 });
+  });
 });
