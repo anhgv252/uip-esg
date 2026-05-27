@@ -18,4 +18,6 @@ public class EsgSummaryDto {
     private Double  totalCarbonTco2e;
     private Double  totalWasteTons;
     private Long    sampleCount;
+    /** ISO 37120: water consumption per person (m³/person). Requires population metadata. */
+    private Double  waterIntensityM3PerPerson;
 }

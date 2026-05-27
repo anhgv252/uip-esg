@@ -27,6 +27,7 @@ public class CacheConfig {
     public static final String CACHE_TREND = "esg-trend";
     public static final String CACHE_SENSORS = "sensors";
     public static final String CACHE_ALERTS = "alerts";
+    public static final String CACHE_FORECASTS = "forecasts";
 
     @Bean
     @ConditionalOnProperty(name = "spring.cache.type", havingValue = "redis", matchIfMissing = true)
@@ -36,7 +37,8 @@ public class CacheConfig {
                 CACHE_REPORT,    withTtl(Duration.ofMinutes(5)),
                 CACHE_TREND,     withTtl(Duration.ofSeconds(30)),
                 CACHE_SENSORS,   withTtl(Duration.ofSeconds(30)),
-                CACHE_ALERTS,    withTtl(Duration.ofSeconds(15))
+                CACHE_ALERTS,    withTtl(Duration.ofSeconds(15)),
+                CACHE_FORECASTS, withTtl(Duration.ofMinutes(15))
         );
 
         return RedisCacheManager.builder(connectionFactory)

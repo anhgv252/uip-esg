@@ -233,6 +233,9 @@ uip:
     iot-ingestion-external: false
     alert-external: false
     analytics-external: false
+    forecast-engine: ${UIP_FORECAST_ENGINE:python}
+  forecast:
+    service-url: ${UIP_FORECAST_SERVICE_URL:http://uip-forecast-service:8090}
   push:
     vapid:
       public-key: ${VAPID_PUBLIC_KEY:}

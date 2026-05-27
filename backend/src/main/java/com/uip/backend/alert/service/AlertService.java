@@ -7,12 +7,10 @@ import com.uip.backend.alert.domain.AlertEvent;
 import com.uip.backend.alert.domain.AlertRule;
 import com.uip.backend.alert.repository.AlertEventRepository;
 import com.uip.backend.alert.repository.AlertRuleRepository;
-import com.uip.backend.tenant.context.TenantContext;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -43,9 +41,6 @@ public class AlertService {
 
     // ─── Alert Events ─────────────────────────────────────────────────────────
 
-    @Cacheable(value = "alerts",
-            key = "T(com.uip.backend.tenant.context.TenantContext).getCurrentTenant() + ':' + #status + '_' + #severity + '_' + #page + '_' + #size",
-            unless = "#result.totalElements > 1000")
     public Page<AlertEventDto> queryAlerts(String status, String severity,
                                            Instant from, Instant to,
                                            int page, int size) {

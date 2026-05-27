@@ -6,6 +6,7 @@ global:
 
 rule_files:
   - "alert-rules.yml"
+  - "alerts/*.yml"
 
 alerting:
   alertmanagers:
@@ -16,7 +17,7 @@ scrape_configs:
   - job_name: 'uip-backend'
     metrics_path: '/actuator/prometheus'
     static_configs:
-      - targets: ['uip-backend:8080']
+      - targets: ['uip-backend:8081']
 
   - job_name: 'kafka'
     static_configs:
@@ -29,3 +30,21 @@ scrape_configs:
   - job_name: 'redis'
     static_configs:
       - targets: ['redis-exporter:9121']
+
+  - job_name: 'analytics-service'
+    metrics_path: '/actuator/prometheus'
+    scrape_interval: 15s
+    static_configs:
+      - targets: ['uip-analytics-service:8081']
+
+  - job_name: 'kong'
+    metrics_path: '/metrics'
+    scrape_interval: 15s
+    static_configs:
+      - targets: ['uip-kong:8001']
+
+  - job_name: 'forecast-service'
+    metrics_path: '/metrics'
+    scrape_interval: 30s
+    static_configs:
+      - targets: ['uip-forecast-service:8090']

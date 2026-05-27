@@ -42,4 +42,10 @@ public class CapabilityProperties {
     private boolean analyticsExternal = false;       // ADR-011 order #3
     private boolean aiWorkflowExternal = false;      // ADR-011 order #4
     private boolean citizenExternal = false;         // ADR-011 order #5
+
+    // ── Forecast engine selector (ADR-032) ─────────────────────────────────
+    // "python" = ForecastServiceAdapter (REST → Python forecast-service)
+    // "naive"  = NaiveForecastAdapter (in-process rolling average)
+    // "disabled" = no bean → controller returns 501
+    private String forecastEngine = "python";
 }

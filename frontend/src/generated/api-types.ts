@@ -1213,6 +1213,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/forecast/energy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get energy forecast for a building
+         * @description Returns ARIMA energy forecast with 95% confidence intervals. Tenant ID extracted from JWT.
+         */
+        get: operations["forecastEnergy"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/forecast/cache/stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get forecast cache statistics */
+        get: operations["getForecastCacheStats"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1865,6 +1902,29 @@ export interface components {
             pageable?: components["schemas"]["PageableObject"];
             last?: boolean;
             empty?: boolean;
+        };
+        ForecastResponse: {
+            tenantId?: string;
+            buildingId?: string;
+            /** @enum {string} */
+            model?: "ARIMA" | "NAIVE" | "NONE";
+            isFallback?: boolean;
+            /** @description Mean Absolute Percentage Error */
+            mape?: number | null;
+            points?: components["schemas"]["ForecastPoint"][];
+            /** Format: date-time */
+            generatedAt?: string;
+        };
+        ForecastPoint: {
+            /** Format: date-time */
+            timestamp?: string;
+            actualValue?: number | null;
+            predictedValue?: number;
+            /** @description 95% CI upper bound */
+            confidenceUpper?: number;
+            /** @description 95% CI lower bound */
+            confidenceLower?: number;
+            isAnomaly?: boolean;
         };
     };
     responses: never;
@@ -3663,6 +3723,75 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    forecastEnergy: {
+        parameters: {
+            query: {
+                /** @description Building ID */
+                buildingId: string;
+                /** @description Forecast horizon in days (1-90) */
+                horizonDays?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Forecast result */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForecastResponse"];
+                };
+            };
+            /** @description Invalid parameter or invalid tenant */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Missing tenant context */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forecast service unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getForecastCacheStats: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Cache statistics */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        cacheName?: string;
+                        type?: string;
+                    };
+                };
             };
         };
     };

@@ -65,3 +65,36 @@ groups:
         annotations:
           summary: "PostgreSQL backup overdue (>36h since last success)"
           description: "Check pgBackRest logs and infra/backup/ configuration."
+
+  - name: analytics-service-alerts
+    interval: 30s
+    rules:
+      - alert: AnalyticsP95LatencyHigh
+        expr: histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{job="analytics-service"}[5m])) by (le)) > 1.0
+        for: 5m
+        labels:
+          severity: warning
+          team: backend
+        annotations:
+          summary: "Analytics-service p95 latency > 1s"
+          description: "Analytics-service p95 latency is {{ $value | humanizeDuration }}. Check ClickHouse query performance."
+
+      - alert: AnalyticsErrorRateHigh
+        expr: sum(rate(http_server_requests_seconds_count{job="analytics-service",status=~"5.."}[5m])) / sum(rate(http_server_requests_seconds_count{job="analytics-service"}[5m])) > 0.01
+        for: 5m
+        labels:
+          severity: warning
+          team: backend
+        annotations:
+          summary: "Analytics-service 5xx error rate > 1%"
+          description: "Error rate is {{ $value | humanizePercentage }}. Check logs for root cause."
+
+      - alert: AnalyticsServiceDown
+        expr: up{job="analytics-service"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          team: devops
+        annotations:
+          summary: "Analytics-service is DOWN"
+          description: "analytics-service has been unreachable for 2 minutes. Check container health and restart if needed."

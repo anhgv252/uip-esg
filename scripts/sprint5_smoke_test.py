@@ -2,7 +2,7 @@
 """
 Sprint 5 Demo Smoke Test Suite
 Runs all P0 smoke tests before demo starts
-Expected: All 8 tests pass in < 2 minutes
+Expected: All 9 tests pass in < 2 minutes
 """
 
 import requests
@@ -25,20 +25,36 @@ def print_test(name: str, status: str, details: str = ""):
 
 def check_backend_health() -> Tuple[bool, str]:
     """SMOKE-01: Backend health endpoint"""
-    try:
-        resp = requests.get("http://localhost:8080/actuator/health", timeout=5)
-        if resp.status_code == 200:
-            health = resp.json()
-            if health.get("status") == "UP":
-                components = health.get("components", {})
-                down_components = [k for k, v in components.items() if v.get("status") != "UP"]
+    urls = [
+        "http://localhost:8080/actuator/health",
+        "http://localhost:8080/api/v1/health",
+    ]
+    details = []
+    for url in urls:
+        try:
+            resp = requests.get(url, timeout=5)
+            if resp.status_code != 200:
+                details.append(f"{url} -> HTTP {resp.status_code}")
+                continue
+
+            body = resp.json()
+            status = str(body.get("status", "")).upper()
+            if status and status != "UP":
+                details.append(f"{url} -> status={status}")
+                continue
+
+            components = body.get("components", {})
+            if isinstance(components, dict):
+                down_components = [k for k, v in components.items() if isinstance(v, dict) and v.get("status") != "UP"]
                 if down_components:
-                    return False, f"Components DOWN: {', '.join(down_components)}"
-                return True, f"All components UP"
-            return False, f"Status: {health.get('status')}"
-        return False, f"HTTP {resp.status_code}"
-    except Exception as e:
-        return False, f"Connection failed: {str(e)}"
+                    details.append(f"{url} -> components down: {', '.join(down_components)}")
+                    continue
+
+            return True, f"Backend healthy via {url}"
+        except Exception as e:
+            details.append(f"{url} -> {str(e)}")
+
+    return False, " | ".join(details)
 
 def check_frontend() -> Tuple[bool, str]:
     """SMOKE-02: Frontend loads"""
@@ -132,6 +148,52 @@ def check_citizen_login() -> Tuple[bool, str]:
     """SMOKE-08: Citizen login"""
     return check_login("citizen", "citizen_Dev#2026!", "/citizen/bills")
 
+def _extract_scalar_values_from_psql(output: str) -> list[str]:
+    values = []
+    for raw in output.splitlines():
+        line = raw.strip()
+        if not line or line.startswith("(") or line.startswith("-"):
+            continue
+        if "|" in line:
+            values.append(line.split("|", 1)[0].strip())
+        else:
+            values.append(line)
+    return values
+
+def check_forecast_seed_alignment() -> Tuple[bool, str]:
+    """SMOKE-09: Active tenants must have ENERGY rows for forecast in ClickHouse"""
+    try:
+        pg = subprocess.run([
+            "docker", "exec", "uip-timescaledb",
+            "psql", "-U", "uip", "-d", "uip_smartcity", "-At",
+            "-c", "SELECT tenant_id FROM tenants WHERE is_active = true ORDER BY tenant_id;"
+        ], capture_output=True, text=True, timeout=10)
+
+        if pg.returncode != 0:
+            return False, f"Cannot read active tenants: {pg.stderr.strip()[:200]}"
+
+        active_tenants = set(_extract_scalar_values_from_psql(pg.stdout))
+        if not active_tenants:
+            return False, "No active tenants found in Postgres"
+
+        ch = subprocess.run([
+            "docker", "exec", "uip-clickhouse", "clickhouse-client",
+            "--query",
+            "SELECT DISTINCT tenant_id FROM analytics.esg_readings WHERE metric_type = 'ENERGY'"
+        ], capture_output=True, text=True, timeout=10)
+
+        if ch.returncode != 0:
+            return False, f"Cannot read ClickHouse tenants: {ch.stderr.strip()[:200]}"
+
+        seeded_tenants = {line.strip() for line in ch.stdout.splitlines() if line.strip()}
+        missing = sorted(active_tenants - seeded_tenants)
+        if missing:
+            return False, f"Missing ENERGY seed for active tenants: {', '.join(missing)}"
+
+        return True, f"All active tenants seeded for ENERGY: {', '.join(sorted(active_tenants))}"
+    except Exception as e:
+        return False, f"Tenant seed check failed: {str(e)}"
+
 def main():
     print(f"\n{YELLOW}{'='*60}")
     print("Sprint 5 Demo Smoke Test Suite")
@@ -148,6 +210,7 @@ def main():
         ("SMOKE-06: Admin login", check_admin_login),
         ("SMOKE-07: Tenant Admin login", check_tenant_admin_login),
         ("SMOKE-08: Citizen login", check_citizen_login),
+        ("SMOKE-09: Forecast tenant seed alignment", check_forecast_seed_alignment),
     ]
     
     results = []

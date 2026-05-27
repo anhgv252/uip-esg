@@ -7,8 +7,9 @@
 #
 # Bao gồm:
 #   1. Kiểm tra service health (backend bắt buộc, frontend tuỳ chọn)
-#   2. Unit + Integration tests  (./gradlew test)
-#   3. API regression tests      (scripts/api_regression_test.py)
+#   2. Forecast smoke gate       (scripts/sprint5_smoke_test.py)
+#   3. Unit + Integration tests  (./gradlew test)
+#   4. API regression tests      (scripts/api_regression_test.py)
 #      Groups Sprint 1-4: health, auth, environment, esg, alerts, traffic,
 #                         tenant, citizen, admin, workflow, tenant_admin,
 #                         invite, rate_limit, esg_export
@@ -20,6 +21,7 @@
 #   ./scripts/regression_test.sh                        # Chạy tất cả (trừ e2e)
 #   ./scripts/regression_test.sh --unit-only            # Chỉ Gradle unit/IT tests
 #   ./scripts/regression_test.sh --api-only             # Chỉ API regression tests
+#   ./scripts/regression_test.sh --no-smoke             # Bỏ qua forecast smoke gate
 #   ./scripts/regression_test.sh --e2e                  # Thêm Playwright e2e tests
 #   ./scripts/regression_test.sh --e2e --e2e-project=mobile-chrome  # Mobile PWA tests only
 #   ./scripts/regression_test.sh --no-unit              # Bỏ qua Gradle (nhanh hơn)
@@ -51,6 +53,7 @@ FRONTEND_URL="${FRONTEND_URL:-http://localhost:3000}"
 RUN_UNIT=true
 RUN_API=true
 RUN_E2E=false
+RUN_SMOKE=true
 FAIL_FAST=false
 API_VERBOSE=false
 E2E_PROJECT="${E2E_PROJECT:-}"
@@ -78,6 +81,7 @@ for arg in "$@"; do
     --unit-only)       RUN_API=false  RUN_E2E=false ;;
     --api-only)        RUN_UNIT=false RUN_E2E=false ;;
     --no-unit)         RUN_UNIT=false ;;
+    --no-smoke)        RUN_SMOKE=false ;;
     --e2e)             RUN_E2E=true   ;;
     --e2e-project=*)   E2E_PROJECT="${arg#--e2e-project=}" RUN_E2E=true ;;
     --fail-fast)       FAIL_FAST=true ;;
@@ -145,7 +149,7 @@ echo "${BOLD}${CYAN}  UIP Smart City — Regression Test Runner${RESET}"
 echo "${BOLD}${CYAN}═══════════════════════════════════════════════════${RESET}"
 echo "${DIM}  Backend : $BASE_URL${RESET}"
 echo "${DIM}  Frontend: $FRONTEND_URL${RESET}"
-echo "${DIM}  Phases  : $([ "$RUN_UNIT" = "true" ] && echo "unit+it " || echo "")$([ "$RUN_API" = "true" ] && echo "api " || echo "")$([ "$RUN_E2E" = "true" ] && echo "e2e" || echo "")${RESET}"
+echo "${DIM}  Phases  : $([ "$RUN_SMOKE" = "true" ] && echo "smoke " || echo "")$([ "$RUN_UNIT" = "true" ] && echo "unit+it " || echo "")$([ "$RUN_API" = "true" ] && echo "api " || echo "")$([ "$RUN_E2E" = "true" ] && echo "e2e" || echo "")${RESET}"
 echo ""
 
 sep
@@ -194,12 +198,40 @@ echo ""
 ok "All required services are UP — proceeding with test phases"
 echo ""
 
-# ─── PHASE 1: Unit + Integration Tests ───────────────────────────────────────
+# ─── PHASE 1: Forecast Smoke Gate ─────────────────────────────────────────────
+
+if [[ "$RUN_SMOKE" == "true" ]]; then
+  echo ""
+  sep
+  info "PHASE 1 — Forecast Smoke Gate (sprint5_smoke_test.py)"
+  sep
+
+  SMOKE_SCRIPT="$SCRIPT_DIR/sprint5_smoke_test.py"
+  if [[ ! -f "$SMOKE_SCRIPT" ]]; then
+    fail "sprint5_smoke_test.py not found at $SMOKE_SCRIPT"
+    record_phase "Smoke" "fail"
+    maybe_fail_fast
+  else
+    SMOKE_EXIT=0
+    python3 "$SMOKE_SCRIPT" || SMOKE_EXIT=$?
+
+    if [[ "$SMOKE_EXIT" -eq 0 ]]; then
+      ok "Forecast smoke gate: PASS"
+      record_phase "Smoke" "pass"
+    else
+      fail "Forecast smoke gate: FAIL (exit $SMOKE_EXIT)"
+      record_phase "Smoke" "fail"
+      maybe_fail_fast
+    fi
+  fi
+fi
+
+# ─── PHASE 2: Unit + Integration Tests ───────────────────────────────────────
 
 if [[ "$RUN_UNIT" == "true" ]]; then
   echo ""
   sep
-  info "PHASE 1 — Unit + Integration Tests (./gradlew test)"
+  info "PHASE 2 — Unit + Integration Tests (./gradlew test)"
   sep
 
   if [[ ! -f "$BACKEND_DIR/gradlew" ]]; then
@@ -229,12 +261,12 @@ if [[ "$RUN_UNIT" == "true" ]]; then
   fi
 fi
 
-# ─── PHASE 2: API Regression Tests ───────────────────────────────────────────
+# ─── PHASE 3: API Regression Tests ───────────────────────────────────────────
 
 if [[ "$RUN_API" == "true" ]]; then
   echo ""
   sep
-  info "PHASE 2 — API Regression Tests (api_regression_test.py)"
+  info "PHASE 3 — API Regression Tests (api_regression_test.py)"
   sep
 
   API_SCRIPT="$SCRIPT_DIR/api_regression_test.py"
@@ -258,12 +290,12 @@ if [[ "$RUN_API" == "true" ]]; then
   fi
 fi
 
-# ─── PHASE 3: E2E Playwright Tests ───────────────────────────────────────────
+# ─── PHASE 4: E2E Playwright Tests ───────────────────────────────────────────
 
 if [[ "$RUN_E2E" == "true" && "$FRONTEND_UP" == "true" ]]; then
   echo ""
   sep
-  info "PHASE 3 — E2E / UI Regression Tests (e2e_regression_test.py)"
+  info "PHASE 4 — E2E / UI Regression Tests (e2e_regression_test.py)"
   sep
 
   E2E_SCRIPT="$SCRIPT_DIR/e2e_regression_test.py"

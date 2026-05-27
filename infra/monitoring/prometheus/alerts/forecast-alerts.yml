@@ -1,0 +1,43 @@
+groups:
+  - name: forecast-service-alerts
+    interval: 30s
+    rules:
+      - alert: ForecastServiceDown
+        expr: up{job="forecast-service"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          team: devops
+        annotations:
+          summary: "Forecast-service is DOWN"
+          description: "forecast-service has been unreachable for 2 minutes. NaiveForecastAdapter fallback should be active."
+
+      - alert: HighFallbackRate
+        expr: sum(rate(forecast_fallback_total[5m])) / sum(rate(http_requests_total{job="forecast-service"}[5m])) > 0.2
+        for: 10m
+        labels:
+          severity: warning
+          team: backend
+        annotations:
+          summary: "Forecast fallback rate > 20%"
+          description: "High fallback rate detected — check MAPE scores or data quality per building."
+
+      - alert: ColdCallSlow
+        expr: histogram_quantile(0.95, sum(rate(forecast_arima_fit_seconds_bucket[10m])) by (le)) > 90
+        for: 5m
+        labels:
+          severity: warning
+          team: backend
+        annotations:
+          summary: "ARIMA fit p95 > 90s"
+          description: "Cold call ARIMA fit is slow — dataset may have grown beyond expected size."
+
+      - alert: HighMAPE
+        expr: forecast_arima_mape_ratio > 0.20
+        for: 15m
+        labels:
+          severity: warning
+          team: backend
+        annotations:
+          summary: "Forecast MAPE > 20% for {{ $labels.tenant_id }}/{{ $labels.building_id }}"
+          description: "MAPE is {{ $value | humanizePercentage }} — review data quality for this building."

@@ -62,6 +62,9 @@ public class EsgService {
         Double carbon = sumWithCaggFallback(tenantId, "CARBON", range[0], range[1]);
         Double waste  = sumWithCaggFallback(tenantId, "WASTE",  range[0], range[1]);
 
+        // ISO 37120 water intensity (m³/person) — requires population metadata
+        Double waterIntensity = calculateWaterIntensity(tenantId, water, year);
+
         return EsgSummaryDto.builder()
                 .period(periodType)
                 .year(year)
@@ -70,6 +73,7 @@ public class EsgService {
                 .totalWaterM3(water)
                 .totalCarbonTco2e(carbon)
                 .totalWasteTons(waste)
+                .waterIntensityM3PerPerson(waterIntensity)
                 .build();
     }
 
@@ -208,6 +212,14 @@ public class EsgService {
         Double result = metricRepository.sumByTypeAndRangeFast(tenantId, metricType, from, to);
         if (result != null) return result;
         return metricRepository.sumByTypeAndRange(tenantId, metricType, from, to);
+    }
+
+    /** ISO 37120: water intensity = total water / population. Population from raw_payload or config. */
+    private Double calculateWaterIntensity(String tenantId, Double totalWaterM3, int year) {
+        if (totalWaterM3 == null || totalWaterM3 == 0) return null;
+        // TODO: Read population from building metadata or tenant config when available
+        // For now, return null — metric available when population data is integrated
+        return null;
     }
 
     private Instant[] quarterRange(int year, int quarter) {

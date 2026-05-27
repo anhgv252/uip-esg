@@ -7,7 +7,11 @@ import com.tngtech.archunit.lang.ArchRule;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.RestController;
 
+import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.methods;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 
 /**
@@ -230,7 +234,23 @@ class ModuleBoundaryArchTest {
     @DisplayName("esg repository must only be accessed within esg module")
     void esgRepository_mustOnlyBeAccessedWithin_esgModule() {
         noClasses().that().resideOutsideOfPackage(BASE + ".esg..")
+                .and().resideOutsideOfPackage(BASE + ".forecast..")  // ADR-032 D6: NaiveForecastAdapter
                 .should().accessClassesThat().resideInAPackage(BASE + ".esg.repository..")
                 .check(classes);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Caching rule
+    // ─────────────────────────────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("controllers must not use @Cacheable")
+    void controllers_mustNotUse_cacheable() {
+        ArchRule rule = methods()
+                .that().areDeclaredInClassesThat().areAnnotatedWith(Controller.class)
+                .or().areDeclaredInClassesThat().areAnnotatedWith(RestController.class)
+                .should().notBeAnnotatedWith(Cacheable.class);
+
+        rule.check(classes);
     }
 }

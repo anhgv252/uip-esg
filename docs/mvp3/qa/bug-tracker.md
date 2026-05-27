@@ -1,8 +1,8 @@
-# UIP P0/P1 Bug Tracker — Sprint MVP3-1
+# UIP P0/P1 Bug Tracker — Sprint MVP3-4
 
-**Sprint:** MVP3-1 | **Gate Date:** 2026-05-25
+**Sprint:** MVP3-4 | **Gate Date:** 2026-06-13 15:00 SGT
 **Owner:** QA Engineer
-**Last updated:** 2026-05-11
+**Last updated:** 2026-05-25
 
 > File này thay thế external Jira/Linear cho Sprint MVP3-1.
 > Mọi P0/P1 bug **phải** được ghi vào đây trước khi đóng gate checklist.

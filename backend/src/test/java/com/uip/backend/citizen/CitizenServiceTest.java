@@ -163,5 +163,142 @@ class CitizenServiceTest {
         assertThat(result).isNotNull();
         verify(householdRepository).save(any(Household.class));
     }
+
+    @Test
+    @DisplayName("linkHousehold: should throw when citizen not found")
+    void linkHousehold_citizenNotFound() {
+        HouseholdRequest request = new HouseholdRequest();
+        request.setBuildingId(UUID.randomUUID());
+        request.setFloor("1");
+        request.setUnitNumber("101");
+
+        when(citizenRepository.findByUsername("unknown")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> citizenService.linkHousehold("unknown", request))
+                .isInstanceOf(jakarta.persistence.EntityNotFoundException.class)
+                .hasMessageContaining("Citizen not found");
+    }
+
+    @Test
+    @DisplayName("linkHousehold: should throw when household already linked")
+    void linkHousehold_householdAlreadyLinked() {
+        UUID buildingId = building.getId();
+        HouseholdRequest request = new HouseholdRequest();
+        request.setBuildingId(buildingId);
+        request.setFloor("5");
+        request.setUnitNumber("501");
+
+        Household existingHousehold = new Household();
+        existingHousehold.setId(UUID.randomUUID());
+        existingHousehold.setCitizenId(savedCitizen.getId());
+
+        when(citizenRepository.findByUsername("nguyenvana")).thenReturn(Optional.of(savedCitizen));
+        when(buildingRepository.findById(buildingId)).thenReturn(Optional.of(building));
+        when(householdRepository.findByCitizenId(savedCitizen.getId()))
+                .thenReturn(Optional.of(existingHousehold));
+
+        assertThatThrownBy(() -> citizenService.linkHousehold("nguyenvana", request))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("already linked");
+    }
+
+    @Test
+    @DisplayName("getProfile: should return profile with household when household exists")
+    void getProfile_withHousehold() {
+        Household household = new Household();
+        household.setId(UUID.randomUUID());
+        household.setCitizenId(savedCitizen.getId());
+        household.setBuildingId(building.getId());
+        household.setFloor("3");
+        household.setUnitNumber("301");
+
+        when(citizenRepository.findByUsername("nguyenvana")).thenReturn(Optional.of(savedCitizen));
+        when(householdRepository.findByCitizenId(savedCitizen.getId()))
+                .thenReturn(Optional.of(household));
+        when(buildingRepository.findById(building.getId())).thenReturn(Optional.of(building));
+
+        CitizenProfileDto result = citizenService.getProfile("nguyenvana");
+
+        assertThat(result).isNotNull();
+        assertThat(result.getEmail()).isEqualTo("nguyenvana@example.com");
+        assertThat(result.getHousehold()).isNotNull();
+        assertThat(result.getHousehold().getBuildingName()).isEqualTo("Vinhomes Central Park");
+    }
+
+    @Test
+    @DisplayName("getProfile: should return profile without household when no household linked")
+    void getProfile_withoutHousehold() {
+        when(citizenRepository.findByUsername("nguyenvana")).thenReturn(Optional.of(savedCitizen));
+        when(householdRepository.findByCitizenId(savedCitizen.getId())).thenReturn(Optional.empty());
+
+        CitizenProfileDto result = citizenService.getProfile("nguyenvana");
+
+        assertThat(result).isNotNull();
+        assertThat(result.getHousehold()).isNull();
+    }
+
+    @Test
+    @DisplayName("getProfile: household with building not found → buildingName is null")
+    void getProfile_householdBuildingNotFound_buildingNameNull() {
+        UUID missingBuildingId = UUID.randomUUID();
+        Household household = new Household();
+        household.setId(UUID.randomUUID());
+        household.setCitizenId(savedCitizen.getId());
+        household.setBuildingId(missingBuildingId);
+        household.setFloor("2");
+        household.setUnitNumber("201");
+
+        when(citizenRepository.findByUsername("nguyenvana")).thenReturn(Optional.of(savedCitizen));
+        when(householdRepository.findByCitizenId(savedCitizen.getId()))
+                .thenReturn(Optional.of(household));
+        when(buildingRepository.findById(missingBuildingId)).thenReturn(Optional.empty());
+
+        CitizenProfileDto result = citizenService.getProfile("nguyenvana");
+
+        assertThat(result).isNotNull();
+        assertThat(result.getHousehold()).isNotNull();
+        assertThat(result.getHousehold().getBuildingName()).isNull();
+    }
+
+    @Test
+    @DisplayName("getBuildingsByDistrict: should return buildings for given district")
+    void getBuildingsByDistrict_returnsMatchingBuildings() {
+        when(buildingRepository.findByDistrict("Bình Thạnh")).thenReturn(List.of(building));
+
+        List<BuildingDto> result = citizenService.getBuildingsByDistrict("Bình Thạnh");
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).getDistrict()).isEqualTo("Bình Thạnh");
+    }
+
+    @Test
+    @DisplayName("getBuildingsByDistrict: returns empty when no buildings in district")
+    void getBuildingsByDistrict_noBuildings_returnsEmpty() {
+        when(buildingRepository.findByDistrict("District 1")).thenReturn(List.of());
+
+        List<BuildingDto> result = citizenService.getBuildingsByDistrict("District 1");
+
+        assertThat(result).isEmpty();
+    }
+
+    @Test
+    @DisplayName("register: should handle username collision with retry logic")
+    void register_usernameCollision_retries() {
+        // First call: username "nguyenvana" already taken
+        // Second call: "nguyenvana<random>" also taken
+        // Third attempt: succeeds
+        when(citizenRepository.existsByEmail(validRequest.getEmail())).thenReturn(false);
+        when(citizenRepository.existsByUsername(any()))
+                .thenReturn(true)  // first attempt: prefix exists
+                .thenReturn(true)  // second attempt: prefix+rand exists
+                .thenReturn(false); // third attempt: succeeds
+        when(citizenRepository.save(any(CitizenAccount.class))).thenReturn(savedCitizen);
+
+        CitizenProfileDto result = citizenService.register(validRequest);
+
+        assertThat(result).isNotNull();
+        // existsByUsername called at least 3 times due to retry
+        verify(citizenRepository, atLeast(3)).existsByUsername(any());
+    }
 }
 

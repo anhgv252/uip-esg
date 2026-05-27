@@ -75,9 +75,9 @@ public class SecurityConfig {
                     AntPathRequestMatcher.antMatcher("/swagger-ui.html"),
                     AntPathRequestMatcher.antMatcher("/actuator/health"),
                     AntPathRequestMatcher.antMatcher("/actuator/health/**"),
-                    AntPathRequestMatcher.antMatcher("/actuator/info")
+                    AntPathRequestMatcher.antMatcher("/actuator/info"),
+                    AntPathRequestMatcher.antMatcher("/actuator/prometheus")
                 ).permitAll()
-                .requestMatchers(AntPathRequestMatcher.antMatcher("/actuator/prometheus")).hasRole("ADMIN")
                 .requestMatchers(AntPathRequestMatcher.antMatcher("/actuator/metrics")).hasRole("ADMIN")
                 .requestMatchers(AntPathRequestMatcher.antMatcher("/actuator/**")).denyAll()
                 // Camunda paths handled by CamundaSecurityConfig @Order(1)
