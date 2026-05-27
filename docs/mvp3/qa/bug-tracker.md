@@ -2,7 +2,7 @@
 
 **Sprint:** MVP3-4 | **Gate Date:** 2026-06-13 15:00 SGT
 **Owner:** QA Engineer
-**Last updated:** 2026-05-25
+**Last updated:** 2026-05-27
 
 > File này thay thế external Jira/Linear cho Sprint MVP3-1.
 > Mọi P0/P1 bug **phải** được ghi vào đây trước khi đóng gate checklist.
@@ -26,6 +26,16 @@
 | — | *Không có P1 bug nào được ghi nhận* | — | — | — | — |
 
 **P1 count:** 0 ✅
+
+---
+
+## P2 Bugs (Medium — Deferred with PM risk-acceptance)
+
+| ID | Title | Status | Assignee | Found | Resolution / Risk Accept |
+|----|-------|--------|----------|-------|------------------------|
+| BUG-S4-T04 | Forecast 503 when Python down (no NAIVE_ROLLING fallback wired) | OPEN — P2 DEFERRED | Backend Team | 2026-05-27 | `ForecastController` catches `ForecastServiceUnavailableException` → 503; `NaiveForecastAdapter` bean exists but not wired as fallback. Service healthy in prod. Deferred Sprint 5. **PM risk-acceptance required.** |
+
+**P2 count:** 1 — deferred, non-blocking for demo ✅
 
 ---
 

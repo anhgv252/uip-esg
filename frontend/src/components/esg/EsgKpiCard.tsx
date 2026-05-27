@@ -51,7 +51,7 @@ export function EsgKpiCard({ label, value, unit, trend, loading, higherIsBad }: 
     );
   }
 
-  const displayValue = value !== undefined ? value.toLocaleString('vi-VN', { maximumFractionDigits: 1 }) : '—';
+  const displayValue = value != null ? value.toLocaleString('vi-VN', { maximumFractionDigits: 1 }) : '—';
 
   return (
     <Card variant="outlined" sx={{ height: '100%' }}>

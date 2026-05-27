@@ -35,7 +35,7 @@ scrape_configs:
     metrics_path: '/actuator/prometheus'
     scrape_interval: 15s
     static_configs:
-      - targets: ['uip-analytics-service:8081']
+      - targets: ['analytics-service:8081']  # service name DNS (supports --scale; was uip-analytics-service after container_name removal)
 
   - job_name: 'kong'
     metrics_path: '/metrics'
