@@ -161,7 +161,7 @@ class ForecastControllerWebMvcTest {
 
     @Test
     @WithMockUser
-    @DisplayName("GET /forecast/energy — forecast unavailable returns 503")
+    @DisplayName("GET /forecast/energy — forecast unavailable returns 503 (both primary and fallback failed)")
     void forecastEnergy_serviceUnavailable_returns503() throws Exception {
         when(forecastService.forecast(anyString(), anyString(), anyInt()))
                 .thenThrow(new ForecastServiceUnavailableException("Connection refused", null));
@@ -172,6 +172,25 @@ class ForecastControllerWebMvcTest {
             mockMvc.perform(get("/api/v1/forecast/energy")
                             .param("buildingId", "B1"))
                     .andExpect(status().isServiceUnavailable());
+        }
+    }
+
+    @Test
+    @WithMockUser
+    @DisplayName("GET /forecast/energy — fallback to naive returns 200 with isFallback=true")
+    void forecastEnergy_fallbackToNaive_returns200() throws Exception {
+        ForecastResult fallbackResult = new ForecastResult("hcm", "B1", "NAIVE", true, null,
+                Collections.emptyList(), Instant.now());
+        when(forecastService.forecast(anyString(), eq("B1"), anyInt())).thenReturn(fallbackResult);
+
+        try (MockedStatic<TenantContext> tc = Mockito.mockStatic(TenantContext.class)) {
+            tc.when(TenantContext::getCurrentTenant).thenReturn("hcm");
+
+            mockMvc.perform(get("/api/v1/forecast/energy")
+                            .param("buildingId", "B1"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.isFallback").value(true))
+                    .andExpect(jsonPath("$.model").value("NAIVE"));
         }
     }
 }

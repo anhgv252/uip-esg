@@ -23,6 +23,7 @@ const UserManagementPage = lazy(() => import('@/pages/tenant-admin/UserManagemen
 const BuildingConfigPage = lazy(() => import('@/pages/tenant-admin/BuildingConfigPage'))
 const UsageReportPage = lazy(() => import('@/pages/tenant-admin/UsageReportPage'))
 const TenantSettingsPage = lazy(() => import('@/pages/tenant-admin/TenantSettingsPage'))
+const BmsDevicesPage = lazy(() => import('@/pages/BmsDevicesPage'))
 const MobileBillsPage = lazy(() => import('@/pages/citizen/MobileBillsPage'))
 const MobileBillDetailPage = lazy(() => import('@/pages/citizen/MobileBillDetailPage'))
 const MobileAQIPage = lazy(() => import('@/pages/citizen/MobileAQIPage'))
@@ -57,6 +58,7 @@ export const routes: RouteObject[] = [
       { path: '/esg', element: <EsgPage /> },
       { path: '/traffic', element: <TrafficPage /> },
       { path: '/alerts', element: <AlertsPage /> },
+      { path: '/bms/devices', element: <BmsDevicesPage /> },
       { path: '/city-ops', element: <CityOpsPage /> },
       // Cross-Building Analytics (MVP3-Sprint1)
       {

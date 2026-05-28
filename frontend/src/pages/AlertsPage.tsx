@@ -35,6 +35,7 @@ import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward'
 import { formatDistanceToNow, format } from 'date-fns'
 import type { AlertEvent } from '@/api/alerts'
 import { useAlerts, useAcknowledgeAlert, useEscalateAlert } from '@/hooks/useAlertManagement'
+import { useAlertStream } from '@/hooks/useAlertStream'
 import { useScope } from '@/hooks/useScope'
 
 const SEVERITY_COLORS = {
@@ -220,6 +221,8 @@ export default function AlertsPage() {
   const canAck = useScope('alert:ack')
   const canEscalate = useScope('alert:escalate')
 
+  const { status: streamStatus } = useAlertStream({ severity: filters.severity || undefined })
+
   const { data, isLoading, error } = useAlerts({
     status: filters.status || undefined,
     severity: filters.severity || undefined,
@@ -251,6 +254,13 @@ export default function AlertsPage() {
         <NotificationsActiveIcon color="primary" />
         <Typography variant="h5">Alert Management</Typography>
         {data && <Chip label={`${data.totalElements} total`} size="small" />}
+        <Chip
+          label={streamStatus === 'connected' ? 'Live' : streamStatus === 'connecting' ? 'Connecting...' : 'Offline'}
+          size="small"
+          color={streamStatus === 'connected' ? 'success' : 'default'}
+          variant={streamStatus === 'connected' ? 'filled' : 'outlined'}
+          sx={{ ml: 'auto' }}
+        />
       </Box>
 
       {/* Filters */}

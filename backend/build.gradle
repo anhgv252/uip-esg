@@ -25,6 +25,8 @@ java {
 
 repositories {
     mavenCentral()
+    // BACnet4J — MangoAutomation Maven repo (public, no auth)
+    maven { url 'https://maven.mangoautomation.net/repository/ias-release/' }
 }
 
 configurations {
@@ -78,8 +80,13 @@ dependencies {
     // Rate limiting
     implementation 'com.bucket4j:bucket4j-core:8.7.0'
 
-    // Resilience4j — circuit breaker for Claude API calls
+    // Resilience4j — circuit breaker for Claude API calls + BMS adapters
     implementation 'io.github.resilience4j:resilience4j-spring-boot3:2.2.0'
+
+    // BMS Protocol Adapters (ADR-029)
+    implementation 'com.ghgande:j2mod:3.2.1'                       // Modbus TCP — Apache 2.0
+    implementation 'com.infiniteautomation:bacnet4j:6.0.1'         // BACnet/IP — commercial license
+    implementation 'org.eclipse.paho:org.eclipse.paho.mqttv5.client:1.2.5'  // MQTT v5 client for EMQX
 
     // Spring Retry — retry for cache eviction and transient failures
     implementation 'org.springframework.retry:spring-retry'

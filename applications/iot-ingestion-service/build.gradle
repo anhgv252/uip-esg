@@ -1,0 +1,64 @@
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '3.2.4'
+    id 'io.spring.dependency-management' version '1.1.7'
+    id 'jacoco'
+}
+
+group = 'com.uip'
+version = '0.1.0-SNAPSHOT'
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+repositories {
+    mavenCentral()
+}
+
+configurations {
+    compileOnly { extendsFrom annotationProcessor }
+}
+
+dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+    runtimeOnly    'io.micrometer:micrometer-registry-prometheus'
+
+    // Kafka consumer for sensor readings
+    implementation 'org.springframework.kafka:spring-kafka'
+
+    // JWT validation (shared secret with monolith)
+    implementation 'io.jsonwebtoken:jjwt-api:0.12.3'
+    runtimeOnly    'io.jsonwebtoken:jjwt-impl:0.12.3'
+    runtimeOnly    'io.jsonwebtoken:jjwt-jackson:0.12.3'
+
+    // Logging
+    implementation 'net.logstash.logback:logstash-logback-encoder:7.4'
+
+    compileOnly    'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.kafka:spring-kafka-test'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+test {
+    useJUnitPlatform()
+    environment 'RYUK_DISABLED', 'true'
+    jvmArgs '-Xmx1g'
+    finalizedBy jacocoTestReport
+}
+
+jacocoTestReport {
+    dependsOn test
+    reports { xml.required = true; html.required = true }
+}
+
+bootJar {
+    archiveFileName = 'app.jar'
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}

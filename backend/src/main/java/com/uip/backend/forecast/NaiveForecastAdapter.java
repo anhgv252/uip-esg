@@ -4,7 +4,6 @@ import com.uip.backend.esg.domain.EsgMetric;
 import com.uip.backend.esg.repository.EsgMetricRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
@@ -16,11 +15,11 @@ import java.util.List;
  * In-process naive forecast adapter — rolling average fallback.
  *
  * ADR-032 D6: Uses EsgMetricRepository.findByTypeAndBuilding() → TimescaleDB.
- * Zero new dependencies. Activated when forecast-engine=naive.
+ * Zero new dependencies. Always loaded as fallback bean (BUG-S4-T04).
+ * Primary activation via forecast-engine=naive handled by ForecastServiceAdapter absence.
  */
 @Slf4j
-@Component
-@ConditionalOnProperty(name = "uip.capabilities.forecast-engine", havingValue = "naive")
+@Component("naiveForecastFallback")
 @RequiredArgsConstructor
 public class NaiveForecastAdapter implements ForecastPort {
 

@@ -37,6 +37,7 @@ import {
 } from '@mui/icons-material'
 import LocationCityIcon from '@mui/icons-material/LocationCity'
 import BusinessIcon from '@mui/icons-material/Business'
+import DeviceHubIcon from '@mui/icons-material/DeviceHub'
 import { useAuth } from '@/hooks/useAuth'
 import { useTenantConfig } from '@/contexts/TenantConfigContext'
 
@@ -60,6 +61,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'ESG Metrics', path: '/esg', icon: <EsgIcon /> },
   { label: 'Traffic', path: '/traffic', icon: <TrafficIcon /> },
   { label: 'Alerts', path: '/alerts', icon: <AlertsIcon /> },
+  { label: 'BMS Devices', path: '/bms/devices', icon: <DeviceHubIcon /> },
   { label: 'Citizens', path: '/citizen', icon: <CitizenIcon /> },
   {
     label: 'AI Workflows',

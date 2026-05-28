@@ -33,6 +33,12 @@ applications/analytics-service/.gradle/
 applications/analytics-service/build/
 applications/analytics-service/out/
 applications/analytics-service/bin/
+
+# iot-ingestion-service (Gradle / Java)
+applications/iot-ingestion-service/.gradle/
+applications/iot-ingestion-service/build/
+applications/iot-ingestion-service/out/
+applications/iot-ingestion-service/bin/
 *.jar
 *.war
 

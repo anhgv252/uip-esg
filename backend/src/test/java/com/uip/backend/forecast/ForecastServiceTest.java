@@ -1,9 +1,9 @@
 package com.uip.backend.forecast;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -23,13 +23,25 @@ class ForecastServiceTest {
     @Mock
     private ForecastPort forecastPort;
 
-    @InjectMocks
+    @Mock
+    private NaiveForecastAdapter naiveFallback;
+
     private ForecastService forecastService;
 
     private static final ForecastResult STUB_RESULT = new ForecastResult(
             "hcm", "B1", "ARIMA", false, 0.08,
             Collections.emptyList(), Instant.now()
     );
+
+    private static final ForecastResult NAIVE_RESULT = new ForecastResult(
+            "hcm", "B1", "NAIVE", true, null,
+            Collections.emptyList(), Instant.now()
+    );
+
+    @BeforeEach
+    void setUp() {
+        forecastService = new ForecastService(forecastPort, naiveFallback);
+    }
 
     @Test
     @DisplayName("forecast — delegates to ForecastPort and returns result")
@@ -42,14 +54,34 @@ class ForecastServiceTest {
         assertThat(result.tenantId()).isEqualTo("hcm");
         assertThat(result.buildingId()).isEqualTo("B1");
         assertThat(result.model()).isEqualTo("ARIMA");
+        assertThat(result.isFallback()).isFalse();
         verify(forecastPort, times(1)).forecast("hcm", "B1", 30);
+        verifyNoInteractions(naiveFallback);
     }
 
     @Test
-    @DisplayName("forecast — passes through exception from port")
-    void forecast_propagatesPortException() {
+    @DisplayName("forecast — falls back to naive when primary port unavailable")
+    void forecast_fallsBackToNaive() {
+        when(forecastPort.forecast(anyString(), anyString(), anyInt()))
+                .thenThrow(new ForecastServiceUnavailableException("Connection refused", null));
+        when(naiveFallback.forecast("hcm", "B1", 30)).thenReturn(NAIVE_RESULT);
+
+        ForecastResult result = forecastService.forecast("hcm", "B1", 30);
+
+        assertThat(result).isNotNull();
+        assertThat(result.model()).isEqualTo("NAIVE");
+        assertThat(result.isFallback()).isTrue();
+        verify(forecastPort, times(1)).forecast("hcm", "B1", 30);
+        verify(naiveFallback, times(1)).forecast("hcm", "B1", 30);
+    }
+
+    @Test
+    @DisplayName("forecast — propagates exception when fallback also fails")
+    void forecast_propagatesExceptionWhenFallbackFails() {
         when(forecastPort.forecast(anyString(), anyString(), anyInt()))
                 .thenThrow(new ForecastServiceUnavailableException("Port failed", null));
+        when(naiveFallback.forecast(anyString(), anyString(), anyInt()))
+                .thenThrow(new ForecastServiceUnavailableException("Naive failed", null));
 
         org.junit.jupiter.api.Assertions.assertThrows(
                 ForecastServiceUnavailableException.class,

@@ -1,0 +1,28 @@
+server:
+  port: 8082
+
+spring:
+  application:
+    name: iot-ingestion-service
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: iot-ingestion-service
+      auto-offset-reset: earliest
+
+iot:
+  ingestion:
+    mode: ${IOT_INGESTION_MODE:disabled}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  pattern:
+    console: '{"time":"%d","level":"%p","logger":"%c","msg":"%m","traceId":"%X{traceId}"}%n'
