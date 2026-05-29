@@ -55,7 +55,7 @@ echo "=== ESG Carbon ===" && curl -s "http://localhost:8080/api/v1/esg/carbon?ye
 ```
 
 **Expected:**
-- Alerts: 5 total, 3 OPEN (2 CRITICAL + 1 WARNING)
+- Alerts: 5 total (2 CRITICAL + 3 WARNING — trạng thái phụ thuộc lần chạy trước, có thể đã ACK)
 - BMS Devices: ≥5 devices
 - ESG Carbon: 35 records (5 buildings × 7 months)
 
@@ -110,8 +110,8 @@ echo "=== ESG Carbon ===" && curl -s "http://localhost:8080/api/v1/esg/carbon?ye
 2. Điền: `admin` / `admin_Dev#2026!` → Login
 3. Chỉ Dashboard cards:
    - **Active Sensors:** 8
-   - **Open Alerts:** 3 (nhấn mạnh — real-time từ backend)
-   - **Buildings:** 1
+   - **Open Alerts:** hiển thị số thực từ API (real-time, có thể 0–3)
+   - **Buildings:** 5
    - **Carbon:** 0t (data 2026 Q2 chưa có — expected)
 
 **Nói với PO:**
@@ -158,7 +158,7 @@ echo "=== ESG Carbon ===" && curl -s "http://localhost:8080/api/v1/esg/carbon?ye
    curl -s -X POST "http://localhost:8080/api/v1/bms/devices/discover" \
      -H "Authorization: Bearer $TOKEN" | python3 -m json.tool
    ```
-2. Chỉ response: `{"devicesFound": 0, "scanDurationMs": ~10000, "broadcast": "255.255.255.255"}`
+2. Chỉ response: `[]` (empty array — không có BACnet device trong dev network)
 
 **Nói với PO:**
 > "Tính năng BACnet Who-Is Discovery: hệ thống broadcast tìm thiết bị trong subnet, timeout 10 giây. 0 found là expected — không có BACnet device trong dev network. Production sẽ tìm thấy HVAC controllers, AHU, FCU."
@@ -176,9 +176,9 @@ echo "=== ESG Carbon ===" && curl -s "http://localhost:8080/api/v1/esg/carbon?ye
 ### 3A — Alerts Overview (2 min)
 1. Navigate to `/alerts`
 2. Chỉ 5 alerts hiện tại:
-   - 2 × **CRITICAL** — OPEN (đỏ)
-   - 1 × **WARNING** — OPEN (cam)
-   - 2 × **WARNING** — ACKNOWLEDGED (xanh)
+   - 2 × **CRITICAL** (trạng thái phụ thuộc lần chạy trước)
+   - 3 × **WARNING**
+   - Phân bố OPEN/ACKNOWLEDGED: linh hoạt, giải thích cho PO "alerts đã được xử lý trong phiên làm việc trước"
 
 **Nói với PO:**
 > "Alerts được render với color-coded severity theo tiêu chuẩn NIST. CRITICAL màu đỏ cần xử lý ngay. Acknowledged màu xanh đã được operator xác nhận."
@@ -196,7 +196,7 @@ echo "=== ESG Carbon ===" && curl -s "http://localhost:8080/api/v1/esg/carbon?ye
 2. Detail drawer mở bên phải — chỉ fields: severity, location, timestamp, message
 3. Click **Acknowledge**
 4. Status thay đổi → **ACKNOWLEDGED** ngay lập tức
-5. Dashboard Open Alerts counter: 3 → 2
+5. Dashboard Open Alerts counter giảm 1
 
 **Nói với PO:**
 > "Acknowledge action gọi `PUT /api/v1/alerts/{id}/acknowledge` — REST verb đúng chuẩn. State update được reflect ngay trên UI qua React Query cache invalidation, không cần refresh trang."
@@ -230,7 +230,7 @@ echo "=== ESG Carbon ===" && curl -s "http://localhost:8080/api/v1/esg/carbon?ye
    curl -s "http://localhost:8080/api/v1/forecast/energy?buildingId=BLD-DEFAULT-001&horizonDays=7" \
      -H "Authorization: Bearer $TOKEN" | python3 -m json.tool
    ```
-2. Response: `{"isFallback": true, "model": "NONE", "points": [], "message": "Naive fallback active"}`
+2. Response: `{"isFallback": true, "model": "NONE", "points": [], "generatedAt": "..."}` — không crash, trả 200 với fallback flag
 
 **Nói với PO:**
 > "Python forecast service hiện không chạy trong local Docker (deploy theo demand). Khi Python DOWN, hệ thống **không crash** — tự động fallback sang naive mode, trả HTTP 200 với `isFallback: true`. Frontend có thể hiển thị 'AI forecast unavailable, showing historical average'."
@@ -301,7 +301,7 @@ printf " HEALTHY\n"
 
 # Frontend proxy works immediately — no nginx reload needed
 curl -s -o /dev/null -w "Frontend proxy: HTTP %{http_code}\n" \
-  http://localhost:3000/api/v1/actuator/health
+  http://localhost:3000/api/v1/auth/login
 ```
 
 **Nói với PO:**
