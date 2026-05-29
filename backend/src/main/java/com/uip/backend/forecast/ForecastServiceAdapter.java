@@ -3,6 +3,7 @@ package com.uip.backend.forecast;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
@@ -19,6 +20,7 @@ import java.util.Map;
  * ADR-032 D1: Python service is Docker-internal only, no host port.
  */
 @Slf4j
+@Primary
 @Component
 @ConditionalOnProperty(name = "uip.capabilities.forecast-engine", havingValue = "python")
 public class ForecastServiceAdapter implements ForecastPort {

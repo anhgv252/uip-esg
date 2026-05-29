@@ -73,10 +73,86 @@
         "defaults": { "unit": "reqps", "custom": { "fillOpacity": 10 } },
         "overrides": []
       }
+    },
+    {
+      "title": "BMS Module",
+      "type": "row",
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 20 },
+      "panels": []
+    },
+    {
+      "title": "BMS Circuit Breaker State",
+      "type": "stat",
+      "gridPos": { "h": 8, "w": 4, "x": 0, "y": 21 },
+      "targets": [
+        {
+          "expr": "resilience4j_circuitbreaker_state{name=\"bms-adapter\", state=\"closed\"}",
+          "legendFormat": "closed"
+        },
+        {
+          "expr": "resilience4j_circuitbreaker_state{name=\"bms-adapter\", state=\"open\"}",
+          "legendFormat": "open"
+        },
+        {
+          "expr": "resilience4j_circuitbreaker_state{name=\"bms-adapter\", state=\"half_open\"}",
+          "legendFormat": "half_open"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            { "type": "value", "options": { "0": { "text": "INACTIVE", "color": "gray" }, "1": { "text": "ACTIVE", "color": "green" } } }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "value": null, "color": "gray" },
+              { "value": 1, "color": "green" }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "auto"
+      }
+    },
+    {
+      "title": "BMS Circuit Breaker — Call Outcomes",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 20, "x": 4, "y": 21 },
+      "targets": [
+        {
+          "expr": "sum(rate(resilience4j_circuitbreaker_calls_seconds_count{name=\"bms-adapter\", kind=\"successful\"}[5m]))",
+          "legendFormat": "successful"
+        },
+        {
+          "expr": "sum(rate(resilience4j_circuitbreaker_calls_seconds_count{name=\"bms-adapter\", kind=\"failed\"}[5m]))",
+          "legendFormat": "failed"
+        },
+        {
+          "expr": "sum(rate(resilience4j_circuitbreaker_calls_seconds_count{name=\"bms-adapter\", kind=\"not_permitted\"}[5m]))",
+          "legendFormat": "not_permitted (CB open)"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "reqps", "custom": { "fillOpacity": 10 } },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "failed" }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } }] },
+          { "matcher": { "id": "byName", "options": "not_permitted (CB open)" }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "orange" } }] },
+          { "matcher": { "id": "byName", "options": "successful" }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "green" } }] }
+        ]
+      }
     }
   ],
   "schemaVersion": 39,
-  "tags": ["uip", "services", "sprint4"],
+  "tags": ["uip", "services", "sprint5", "bms"],
   "templating": { "list": [] },
   "time": { "from": "now-1h", "to": "now" },
   "timepicker": {},

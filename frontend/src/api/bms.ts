@@ -29,20 +29,20 @@ export interface BmsDeviceRequest {
 }
 
 export async function getBmsDevices(): Promise<BmsDevice[]> {
-  const { data } = await apiClient.get('/api/v1/bms/devices')
+  const { data } = await apiClient.get('/bms/devices')
   return data
 }
 
 export async function createBmsDevice(req: BmsDeviceRequest): Promise<BmsDevice> {
-  const { data } = await apiClient.post('/api/v1/bms/devices', req)
+  const { data } = await apiClient.post('/bms/devices', req)
   return data
 }
 
 export async function deleteBmsDevice(id: string): Promise<void> {
-  await apiClient.delete(`/api/v1/bms/devices/${id}`)
+  await apiClient.delete(`/bms/devices/${id}`)
 }
 
 export async function sendBmsCommand(id: string, commandType: string, payload: Record<string, unknown>): Promise<{ commandId: string; status: string }> {
-  const { data } = await apiClient.post(`/api/v1/bms/devices/${id}/commands`, { commandType, payload })
+  const { data } = await apiClient.post(`/bms/devices/${id}/commands`, { commandType, payload })
   return data
 }

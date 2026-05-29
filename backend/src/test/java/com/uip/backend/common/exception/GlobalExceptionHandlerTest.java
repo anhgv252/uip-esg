@@ -11,6 +11,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
+import org.springframework.web.bind.MissingRequestHeaderException;
+import org.springframework.core.MethodParameter;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
@@ -110,6 +113,42 @@ class GlobalExceptionHandlerTest {
 
         assertThat(detail.getStatus()).isEqualTo(HttpStatus.NOT_FOUND.value());
         assertThat(detail.getType().toString()).isEqualTo("/errors/workflow-not-found");
+        assertThat(detail.getProperties()).containsKey("timestamp");
+        assertThat(detail.getProperties()).containsEntry("path", "/api/v1/test/resource/123");
+    }
+
+    // --- HttpRequestMethodNotSupportedException -> 405 ----------------------------
+
+    @Test
+    @DisplayName("HttpRequestMethodNotSupportedException -> 405 METHOD_NOT_ALLOWED")
+    void methodNotAllowed_returns405() {
+        HttpRequestMethodNotSupportedException ex =
+                new HttpRequestMethodNotSupportedException("POST");
+
+        ProblemDetail detail = handler.handleMethodNotAllowed(ex, request);
+
+        assertThat(detail.getStatus()).isEqualTo(HttpStatus.METHOD_NOT_ALLOWED.value());
+        assertThat(detail.getDetail()).isEqualTo("Method 'POST' not allowed for this endpoint");
+        assertThat(detail.getType().toString()).isEqualTo("/errors/method-not-allowed");
+        assertThat(detail.getProperties()).containsKey("timestamp");
+        assertThat(detail.getProperties()).containsEntry("path", "/api/v1/test/resource/123");
+    }
+
+    // --- MissingRequestHeaderException -> 400 ------------------------------------
+
+    @Test
+    @DisplayName("MissingRequestHeaderException -> 400 BAD_REQUEST with header name")
+    void missingRequestHeader_returns400() throws NoSuchMethodException {
+        MethodParameter param = new MethodParameter(
+                GlobalExceptionHandlerTest.class.getDeclaredMethod("missingRequestHeader_returns400"), -1);
+        MissingRequestHeaderException ex = new MissingRequestHeaderException("X-Tenant-ID", param);
+
+        ProblemDetail detail = handler.handleMissingHeader(ex, request);
+
+        assertThat(detail.getStatus()).isEqualTo(HttpStatus.BAD_REQUEST.value());
+        assertThat(detail.getDetail()).isEqualTo("Required header 'X-Tenant-ID' is missing");
+        assertThat(detail.getType().toString()).isEqualTo("/errors/bad-request");
+        assertThat(detail.getProperties()).containsEntry("header", "X-Tenant-ID");
         assertThat(detail.getProperties()).containsKey("timestamp");
         assertThat(detail.getProperties()).containsEntry("path", "/api/v1/test/resource/123");
     }

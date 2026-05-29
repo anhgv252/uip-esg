@@ -130,4 +130,29 @@ All SA review checklist items PASS. Unit test coverage improved from 12 to 30 BM
 
 ---
 
-*SA Review completed: 2026-05-28 | Next: QA integration test execution*
+## 8. SA Addendum — Hotfix BUG-S5-HANDLER-01 (post-QA review)
+
+**Date:** 2026-05-28 (added after initial code review)  
+**Scope:** `GlobalExceptionHandler.java` — hotfix for HTTP 500 returned on client errors
+
+### Changes reviewed:
+
+| Method | Change | Status |
+|--------|--------|--------|
+| `handleMethodNotAllowed` | Returns `ProblemDetail` HTTP 405, type `/errors/method-not-allowed`, `Allow` header set | ✅ PASS |
+| `handleMissingHeader` | Returns `ProblemDetail` HTTP 400, type `/errors/missing-header`, `header` property populated | ✅ PASS |
+
+### Checklist:
+| # | Check | Result |
+|---|-------|--------|
+| 1 | RFC 7807 ProblemDetail pattern consistent with existing handlers | ✅ PASS |
+| 2 | `Allow` header populated via `ex.getSupportedHttpMethods()` | ✅ PASS |
+| 3 | Unit tests added: `GlobalExceptionHandlerTest` 11/11 PASS | ✅ PASS |
+| 4 | HTTP status semantic correct (405 vs 400 vs 500) | ✅ PASS |
+| 5 | No resource leak, no thread safety concern | ✅ PASS |
+
+**Verdict:** APPROVED. Hotfix is minimal, correct, consistent with RFC 7807 pattern used across handlers.
+
+---
+
+*SA Review completed: 2026-05-28 | Addendum (hotfix): 2026-05-28 | QA: 10/10 IT + 32/32 manual PASS*
