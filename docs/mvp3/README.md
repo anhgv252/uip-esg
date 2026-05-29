@@ -1,9 +1,10 @@
 # MVP3 — Building Cluster + Advanced AI (v3.0)
 
-**Trạng thái:** 🔵 PLANNING  
-**Ngày lập kế hoạch:** 2026-05-10  
-**Sprint start:** 2026-05-12  
-**Target:** Tier 2 pilot signed bởi 2026-08-10  
+**Trạng thái:** 🟢 Sprint 5 COMPLETE — Sprint 6 IN PLANNING
+**Ngày lập kế hoạch:** 2026-05-10
+**Last updated:** 2026-05-29 (Sprint 5 closed, Sprint 6 planned)
+**Sprint start:** 2026-05-12
+**Target:** Tier 2 pilot signed bởi 2026-08-10
 **Goal:** UIP sẵn sàng phục vụ Building Cluster (5–20 tòa nhà)
 
 ---
@@ -29,20 +30,39 @@
 
 ## 2. Backlog MVP3
 
-| ID | Feature | SP | Priority | Sprint |
-|----|---------|-----|---------|--------|
-| v3-01 | Cross-building analytics + aggregate dashboard | 13 | **P0** | Sprint 1-2 |
-| v3-05 | BMS integration SDK (Modbus, BACnet, KNX) | 21 | **P0** | Sprint 4 |
-| v3-07 | Kong API Gateway + Keycloak IdP | 13 | **P0** | Sprint 4 |
-| v3-08 | ClickHouse OLAP + analytics microservice | 13 | **P0** | Sprint 1-2 |
-| v3-02 | Advanced ESG: GRI Standards + carbon credit | 21 | P1 | Sprint 3 |
-| v3-03 | Predictive AI: energy forecasting ARIMA/LSTM | 13 | P1 | Sprint 3 |
-| v3-06 | Mobile operator app (iOS/Android) | 21 | P1 | Sprint 5 |
-| v3-09 | Building safety: structural monitoring | 13 | P1 | Sprint 6 (risky) |
-| v3-10 | Schema Registry (Apicurio) + Avro migration | 8 | P1 | Sprint 6 |
-| v3-04 | Predictive maintenance: sensor anomaly detection | 13 | P2 | Sprint 3 |
+| ID | Feature | SP | Priority | Sprint thực tế | Status |
+|----|---------|-----|---------|----------------|--------|
+| v3-01 | Cross-building analytics + aggregate dashboard | 13 | **P0** | Sprint 1-2 | ✅ DONE |
+| v3-05 | BMS integration SDK (Modbus, BACnet) | 21 | **P0** | Sprint 5 | ✅ DONE |
+| v3-07 | Kong API Gateway + Keycloak IdP | 13 | **P0** | Sprint 1 | ✅ DONE |
+| v3-08 | ClickHouse OLAP + analytics microservice | 13 | **P0** | Sprint 1-2 | ✅ DONE |
+| v3-02 | Advanced ESG: GRI Standards + carbon credit | 21 | P1 | Sprint 3 | ✅ DONE |
+| v3-03 | Predictive AI: energy forecasting ARIMA/LSTM | 13 | P1 | Sprint 4 | ✅ DONE |
+| v3-04 | Predictive maintenance: sensor anomaly detection | 13 | P2 | Sprint 4 | ✅ DONE |
+| v3-AI | AI Workflow Designer + Flood Alert Pipeline | ~26 | **P0** | Sprint 6 | 📋 Planned |
+| v3-06 | Mobile operator app (iOS/Android) | 21 | P1 | Sprint 6-7 | 📋 Planned |
+| v3-09 | Building safety: structural monitoring | 13 | P1 | Sprint 7 | 📋 Planned |
+| v3-10 | Schema Registry (Apicurio) + Avro migration | 8 | P1 | Post-pilot | 📋 Deferred |
 
-**Total: ~149 SP / 12 tuần**
+**Total: ~149 SP / 7 sprints (Sprint 1-5 DONE = ~111 SP delivered, Sprint 6-7 remaining = ~60 SP)**
+
+### Sprint thực tế vs Plan gốc
+
+Plan gốc (detail-plan.md) dự kiến 6 sprint theo thứ tự: Foundation → ClickHouse → AI → BMS → Mobile → Avro+Safety.
+PO đã điều chỉnh thứ tự ưu tiên dựa trên business value:
+
+| Plan gốc | Sprint thực tế | Nội dung | Gate |
+|----------|---------------|----------|------|
+| Sprint 1 | **Sprint 1** (05-12 → 05-13) | Foundation + Multi-Building Core + ClickHouse + Kong/Keycloak | 69/70 PASS ✅ |
+| Sprint 2 | **Sprint 2** (05-14 → 05-18) | ClickHouse Live + Analytics Cutover + ESG | PASS ✅ |
+| Sprint 3 | **Sprint 3** (05-19 → 05-25) | ESG GRI + Keycloak RSA + Flink Enrichment | 5/6 AC PASS ✅ |
+| Sprint 4 | **Sprint 4** (05-25 → 05-27) | Observability + Predictive AI (ARIMA MAPE 3.54%) | 19/19 PASS ✅ |
+| — | **Sprint 5** (05-27 → 05-29) | BMS Full Integration + Alerts SSE + Forecast Fallback | 21/21 DONE ✅ |
+| — | **Sprint 6** (planned) | AI Workflow + Flood Alert + Mobile Foundation + Push | 📋 Planned |
+| — | **Sprint 7** (planned) | Building Safety + Mobile Full + Pilot Prep | 📋 Planned |
+| Sprint 6 | **Post-pilot** | Avro Schema Registry + gRPC migration | 📋 Deferred |
+
+> **PO điều chỉnh rationale:** AI Workflow + Flood Alert được ưu tiên lên Sprint 6 vì demo PO Sprint 5 đã promise. Mobile app được đẩy lên Sprint 6-7 song song. Building Safety Sprint 7 trước pilot. Avro + Schema Registry deferred post-pilot.
 
 ---
 
@@ -69,17 +89,18 @@
 
 ### ADRs cần viết cho MVP3
 
-| ADR | Title | Sprint |
-|-----|-------|--------|
-| ADR-026 | ClickHouse Pre-emptive Adoption (override ADR-012 trigger) | MVP3-1 |
-| ADR-027 | Keycloak Hybrid Auth — Issuer Migration Strategy | MVP3-1 |
-| ADR-028 | Kong Gateway Scope — Extracted Services Only | MVP3-1 |
-| ADR-029 | BMS Protocol Adapter Pattern (Modbus/BACnet/KNX) | MVP3-4 |
-| ADR-030 | Mobile Stack — React Native (Operator) + PWA (Citizen) | MVP3-5 |
-| ADR-031 | Schema Registry — Avro for Cross-Service Topics | MVP3-6 |
-| ADR-032 | Predictive AI — ARIMA In-Process + LSTM External gRPC | MVP3-3 |
-| ADR-033 | Cross-Building Tenant Hierarchy — Parent Tenant Aggregation | MVP3-1 |
-| ADR-034 | Structural Monitoring — Flink CEP + Welford stddev | MVP3-6 |
+| ADR | Title | Sprint | Trạng thái |
+|-----|-------|--------|-----------|
+| ADR-026 | ClickHouse Pre-emptive Adoption (override ADR-012 trigger) | Sprint 1 | ✅ MERGED |
+| ADR-027 | Keycloak Hybrid Auth — Issuer Migration Strategy | Sprint 1 | ✅ MERGED |
+| ADR-028 | Kong Gateway Scope — Extracted Services Only | Sprint 1 | ✅ MERGED |
+| ADR-029 | BMS Protocol Adapter Pattern (Modbus/BACnet) | Sprint 5 | ✅ MERGED |
+| ADR-030 | Mobile Stack — React Native (Operator) + PWA (Citizen) | Sprint 6 | 📋 Proposed |
+| ADR-031 | Schema Registry — Avro for Cross-Service Topics | Post-pilot | 📋 Deferred |
+| ADR-032 | Predictive AI — ARIMA In-Process + LSTM External gRPC | Sprint 4 | ✅ MERGED |
+| ADR-033 | Cross-Building Tenant Hierarchy — Parent Tenant Aggregation | Sprint 1 | ✅ MERGED |
+| ADR-034 | Structural Monitoring — Flink CEP + Welford stddev | Sprint 7 | 📋 Proposed |
+| ADR-035 | Flink Enrichment — Metadata Join | Sprint 3 | ✅ MERGED |
 
 ### Target Architecture (T2, post-Sprint 3)
 
@@ -193,199 +214,191 @@ Chỉ đề xuất khi customer vượt **ít nhất 1 trigger**:
 
 ---
 
-## 5. Sprint Plan (6 Sprints × 2 Tuần)
+## 5. Sprint Plan (7 Sprints — 5 DONE + 2 Planned)
 
-### Sprint MVP3-1: Foundation + Multi-Building Core + analytics-service Extraction (2026-05-12 → 2026-05-25)
+> **Lưu ý:** Thứ tự sprint đã được PO điều chỉnh so với plan gốc (detail-plan.md) để ưu tiên business value. BMS được đẩy lên sớm (Sprint 5), AI Innovation được ưu tiên Sprint 6. Mobile và Building Safety song song Sprint 6-7.
 
-**Sprint Goal:** Multi-building RLS isolation + ClickHouse foundation + **tách analytics-service** (strangler fig bước 1-3) + Cross-building dashboard skeleton
+### Sprint 1 (2026-05-12 → 2026-05-13): Foundation + Multi-Building Core — ✅ COMPLETE
 
-> **Lý do tách analytics-service ngay Sprint 1:** ClickHouse adoption (ADR-026) tạo trigger cho analytics extraction (ADR-011). analytics-service là stateless query layer dễ tách nhất — shadow deploy cùng monolith để validate trước khi cutover Sprint 2. Nếu không tách, OLAP query spike từ v3-01 dashboard sẽ ảnh hưởng latency của alert engine và citizen API trong cùng JVM.
+**Sprint Goal:** Multi-building RLS isolation + ClickHouse foundation + analytics-service shadow + Kong/Keycloak
 
-| ID | Story | SP | Owner | DoD |
-|----|-------|----|-------|-----|
-| SA-01 | SA Spike: Multi-building isolation (RLS + ADR-033) | 5 | Backend Lead | ADR-033 merged, RLS strategy, schema changes identified |
-| SA-02 | SA Spike: ClickHouse + Flink integration (ADR-026) | 5 | Backend Lead | ADR-026 merged, dual-sink job design, retention policy |
-| SA-03 | SA Spike: Kong + Keycloak architecture (ADR-027, ADR-028) | 5 | DevOps | ADR-027/028 merged, gateway routing, tenant header propagation |
-| v3-BE-01 | Building entity + RLS policies (schema V20) | 8 | Backend Eng 1 | Tests pass, isolation verified với 2 buildings |
-| v3-BE-02 | Cross-building aggregation queries (sum, avg per building) | 8 | Backend Eng 1 | Unit + IT, p95 <500ms với 2M rows, caching applied |
-| **v3-EXT-01** | **[EXTRACTION — Tier 2 only] Tạo `applications/analytics-service/` trong monorepo** | **5** | **Backend Lead** | **Dockerfile riêng, thin wrapper; `values-tier1.yaml` KHÔNG thay đổi; Tier 1 CI test vẫn pass với monolith** |
-| **v3-EXT-02** | **[EXTRACTION — Tier 2 only] `@ConditionalOnProperty(analytics-external, matchIfMissing=true)` + capability flag** | **3** | **Backend Lead** | **Tier 1 config không set flag → `matchIfMissing=true` → beans load bình thường trong monolith** |
-| **v3-EXT-03** | **[EXTRACTION — Tier 2 only] Shadow deploy analytics-service song song monolith** | **5** | **DevOps** | **Chỉ deploy lên Tier 2 staging env; Tier 1 env không bị ảnh hưởng** |
-| v3-FE-01 | Cross-building dashboard shell (routes + layout) | 5 | Frontend Eng | Skeleton routes, building selector component |
-| v3-FE-02 | Multi-building selector (shared, persisted) | 5 | Frontend Eng | localStorage, filters work with API |
-| v3-DevOps-01 | ClickHouse single-node POC (Docker) + Flink dual-sink test job | 8 | DevOps | Dual-write TimescaleDB + ClickHouse e2e tested, queries <5s |
-| v3-DevOps-02 | Kong reverse proxy + Keycloak realm setup (non-prod) | 8 | DevOps | Token validation, tenant context injected |
-| v3-QA-01 | Test strategy + 10M row seeding scripts + shadow validation | 5 | QA | Load test scenarios, shadow mode output diff test, perf thresholds |
+**Key deliverables:**
+- ADR-026, ADR-027, ADR-028, ADR-033 merged
+- Schema V26 (building cluster + RLS) — 10/10 isolation scenarios PASS, p95=2.3ms
+- analytics-service shadow deploy — diff 0.000000%
+- Flink EsgDualSinkJob — 500 rows dual-write verified (TS + ClickHouse)
+- Kong + Keycloak — alg=none→401, token grant p95=5ms
+- Cross-building dashboard shell + multi-building selector
+- 773 tests PASS, JaCoCo LINE 85%, BRANCH 60%
 
-**Capacity:** 75 SP | **Warning:** Tăng so với plan gốc — nếu cần cắt, dời v3-FE-01/02 sang Sprint 2 Day 1 (5 SP buffer)
-
-**Gate:**
-- ADRs merged (ADR-026, ADR-027, ADR-028, ADR-033)
-- Schema V20 tested với 2 buildings × 2 tenants
-- `analytics-service` shadow deploy stable trên Tier 2 staging, output diff < 0.01%
-- **CI test với `values-tier1.yaml` (flag không set) PASS — Tier 1 monolith không đổi gì**
-- Zero Tier 1 regression
+**Gate:** 69/70 PASS ✅
 
 ---
 
-### Sprint MVP3-2: ClickHouse Analytics Live + analytics-service Cutover (2026-05-26 → 2026-06-08)
+### Sprint 2 (2026-05-14 → 2026-05-18): ClickHouse Live + Analytics Cutover — ✅ COMPLETE
 
-**Sprint Goal:** ClickHouse queries live + analytics-service **cutover** (strangler fig bước 4) + cross-building ESG + analytics dashboard với data thực
+**Sprint Goal:** ClickHouse queries live + analytics-service cutover + cross-building ESG
 
-> **analytics-service cutover Sprint 2:** Sau 1 sprint shadow mode (Sprint 1), set `analytics-external=true` trong `values-tier2.yaml`. Từ đây analytics-service scale độc lập (HPA riêng), không ảnh hưởng monolith JVM heap khi dashboard query nặng.
+**Key deliverables:**
+- analytics-service cutover (`analytics-external=true`) — monolith stop loading analytics beans
+- ClickHouse cross-building queries p95 <2s @ 10M rows
+- Cross-building ESG aggregation (city authority format)
+- Analytics dashboard (energy + emissions by building)
+- 864 tests PASS
 
-| ID | Story | SP | Owner | DoD |
-|----|-------|----|-------|-----|
-| **v3-EXT-04** | **[EXTRACTION] analytics-service cutover: set `analytics-external=true`** | **3** | **DevOps** | **Monolith `AnalyticsAutoConfiguration` không load; analytics-service nhận 100% traffic; monitor 24h** |
-| **v3-EXT-05** | **[EXTRACTION] HPA riêng cho analytics-service (CPU 70%, min 2/max 6)** | **2** | **DevOps** | **HPA policy deploy; stress test: analytics spike không ảnh hưởng monolith p95** |
-| v3-BE-03 | ClickHouse client + analytics queries (cross-building) | 13 | Backend Eng 1 | p95 <5s @ 10M rows, integration tests |
-| v3-BE-04 | Flink → ClickHouse enrichment job | 8 | Backend Eng 2 | Job deployed, exactly-once, metrics in Grafana |
-| v3-BE-05 | Cross-building ESG aggregation (city authority format) | 13 | Backend Eng 2 | Tier 2 ESG report, GRI format, cache 10 phút |
-| v3-FE-03 | Analytics dashboard (energy + emissions by building) | 13 | Frontend Eng | Charts live, WebSocket updates, <3s load |
-| v3-FE-04 | Aggregation filters (date, building, metric) | 8 | Frontend Eng | URL state persistence, 25 filter combos |
-| v3-DevOps-03 | ClickHouse cluster 2-node HA + Flink replicas K8s | 13 | DevOps | StatefulSet, PV, HPA riêng, monitoring alerts |
-| v3-QA-02 | Cross-building E2E tests + performance suite | 8 | QA | 10 scenarios, load test 500 VU 30 phút; verify analytics spike không lag monolith |
-
-**Gate:**
-- `analytics-service` nhận 100% traffic, monolith không load analytics beans
-- ClickHouse queries <5s p95 @ 10M rows
-- Analytics spike test: 200 concurrent heavy queries → monolith alert API p95 không thay đổi
-- City authority ESG format confirmed
+**Gate:** PASS ✅
 
 ---
 
-### Sprint MVP3-3: Predictive AI (2026-06-09 → 2026-06-22)
+### Sprint 3 (2026-05-19 → 2026-05-25): ESG GRI + Keycloak RSA + Flink Enrichment — ✅ COMPLETE
 
-**Sprint Goal:** ARIMA energy forecast + anomaly detection maintenance + explainability UI
+**Sprint Goal:** ESG GRI 302/305 export + Keycloak RS256 dual-issuer + Flink BuildingMetadata enrichment
 
-| ID | Story | SP | Owner | DoD |
-|----|-------|----|-------|-----|
-| v3-BE-06 | Energy forecasting service (ARIMA in-process, LSTM external gRPC) | 21 | Backend Eng 1 | MAPE <10%, API <500ms, ADR-032 merged |
-| v3-BE-07 | Maintenance anomaly detector (isolation forest + Flink CEP) | 13 | Backend Eng 2 | Recall >80% seeded anomalies, <100ms per reading |
-| v3-BE-08 | Forecast + anomaly dashboard views (backend API) | 8 | Backend Eng 1 | API delivers 7-day forecast + anomaly markers |
-| v3-FE-05 | Energy forecast chart + anomaly timeline (recharts + D3) | 13 | Frontend Eng | Actual vs predicted, confidence bands, anomaly markers |
-| v3-FE-06 | AI explainability panel (feature importance, contributing sensors) | 8 | Frontend Eng | Tooltip shows why anomaly, training window |
-| v3-QA-03 | AI model validation + synthetic anomaly injection tests | 8 | QA | 50 synthetic anomalies injected + detected, MAPE CI gate |
+**Key deliverables:**
+- ESG GRI 302-1 / 305-4 Excel export verified
+- Keycloak RoutingJwtDecoder (HMAC uip-legacy + RSA keycloak)
+- Flink BuildingMetadata enrichment (inline district lookup)
+- ADR-035 merged
+- 849 tests PASS, JaCoCo LINE 93.3%
+- ClickHouse HA descoped (single-node stable)
 
-**Gate:** MAPE <10% + recall >80% + anomaly injection test pass
-
-**Contingency:** Nếu LSTM MAPE >15% đến Day 8 → pivot sang ARIMA only (giảm 5 SP)
+**Gate:** 5/6 AC PASS ✅ (CH HA descoped, 20 SP carry-over)
 
 ---
 
-### Sprint MVP3-4: BMS Integration SDK + Kong/Keycloak + iot-ingestion-service Extraction (2026-06-23 → 2026-07-06)
+### Sprint 4 (2026-05-25 → 2026-05-27): Observability + Predictive AI — ✅ COMPLETE
 
-**Sprint Goal:** Modbus/BACnet adapter framework + IAM gateway production-ready + **tách iot-ingestion-service** (strangler fig bước 1-4) + iOS cert
+**Sprint Goal:** Prometheus + Grafana observability + ARIMA forecast + anomaly detection
 
-> **Lý do tách iot-ingestion-service Sprint 4:** BMS integration (v3-05) sẽ push throughput lên >50K events/sec với 5 buildings × 1K datapoints × 10s polling — đây là trigger cụ thể trong ADR-011. Nếu iot-ingestion vẫn trong monolith, GC pressure và thread contention sẽ ảnh hưởng alert engine và API. Tách sprint này để BMS traffic đi vào iot-service riêng, scale độc lập.
+**Key deliverables:**
+- Prometheus + Grafana — 7/7 targets UP, 8 forecast panels
+- ARIMA energy forecast — MAPE 3.54% (target <10%), 720 data points
+- ForecastPort (`@ConditionalOnProperty`) — 3 adapters: Python/Naive/Disabled
+- Python forecast-service (FastAPI + auto_arima) — 40 Python tests
+- Anomaly detection — Isolation Forest + Z-score verified
+- LSTM evaluation — NO-GO documented (MAPE 18.65% vs ARIMA 3.37%)
+- ADR-032 merged
+- 978+ tests PASS, JaCoCo LINE 87.7%, BRANCH 71.4%
 
-| ID | Story | SP | Owner | DoD |
-|----|-------|----|-------|-----|
-| **v3-EXT-06** | **[EXTRACTION — Tier 2 only] Tạo `applications/iot-ingestion-service/` trong monorepo** | **5** | **Backend Lead** | **Dockerfile, thin wrapper; `values-tier1.yaml` KHÔNG thay đổi; Tier 1 CI vẫn pass** |
-| **v3-EXT-07** | **[EXTRACTION — Tier 2 only] `@ConditionalOnProperty(iot-ingestion-external, matchIfMissing=true)` + shadow deploy** | **5** | **Backend Lead + DevOps** | **Shadow chỉ trên Tier 2 staging; Tier 1 monolith giữ nguyên IoT beans** |
-| v3-BE-09 | BMS SDK framework (Modbus TCP + BACnet/IP) trong iot-ingestion-service | 21 | Backend Eng 2 | Device simulator, 3 adapters tested, DLQ + CB per protocol |
-| v3-BE-10 | BMS device discovery + auto-registration (per tenant/building) | 8 | Backend Eng 2 | DHCP scan, manual add via API, RLS enforced |
-| v3-DevOps-04 | Kong ingress + Keycloak auth (prod TLS + rate-limiting) | 13 | DevOps | OAuth2 tenant isolation, 1K req/min rate limit, audit log |
-| v3-DevOps-05 | Keycloak realm + role mapping (Admin/Operator/TenantAdmin) | 8 | DevOps | LDAP connector, JWT includes tenant + building scopes |
-| v3-QA-04 | BMS integration test suite (3 device types + error cases) | 13 | QA | 30 scenarios, timeout/CRC/reconnect handling |
-| v3-QA-05 | Kong rate-limit + CORS + token tests + plugin order verification | 8 | QA | 15 test cases, auth bypass prevention, alg=none blocked |
-| [INFRA] | iOS cert + Apple dev account (unblock Sprint 5) | 0 | Frontend Eng | Certificate submitted bởi Day 5 Sprint 4 |
-
-**Gate:**
-- iot-ingestion-service shadow stable, Kafka output diff < 0.01%
-- BMS 10+ devices simulator stable
-- Kong alg=none attack blocked, plugin order verified
-- `iot-ingestion-external=true` trong `values-tier2.yaml` sẵn sàng cutover Sprint 5
+**Gate:** 19/19 PASS ✅ | PO signed off 7/7 demo scenarios 2026-05-27
 
 ---
 
-### Sprint MVP3-5: Mobile Operator App + iot-ingestion-service Cutover (2026-07-07 → 2026-07-20)
+### Sprint 5 (2026-05-27 → 2026-05-29): BMS Full Integration + Alerts SSE — ✅ COMPLETE
 
-**Sprint Goal:** iOS/Android operator app MVP + **iot-ingestion-service cutover** + FCM/APNs push notifications
+**Sprint Goal:** BMS SDK đầy đủ (Modbus + BACnet + Manual) + Alerts SSE real-time + Forecast fallback + API hardening
 
-| ID | Story | SP | Owner | DoD |
-|----|-------|----|-------|-----|
-| **v3-EXT-08** | **[EXTRACTION — Tier 2 only] iot-ingestion-service cutover: set `iot-ingestion-external=true` trong `values-tier2.yaml`** | **3** | **DevOps** | **Chỉ áp dụng Tier 2 env; Tier 1 `values-tier1.yaml` không động tới** |
-| v3-Mobile-01 | React Native + Expo scaffold (iOS + Android) | 13 | Frontend Eng | Builds cho cả 2 platform, FCM configured |
-| v3-Mobile-02 | OAuth2 login + tenant selection (Keycloak) | 8 | Frontend Eng | Token persisted (secure storage), tenant list loads |
-| v3-Mobile-03 | Dashboard + alerts list (WebSocket real-time) | 13 | Frontend Eng | Building/sensor alerts, <3s initial load |
-| v3-Mobile-04 | Manual control panel (actuator commands + confirmation) | 8 | Frontend Eng | On/off, command logged to audit trail |
-| v3-Mobile-05 | FCM + APNs push notification backend | 13 | Backend Eng 1 | Alert → FCM payload → device, deep link to alert detail |
-| v3-QA-06 | Mobile E2E tests + push notification tests + iot-service isolation | 8 | QA | Automated UI tests, push tested physical devices; BMS spike test không lag mobile API |
+**Key deliverables:**
+- BMS Device CRUD API — `GET/POST/PUT/DELETE /api/v1/bms/devices`, 5 devices
+- BMS Protocol Adapters — ModbusTCP + BACnetIP + adapter registry + Resilience4j CB
+- BMS Device Commands — `POST /api/v1/bms/devices/{id}/commands` → EMQX MQTT
+- BMS Kafka Producer — readings → `UIP.bms.reading.raw.v1`, DLQ fallback
+- BMS Device Frontend Page — `/bms/devices` list, add, delete, update
+- Alerts SSE Real-time Stream — `GET /api/v1/alerts/stream` SSE + Redis PUBLISH
+- Forecast Fallback Fix — Python DOWN → `isFallback:true` 200 OK (không 503)
+- nginx Dynamic DNS Fix — backend restart → frontend auto-recovers
+- GlobalExceptionHandler RFC 7807 — 405/400 proper errors (was 500)
+- EMQX container healthy + Prometheus BMS metrics + Grafana BMS panels
+- iot-ingestion-service scaffold + `@ConditionalOnProperty` 3 modes
+- ADR-029 merged, BACnet4J commercial license approved
+- 1,506 backend + 180 frontend + 10 BMS IT + 40 manual = 1,224 total tests
+- SA code review 10/10 Backend + 10/10 Frontend APPROVED
+- 15 deliverables demoed to PO — 16/16 scenarios PASS
 
-**Gate:**
-- iot-ingestion-service nhận 100% traffic, monolith IoT beans disabled
-- BMS load test 5K polls/sec không ảnh hưởng monolith alert p95
-- APK/IPA builds, 9/10 push received
-
-**Contingency:** Android APK demo-ready trước iOS nếu cert delay
-
----
-
-### Sprint MVP3-6: Avro + Building Safety + Pilot Prep (2026-07-21 → 2026-08-03)
-
-**Sprint Goal:** Schema Registry + structural monitoring + blue-green deploy + pilot readiness gate
-
-| ID | Story | SP | Owner | DoD |
-|----|-------|----|-------|-----|
-| v3-BE-11 | Kafka Schema Registry + Avro migration (sensor topic) | 8 | Backend Eng 1 | Schema versioning, backward compat, no data loss |
-| v3-BE-12 | Building Safety: structural monitoring alerts (v3-09) | 13 | Backend Eng 2 | Vibration/tilt sensors, Flink CEP, alert <15s |
-| v3-FE-07 | Building Safety UI (sensor status + trend + drill-down) | 8 | Frontend Eng | Dashboard section, historical chart |
-| v3-DevOps-06 | Blue-green deploy + Istio traffic switch + rollback <30s | 13 | DevOps | Parallel K8s deployments, rollback validated |
-| v3-QA-07 | Pilot readiness: full regression + performance gate | 13 | QA | 100+ scenarios, ALL perf thresholds met |
-| v3-QA-08 | Executive demo script v2 + City Authority dry-run | 8 | QA + PM | 15 phút demo video, stakeholder sign-off |
-| v3-Docs-01 | Runbook + Tier 2 pilot deployment guide | 8 | Backend Lead | Deploy steps, troubleshooting, SLA definitions |
-
-**Gate:** Regression 100% + ALL SLA gates met + demo approved + rollback <30s
-
-**Descope plan:** Nếu capacity thiếu → v3-09 Building Safety → v3.1 post-pilot
+**Gate:** 21/21 DONE ✅ | Zero carry-over | PO demo 16/16 PASS
 
 ---
 
-## 5. Milestone Map
+### Sprint 6 (planned): AI Innovation + Mobile Foundation — 📋 PLANNED
+
+**Sprint Goal:** AI Workflow Designer (BPMN) + Flood Alert Pipeline E2E + React Native scaffold + Push backend + EMQX production + Blue-green deploy
+
+**PO decisions (2026-05-29):**
+- Focus: AI Innovation (AI Workflow + Flood Alert) — P0
+- Mobile: Sprint 6 song song — React Native scaffold + PKCE + Push
+- Building Safety: Sprint 7 (trước pilot)
+- Avro/Schema Registry: Deferred post-pilot
+
+| Tier | Story | SP | Owner | Priority |
+|------|-------|----|-------|----------|
+| **Tier 1 (MUST)** | | | | |
+| | AI Workflow Designer — BPMN visual editor + AI decision nodes | 13 | FE + BE | **P0** |
+| | Flood Alert Pipeline — Sensor → Kafka → Flink CEP → Alert → SSE | 13 | Backend | **P0** |
+| | EMQX MQTT Production — BMS commands (carry-over S5) | 5 | DevOps | P1 |
+| | Blue-green deploy + rollback <30s | 3 | DevOps | P0 |
+| | Regression gate 1,500+ tests | 3 | QA | P0 |
+| | Demo script + PO dry-run | 2 | PM | P0 |
+| | Python forecast auto-retry 5 min | 2 | Backend | P2 |
+| | Push Subscription FE page (carry-over S5) | 2 | Frontend | P2 |
+| | SA: ADR-030 Mobile Stack + ADR-034 prep | 2 | SA | P1 |
+| **Tier 1 subtotal** | | **45 SP** | | |
+| **Tier 2 (BEST EFFORT)** | | | | |
+| | React Native + Expo scaffold | 13 | Frontend | P1 |
+| | Keycloak PKCE login + tenant selection | 5 | FE + BE | P1 |
+| | FCM + APNs push notification backend | 8 | Backend | P1 |
+| | BMS Testcontainers ITs 10 scenarios (carry-over S5) | 3 | QA | P1 |
+| **Tier 2 subtotal** | | **29 SP** | | |
+| **Total committed** | | **74 SP** | | |
+
+**Risks:**
+- bpmn-js learning curve → SA spike Day 1-2; fallback static workflow templates
+- Mobile + AI song song kéo Frontend → nếu Tier 2 không fit → Mobile defer Sprint 7
+- 74 SP vs 47 SP capacity → Sprint 5 đã proof: 50/47 delivered
+
+---
+
+### Sprint 7 (planned): Building Safety + Mobile Full + Pilot Prep — 📋 PLANNED
+
+**Sprint Goal:** Building Safety structural monitoring + Mobile app full features + Pilot readiness gate
+
+| Story | SP | Owner | Priority |
+|-------|----|-------|----------|
+| Building Safety Backend — Flink CEP + Welford stddev | 13 | Backend | P1 |
+| Building Safety UI — sensor grid + alert banner | 8 | Frontend | P1 |
+| Mobile Dashboard + Alerts (React Native) | 13 | Frontend | P1 |
+| Mobile Control Panel (actuator commands) | 5 | Frontend | P2 |
+| BMS Command ACK + SSE feedback | 3 | Backend | P2 |
+| ESG PDF Export (GRI 302/305) | 5 | Backend | P2 |
+| Pilot regression 100+ scenarios | 5 | QA | P0 |
+| Pilot readiness gate + demo | 3 | All | P0 |
+| **Total** | **~55 SP** | | |
+
+**Target:** Pilot soft launch 2026-08-04 → Tier 2 Pilot SIGNED 2026-08-10
+
+---
+
+## 5. Milestone Map (Updated 2026-05-29)
 
 ```
-2026-05-12  ── Sprint MVP3-1 start ──────────────────────────────────
-│             SA spikes Day 1-3 (ADR-026, ADR-027, ADR-033) [BLOCKER]
-│             analytics-service: tạo service + capability flag [v3-EXT-01/02]
-│             analytics-service: shadow deploy song song monolith [v3-EXT-03]
-2026-05-25  ── Sprint MVP3-1 END ──────────────────────────────────
-              GATE: ADRs merged + schema V20 + shadow diff < 0.01%
+✅ Sprint 1 (05-12 → 05-13): Foundation + Multi-Building + ClickHouse + Kong/Keycloak
+   GATE: 69/70 PASS. analytics-service shadow diff 0.000000%, Flink E2E 500 rows verified.
 
-2026-05-26  ── Sprint MVP3-2 start ──────────────────────────────────
-│             *** analytics-service CUTOVER (analytics-external=true) [v3-EXT-04] ***
-│             analytics-service HPA riêng, scale độc lập [v3-EXT-05]
-│             City Authority ESG format phải finalize TẠI ĐÂY
-2026-06-08  ── Sprint MVP3-2 END ──────────────────────────────────
-              GATE: analytics-service live + ClickHouse <5s p95
-              PERF CHECK: analytics spike 200 VU → monolith alert p95 không đổi
+✅ Sprint 2 (05-14 → 05-18): ClickHouse Live + Analytics Cutover + ESG
+   GATE: PASS. analytics-service 100% traffic, CH p95 <2s @ 10M rows.
 
-2026-06-09  ── Sprint MVP3-3 start ──────────────────────────────────
-2026-06-22  ── Sprint MVP3-3 END ──────────────────────────────────
-              GATE: MAPE <10%, recall >80% anomalies
+✅ Sprint 3 (05-19 → 05-25): ESG GRI + Keycloak RSA + Flink Enrichment
+   GATE: 5/6 AC PASS. GRI 302/305 export verified. CH HA descoped.
 
-2026-06-23  ── Sprint MVP3-4 start ──────────────────────────────────
-│             [iOS cert submit bởi Day 5]
-│             iot-ingestion-service: tạo service + BMS adapters [v3-EXT-06]
-│             iot-ingestion-service: shadow deploy + BMS traffic validation [v3-EXT-07]
-2026-07-06  ── Sprint MVP3-4 END ──────────────────────────────────
-              GATE: BMS 10+ devices + Kong auth bypass blocked + iot-service shadow stable
+✅ Sprint 4 (05-25 → 05-27): Observability + Predictive AI
+   GATE: 19/19 PASS. ARIMA MAPE 3.54%. Prometheus 7/7 UP. LSTM NO-GO.
+   PO signed off 7/7 demo scenarios.
 
-2026-07-07  ── Sprint MVP3-5 start ──────────────────────────────────
-│             *** iot-ingestion-service CUTOVER (iot-ingestion-external=true) [v3-EXT-08] ***
-│             iot-ingestion-service HPA riêng (min 3/max 10), BMS spike isolated
-2026-07-20  ── Sprint MVP3-5 END ──────────────────────────────────
-              GATE: iot-service live + APK/IPA builds + BMS spike không lag monolith
-              DEPLOYED: 2 extracted services (analytics + iot-ingestion), monolith gọn hơn
+✅ Sprint 5 (05-27 → 05-29): BMS Full Integration + Alerts SSE + Forecast Fallback
+   GATE: 21/21 DONE, zero carry-over. 1,224 total tests. PO demo 16/16 PASS.
+   15 deliverables: BMS CRUD, Modbus, BACnet, SSE Alerts, RFC 7807, nginx DNS fix.
+   ─── CURRENT POSITION ───
 
-2026-07-21  ── Sprint MVP3-6 start ──────────────────────────────────
-2026-08-03  ── Sprint MVP3-6 END ──────────────────────────────────
-              GATE: Regression 100% + ALL SLA metrics + demo approved + rollback <30s
+📋 Sprint 6 (planned): AI Innovation + Mobile Foundation (~74 SP)
+   Tier 1 (45 SP): AI Workflow Designer + Flood Alert + EMQX + Blue-green
+   Tier 2 (29 SP): React Native + PKCE + Push Backend + BMS ITs
 
-2026-08-04  ── Pilot soft launch ──────────────────────────────────
-              5 buildings, 2 tenants live
-              Image set: uip-monolith:v3.x + uip-analytics-service:v3.x + uip-iot-service:v3.x
-2026-08-10  ── Tier 2 Pilot SIGNED ── TARGET ──────────────────────
+📋 Sprint 7 (planned): Building Safety + Mobile Full + Pilot Prep (~55 SP)
+   Building Safety (Flink CEP + Welford) + Mobile Dashboard + Pilot readiness
+
+🎯 2026-08-04: Pilot soft launch (5 buildings, 2 tenants)
+🎯 2026-08-10: Tier 2 Pilot SIGNED
+
+   Post-pilot (v3.1): Avro Schema Registry + gRPC migration + Building Safety refinements
 ```
 
 **Deployed images tại Pilot (cùng version tag — bắt buộc theo ADR-011):**
@@ -430,18 +443,28 @@ Chỉ đề xuất khi customer vượt **ít nhất 1 trigger**:
 
 ## 7. Risk Register MVP3
 
+### Resolved Risks (Sprint 1-5)
+
+| ID | Risk | Resolution |
+|----|------|-----------|
+| ~~R1~~ | Multi-building RLS query >2s (N+1) | ✅ Resolved — p95=2.3ms via materialized view (Sprint 1) |
+| ~~R2~~ | Tier 1 regression từ multi-building | ✅ Resolved — zero regression through all sprints |
+| ~~R3~~ | LSTM model MAPE >15% | ✅ Resolved — LSTM NO-GO, ARIMA only (Sprint 4, MAPE 3.54%) |
+| ~~R4~~ | ClickHouse cluster HA delays | ✅ Resolved — single-node sufficient, CH HA descoped (Sprint 3) |
+| ~~R5~~ | City Authority ESG spec changes | ✅ Resolved — GRI 302/305 finalized Sprint 3 |
+| ~~R7~~ | Kong plugin priority error | ✅ Resolved — alg=none blocked, plugin order verified (Sprint 1) |
+| ~~R8~~ | Extraction code break Tier 1 | ✅ Resolved — `matchIfMissing=true` pattern proven (Sprint 1-2) |
+
+### Active Risks (Sprint 6-7)
+
 | ID | Risk | Severity | Prob | Mitigation | Owner |
 |----|------|---------|------|-----------|-------|
-| R1 | Multi-building RLS query >2s (N+1 queries) | CRITICAL | 30% | SA-01 spike validates + pre-test 10M rows Sprint 1 | Backend Lead |
-| R2 | Tier 1 regression từ multi-building schema | CRITICAL | 25% | QA chạy regression Day 1 Sprint 1 + Sprint 4 | QA |
-| R3 | LSTM model MAPE >15% | HIGH | 35% | ARIMA fallback, abort LSTM bởi Day 8 Sprint 3 | Backend Eng 1 |
-| R4 | ClickHouse cluster HA delays (K8s StatefulSet PV) | HIGH | 40% | Test Sprint 1; fallback ClickHouse Cloud nếu fail Day 10 Sprint 2 | DevOps |
-| R5 | City Authority ESG spec thay đổi mid-project | MEDIUM | 60% | Weekly sync stakeholder, finalize spec Sprint 2 EOL | PM |
-| R6 | iOS cert + Apple review delays (48-72h) | MEDIUM | 55% | Submit cert Day 5 Sprint 4, Android APK demo-ready first | Frontend Eng |
-| R7 | Kong plugin priority error = auth bypass | CRITICAL | 20% | Explicit test verify plugin execution order; fail CI nếu unauthenticated request không 401 | QA + DevOps |
-| R8 | Extraction code (`@ConditionalOnProperty`) vô tình break Tier 1 monolith | HIGH | 25% | CI bắt buộc chạy test suite với **`values-tier1.yaml` (không set flag)** mỗi PR có extraction code; `matchIfMissing=true` phải được code review checklist xác nhận | QA |
-
-**Action ngay:** R1 + R2 — Pair DevOps + Backend Eng 1 trên SA-01 trong ngày đầu Sprint 1
+| R6 | iOS cert + Apple review delays | MEDIUM | 55% | Submit cert Day 1 Sprint 6; Android APK demo-ready first | Frontend Eng |
+| R9 | bpmn-js learning curve — AI Workflow complex | HIGH | 40% | SA spike Day 1-2; fallback static workflow templates | SA + Frontend |
+| R10 | Mobile + AI song song kéo Frontend quá mỏng | HIGH | 50% | Tier 2 best-effort; Mobile defer Sprint 7 nếu cần | PM |
+| R11 | Sprint 6 over-commit (74 SP vs 47 SP capacity) | MEDIUM | 35% | Sprint 5 precedent: 50/47 delivered; Tier 1 locked | PM |
+| R12 | Building Safety Flink CEP complex | MEDIUM | 30% | Defer post-pilot nếu Sprint 7 overloaded | Backend Lead |
+| R13 | Pilot target 2026-08-10 bị delay | HIGH | 25% | 2 sprint buffer; descope Mobile/Safety nếu cần | PM + PO |
 
 ---
 
@@ -595,15 +618,16 @@ Thresholds:
 
 ## 10. Resource Plan
 
-| Role | Sprint 1-2 | Sprint 3-4 | Sprint 5-6 |
-|------|-----------|-----------|-----------|
-| Backend Eng 1 | SA spike + BE analytics | Predictive AI + BMS SDK | Push notification + Avro |
-| Backend Eng 2 | BE aggregation + Flink | BMS SDK + Anomaly | Building Safety |
-| Frontend Eng | Dashboard shell | Forecast UI + Explainability | **Mobile (React Native)** |
-| DevOps | ClickHouse + Kong/Keycloak | Kong prod + BMS infra | Blue-green + pilot env |
-| QA | Test plan + seeding | AI validation + BMS tests | Regression + pilot gate |
+| Role | Sprint 1-5 (DONE) | Sprint 6 (AI+Mobile) | Sprint 7 (Safety+Pilot) |
+|------|-------------------|----------------------|------------------------|
+| Backend Eng 1 | SA spike + analytics + ESG | Flood Alert Pipeline + Push Backend | Building Safety + Pilot |
+| Backend Eng 2 | aggregation + Flink + BMS | AI Workflow Backend | Building Safety BE |
+| Frontend Eng | Dashboard + Forecast + BMS | AI Workflow Designer + RN scaffold | Safety UI + Mobile Full |
+| DevOps | ClickHouse + Kong + EMQX | EMQX prod + Blue-green | Pilot env + Runbook |
+| QA | Test strategy + BMS ITs | Regression gate + BMS ITs | Pilot regression 100+ |
 
 **Total effort:** ~19 person-months | **Team:** 5 FTE + 0.5 PM = 5.5 FTE
+**Delivered (Sprint 1-5):** ~111 SP | **Remaining (Sprint 6-7):** ~129 SP (bao gồm descope candidates)
 
 ---
 
@@ -623,20 +647,24 @@ Thresholds:
 
 ## 12. Descope / Contingency Plan
 
+**Nếu Sprint 6 Tier 2 không kịp (Mobile/Push):**
+- Mobile scaffold + Push Backend → defer Sprint 7, song song Building Safety
+- Sprint 6 focus chỉ AI Workflow + Flood Alert + carry-over
+
 **Nếu velocity <50 SP/sprint:**
 
 | Feature | Action |
 |---------|--------|
-| Building Safety (v3-09) | → v3.1 post-pilot |
-| BMS SDK KNX adapter | → MVP3 chỉ ship Modbus + BACnet |
-| LSTM energy forecast | → ARIMA only |
-| Schema Registry (v3-10) | → v3.1 nếu Sprint 6 overloaded |
+| Building Safety (v3-09) | → v3.1 post-pilot (đã được PO accept) |
+| Schema Registry (v3-10) | → v3.1 post-pilot (đã deferred) |
+| Mobile Control Panel | → v3.1 nếu Sprint 7 overloaded |
+| ESG PDF Export | → v3.1 nếu Sprint 7 overloaded |
+| BMS KNX adapter | → không implement (chỉ Modbus + BACnet) |
 
-**Nếu Red Risk R1 xảy ra (RLS >2s):**
-1. Triage trong 1 ngày
-2. Fixable trong 1 ngày → fix ngay
-3. Không fixable → descope Building Safety (v3-09) + anomaly detection (v3-04)
-4. Vẫn không fix → delay pilot 1 tuần (2026-08-17)
+**Nếu pilot target 2026-08-10 bị threat:**
+1. Sprint 6: cắt Tier 2 → focus AI Innovation only
+2. Sprint 7: Mobile deferred → Building Safety + Pilot Prep only
+3. Worst case: delay pilot 1 tuần (2026-08-17)
 
 ---
 
@@ -652,5 +680,6 @@ Thresholds:
 
 ---
 
-*Tổng hợp bởi: SA + BA + PM + QA (4 agents, 2026-05-10)*  
-*Next review: End of Sprint MVP3-1 (2026-05-25)*
+*Tổng hợp bởi: SA + BA + PM + QA (4 agents, 2026-05-10)*
+*Sprint alignment updated: 2026-05-29 (Sprint 5 CLOSED, Sprint 6-7 planned)*
+*Next review: End of Sprint 6*
