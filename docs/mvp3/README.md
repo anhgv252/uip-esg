@@ -102,18 +102,18 @@ PO đã điều chỉnh thứ tự ưu tiên dựa trên business value:
 | ADR-034 | Structural Monitoring — Flink CEP + Welford stddev | Sprint 7 | 📋 Proposed |
 | ADR-035 | Flink Enrichment — Metadata Join | Sprint 3 | ✅ MERGED |
 
-### Target Architecture (T2, post-Sprint 3)
+### Target Architecture (T2, post-Sprint 5)
 
 ```
 ┌────────────────────────── Edge per Building ──────────────────────────┐
-│  BMS (Modbus/BACnet/KNX) ──→ EMQX Edge buffer 24h ──→ Kafka TLS      │
+│  BMS (Modbus/BACnet) ──→ EMQX Edge buffer 24h ──→ Kafka TLS          │
 └───────────────────────────────────────────────────────────────────────┘
                                     │
 ┌────────────────────── Cloud K8s — T2 Cluster ─────────────────────────┐
 │                                                                        │
-│  Kafka 3 brokers + Apicurio Schema Registry                           │
+│  Kafka 3 brokers                                                       │
 │       │                                                                │
-│  iot-ingestion-service (extracted Sprint 3)                            │
+│  iot-ingestion-service (extracted Sprint 5)                            │
 │       │                                                                │
 │  Flink jobs (aggregation + anomaly + enrichment)                       │
 │       ├──────────────────────────────────────────────────────┐        │
@@ -122,12 +122,27 @@ PO đã điều chỉnh thứ tự ưu tiên dựa trên business value:
 │  Keycloak (realm/tenant) ──JWT──→ Kong Gateway                        │
 │       │                   │                                            │
 │       │          analytics-service (ClickHouse owner)                 │
-│       │          Monolith (env+esg+traffic+citizen+ai-wf+admin)       │
+│       │          Monolith (env+esg+traffic+citizen+ai-wf+bms+admin)   │
+│       │                     │                                          │
+│       │          ┌──────────┘  (Tier 2 opt-in)                        │
+│       │          ▼                                                       │
+│       │          forecast-service (Python/FastAPI — ARIMA/ML)         │
+│       │          ← Tier 1: Java ARIMA (smile-core, in-process)       │
+│       │          ← Fallback: NaiveForecastAdapter (rolling avg)       │
 │                                                                        │
 │  Citizen PWA  ←── push notifications (Web Push)                       │
 │  Operator React Native  ←── push (FCM/APNs)                           │
 │  Operator Web React                                                    │
 └───────────────────────────────────────────────────────────────────────┘
+
+Tier 1 Deployment (1 image):
+  uip-monolith:v3.x  ←  Java only, ARIMA in-process, không cần Python
+
+Tier 2 Deployment (3+ images):
+  uip-monolith:v3.x              ←  Java core
+  uip-analytics-service:v3.x     ←  Java (ClickHouse)
+  uip-iot-service:v3.x           ←  Java (BMS adapters)
+  uip-forecast-service:v3.x      ←  Python (ML enhancement, opt-in)
 ```
 
 ---
@@ -211,6 +226,89 @@ Chỉ đề xuất khi customer vượt **ít nhất 1 trigger**:
 | Concurrent users | > 200 users đồng thời |
 
 **Dưới ngưỡng → tiếp tục chạy monolith**, không cần tách.
+
+### Python Services & Monolith — Làm thế nào chạy 1 image duy nhất?
+
+> **Vấn đề:** Dự án có Java/Spring Boot (monolith chính) và Python/FastAPI (forecast-service, AI/ML). Hai runtime khác nhau (JVM vs CPython) — không thể build thành 1 Docker image theo cách thông thường.
+
+**Giải pháp: Port/Adapter + Java-native fallback + Python opt-in enhancement.**
+
+Mỗi Python service phải tuân theo pattern sau:
+
+```
+                    ForecastPort interface
+                    (Java — trong monolith)
+                         │
+              ┌──────────┼──────────┐
+              │          │          │
+    ArimaForecastAdapter  │  NaiveForecastAdapter
+    (smile-core, Java)    │  (rolling avg, Java)
+    MAPE 3.54% ✅         │  MAPE ~8-12%
+    matchIfMissing=true   │  fallback khi Python DOWN
+              │          │
+              │  PythonForecastAdapter
+              │  (HTTP → FastAPI service)
+              │  MAPE 3.54%+ (auto_arima, Prophet future)
+              │  Chỉ available ở Tier 2
+              │
+    ──── Tier 1 ──────────── Tier 2 ────
+    Không set flag          uip.forecast.engine=python
+    → ARIMA auto-load       → HTTP call Python service
+    → 1 image, no Python    → +1 image Python
+```
+
+**Nguyên tắc bắt buộc:**
+
+| Quy tắc | Giải thích |
+|---------|-----------|
+| **Python = Tier 2 opt-in**, KHÔNG phải monolith requirement | Tier 1 hoạt động đầy đủ không cần Python |
+| **Mỗi Python service phải có Java-native fallback** | Khi Python DOWN → monolith không crash, trả `isFallback=true` |
+| **`@ConditionalOnProperty(matchIfMissing=true)`** trên Java adapter | Tier 1 không set flag → Java adapter auto-load |
+| **Graceful degradation** | Python DOWN → HTTP 200 + fallback data, không 500 |
+
+**Implementation thực tế (Sprint 4-5):**
+
+```java
+// ForecastService.java — đã implement
+@Service
+public class ForecastService {
+    private final ForecastPort pythonAdapter;   // HTTP call Python (Tier 2)
+    private final ForecastPort naiveFallback;   // pure Java rolling average
+
+    public ForecastResult forecast(...) {
+        try {
+            return pythonAdapter.forecast(...);      // thử Python trước
+        } catch (ForecastServiceUnavailableException e) {
+            return naiveFallback.forecast(...);       // Python DOWN → Java fallback
+            // isFallback = true → operator biết data không phải AI
+        }
+    }
+}
+
+// Tier 1: matchIfMissing=true → ARIMA Java adapter tự load
+@ConditionalOnProperty(name = "uip.forecast.engine", havingValue = "arima", matchIfMissing = true)
+class ArimaForecastAdapter implements ForecastPort { ... }  // smile-core, MAPE 3.54%
+```
+
+**Bảng quyết định deployment:**
+
+| Component | Tier 1 (1 image) | Tier 2 (3+ images) |
+|-----------|-------------------|---------------------|
+| Forecast engine | `ArimaForecastAdapter` (Java, `smile-core`) | Python `forecast-service` (FastAPI, `auto_arima`) |
+| Forecast accuracy | MAPE 3.54% ✅ | MAPE 3.54% (hiện tại) + ML nâng cao (Sprint 6+) |
+| Python runtime | **Không cần** | FastAPI container riêng |
+| Fallback khi DOWN | N/A (in-process) | `NaiveForecastAdapter` → HTTP 200 `isFallback=true` |
+| Flag config | Không set → `matchIfMissing=true` → ARIMA | `uip.forecast.engine=python` |
+
+**Pattern áp dụng cho tương lai (mọi Python service mới):**
+
+| Python service (planned) | Java-native fallback | Sprint |
+|--------------------------|---------------------|--------|
+| AI Workflow engine (Python) | Java Camunda/Flowable fallback | Sprint 6 |
+| NLP complaint classifier (Python) | Java keyword matching fallback | Sprint 7+ |
+| Image recognition (Python) | No-op fallback (P3 feature) | Post-pilot |
+
+> **Tóm lại:** Tier 1 = **1 image Java thuần**, hoạt động đầy đủ với ARIMA in-process. Python services là enhancement cho Tier 2, deploy riêng, không ảnh hưởng monolith.
 
 ---
 
