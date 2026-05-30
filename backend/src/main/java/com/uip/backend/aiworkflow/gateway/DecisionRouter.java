@@ -1,6 +1,5 @@
 package com.uip.backend.aiworkflow.gateway;
 
-import com.uip.backend.workflow.dto.AIDecision;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
@@ -42,7 +41,7 @@ public class DecisionRouter {
      * @param decision the AI decision to route
      * @return routing result with action and cached flag
      */
-    public RoutingResult route(AIDecision decision) {
+    public RoutingResult route(AiDecisionInput decision) {
         double confidence = decision.getConfidence();
         RoutingAction action = classify(confidence);
 
@@ -61,7 +60,7 @@ public class DecisionRouter {
      * @param decision the AI decision
      * @return routing result (may be cached)
      */
-    public RoutingResult routeWithCache(String scenarioKey, String context, AIDecision decision) {
+    public RoutingResult routeWithCache(String scenarioKey, String context, AiDecisionInput decision) {
         String cacheKey = buildCacheKey(scenarioKey, context);
 
         // Check cache first

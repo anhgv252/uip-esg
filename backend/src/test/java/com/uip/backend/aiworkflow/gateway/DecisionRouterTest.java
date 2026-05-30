@@ -1,7 +1,6 @@
 package com.uip.backend.aiworkflow.gateway;
 
 import com.uip.backend.aiworkflow.gateway.DecisionRouter.RoutingAction;
-import com.uip.backend.workflow.dto.AIDecision;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -17,8 +16,8 @@ class DecisionRouterTest {
 
     private final DecisionRouter router = new DecisionRouter(mock(org.springframework.data.redis.core.StringRedisTemplate.class));
 
-    private AIDecision decision(double confidence) {
-        AIDecision d = new AIDecision();
+    private AiDecisionInput decision(double confidence) {
+        AiDecisionInput d = new AiDecisionInput();
         d.setDecision("TEST_DECISION");
         d.setConfidence(confidence);
         d.setReasoning("Test reasoning");
