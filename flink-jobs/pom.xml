@@ -87,6 +87,13 @@
       <version>0.6.0</version>
     </dependency>
 
+    <!-- Flink CEP — complex event processing for flood alert patterns -->
+    <dependency>
+      <groupId>org.apache.flink</groupId>
+      <artifactId>flink-cep</artifactId>
+      <version>${flink.version}</version>
+    </dependency>
+
     <!-- RocksDB state backend -->
     <dependency>
       <groupId>org.apache.flink</groupId>

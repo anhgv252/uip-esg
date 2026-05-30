@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState, useRef, useCallback } from 'react';
+import { lazy, Suspense, useState, useRef, useCallback, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -45,6 +45,22 @@ import type { ProcessInstance, ProcessDefinition } from '@/api/workflow';
 import { useAuth } from '@/hooks/useAuth';
 import { fireWorkflowTrigger } from '@/api/workflowConfig';
 import { apiClient } from '@/api/client';
+import {
+  getWorkflowDefinitions,
+  createWorkflowDefinition,
+  updateWorkflowDefinition,
+  deployWorkflowDefinition,
+  deleteWorkflowDefinition,
+  type WorkflowDefinition,
+} from '@/api/workflow';
+import WorkflowModeler from '@/components/workflow/WorkflowModeler';
+import NodePalette from '@/components/workflow/NodePalette';
+import AiNodeConfigPanel from '@/components/workflow/AiNodeConfigPanel';
+import AddIcon from '@mui/icons-material/Add';
+import SaveIcon from '@mui/icons-material/Save';
+import CloudUploadIcon from '@mui/icons-material/CloudUpload';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import DesignServicesIcon from '@mui/icons-material/DesignServices';
 
 const BpmnViewer = lazy(() => import('@/components/workflow/BpmnViewer'));
 
@@ -1066,6 +1082,205 @@ function LiveDemoTab() {
   );
 }
 
+// ── Designer tab ──────────────────────────────────────────────────────────────
+
+function DesignerTab() {
+  const [definitions, setDefinitions] = useState<WorkflowDefinition[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedXml, setSelectedXml] = useState<string | null>(null);
+  const [selectedName, setSelectedName] = useState('');
+  const [selectedDesc, setSelectedDesc] = useState('');
+  const [selectedNodeId, _setSelectedNodeId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [deploying, setDeploying] = useState(false);
+  const [snackbar, setSnackbar] = useState<{ msg: string; severity: 'success' | 'error' | 'info' } | null>(null);
+
+  // Load workflow definitions
+  useEffect(() => {
+    getWorkflowDefinitions({ page: 0, size: 50 })
+      .then((page) => setDefinitions(page.content))
+      .catch(() => setSnackbar({ msg: 'Failed to load workflows', severity: 'error' }));
+  }, []);
+
+  const handleNew = async () => {
+    const name = `Workflow ${definitions.length + 1}`;
+    const defaultXml = `<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+                  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+                  id="Definitions_1" targetNamespace="http://bpmn.io/schema/bpmn">
+  <bpmn:process id="${name.replace(/\s/g, '_')}" isExecutable="true">
+    <bpmn:startEvent id="StartEvent_1" name="Start" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="${name.replace(/\s/g, '_')}">
+      <bpmndi:BPMNShape id="_BPMNShape_StartEvent_1" bpmnElement="StartEvent_1">
+        <dc:Bounds x="173" y="102" width="36" height="36" />
+      </bpmndi:BPMNShape>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>`;
+
+    try {
+      const created = await createWorkflowDefinition({ name, bpmnXml: defaultXml });
+      setDefinitions((prev) => [created, ...prev]);
+      selectWorkflow(created);
+      setSnackbar({ msg: 'New workflow created', severity: 'success' });
+    } catch {
+      setSnackbar({ msg: 'Failed to create workflow', severity: 'error' });
+    }
+  };
+
+  const selectWorkflow = (wf: WorkflowDefinition) => {
+    setSelectedId(wf.id);
+    setSelectedXml(wf.bpmnXml);
+    setSelectedName(wf.name);
+    setSelectedDesc(wf.description ?? '');
+  };
+
+  const handleSave = async (xml: string) => {
+    if (!selectedId) return;
+    setSaving(true);
+    try {
+      const updated = await updateWorkflowDefinition(selectedId, {
+        name: selectedName,
+        description: selectedDesc,
+        bpmnXml: xml,
+      });
+      // Update list
+      setDefinitions((prev) => prev.map((d) => (d.id === selectedId ? updated : d)));
+      setSnackbar({ msg: `Saved (v${updated.version})`, severity: 'success' });
+    } catch {
+      setSnackbar({ msg: 'Save failed', severity: 'error' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeploy = async () => {
+    if (!selectedId) return;
+    setDeploying(true);
+    try {
+      await deployWorkflowDefinition(selectedId);
+      setSnackbar({ msg: 'Deployed to Camunda!', severity: 'success' });
+    } catch {
+      setSnackbar({ msg: 'Deploy failed', severity: 'error' });
+    } finally {
+      setDeploying(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!selectedId) return;
+    try {
+      await deleteWorkflowDefinition(selectedId);
+      setDefinitions((prev) => prev.filter((d) => d.id !== selectedId));
+      setSelectedId(null);
+      setSelectedXml(null);
+      setSnackbar({ msg: 'Workflow deleted', severity: 'info' });
+    } catch {
+      setSnackbar({ msg: 'Delete failed', severity: 'error' });
+    }
+  };
+
+  return (
+    <Box sx={{ mt: 2 }}>
+      {/* Toolbar */}
+      <Stack direction="row" spacing={1.5} mb={2} flexWrap="wrap" alignItems="center">
+        <Button variant="contained" size="small" startIcon={<AddIcon />} onClick={handleNew}>
+          New Workflow
+        </Button>
+        <Button
+          variant="outlined" size="small" startIcon={<SaveIcon />}
+          disabled={!selectedId || saving}
+          onClick={() => window.dispatchEvent(new Event('bpmn-save'))}
+        >
+          {saving ? 'Saving...' : 'Save'}
+        </Button>
+        <Button
+          variant="outlined" size="small" color="success" startIcon={<CloudUploadIcon />}
+          disabled={!selectedId || deploying}
+          onClick={handleDeploy}
+        >
+          {deploying ? 'Deploying...' : 'Deploy'}
+        </Button>
+        <Button
+          variant="outlined" size="small" color="error" startIcon={<DeleteOutlineIcon />}
+          disabled={!selectedId}
+          onClick={handleDelete}
+        >
+          Delete
+        </Button>
+        {selectedId && (
+          <Chip label={selectedName} size="small" color="primary" variant="outlined" />
+        )}
+      </Stack>
+
+      <Box display="flex" gap={2} flexDirection={{ xs: 'column', md: 'row' }}>
+        {/* Workflow list */}
+        <Box sx={{ width: { xs: '100%', md: 200 }, flexShrink: 0 }}>
+          <Paper variant="outlined" sx={{ p: 1, maxHeight: 520, overflow: 'auto' }}>
+            <Typography variant="caption" fontWeight={700} color="text.secondary" gutterBottom display="block" px={0.5}>
+              Workflows
+            </Typography>
+            {definitions.length === 0 && (
+              <Typography variant="body2" color="text.secondary" px={0.5} py={1}>
+                No workflows yet
+              </Typography>
+            )}
+            <Stack spacing={0.5}>
+              {definitions.map((wf) => (
+                <Box
+                  key={wf.id}
+                  onClick={() => selectWorkflow(wf)}
+                  sx={{
+                    p: 0.75,
+                    borderRadius: 1,
+                    cursor: 'pointer',
+                    bgcolor: selectedId === wf.id ? 'action.selected' : 'transparent',
+                    '&:hover': { bgcolor: 'action.hover' },
+                  }}
+                >
+                  <Typography variant="body2" fontSize="0.8rem" noWrap>{wf.name}</Typography>
+                  <Typography variant="caption" color="text.secondary">v{wf.version}</Typography>
+                </Box>
+              ))}
+            </Stack>
+          </Paper>
+        </Box>
+
+        {/* BPMN Modeler */}
+        <Box flex={1}>
+          <WorkflowModeler
+            initialXml={selectedXml}
+            onSave={handleSave}
+            height={520}
+          />
+        </Box>
+
+        {/* Right panel: Palette + AI Config */}
+        <Box sx={{ width: { xs: '100%', md: 200 }, flexShrink: 0 }}>
+          <Stack spacing={2}>
+            <NodePalette />
+            <AiNodeConfigPanel selectedNodeId={selectedNodeId} />
+          </Stack>
+        </Box>
+      </Box>
+
+      {/* Snackbar */}
+      {snackbar && (
+        <MuiAlert
+          severity={snackbar.severity}
+          sx={{ mt: 2 }}
+          onClose={() => setSnackbar(null)}
+        >
+          {snackbar.msg}
+        </MuiAlert>
+      )}
+    </Box>
+  );
+}
+
 // ── Main page ────────────────────────────────────────────────────────────────
 
 export default function AiWorkflowPage() {
@@ -1092,16 +1307,23 @@ export default function AiWorkflowPage() {
           sx={{ minHeight: 48 }}
         />
         <Tab
+          label="Designer"
+          icon={<DesignServicesIcon />}
+          iconPosition="start"
+          sx={{ minHeight: 48, color: tab === 2 ? 'secondary.main' : undefined }}
+        />
+        <Tab
           label="Live Demo"
           icon={<BoltIcon />}
           iconPosition="start"
-          sx={{ minHeight: 48, color: tab === 2 ? 'error.main' : undefined }}
+          sx={{ minHeight: 48, color: tab === 3 ? 'error.main' : undefined }}
         />
       </Tabs>
 
       {tab === 0 && <InstancesTab />}
       {tab === 1 && <DefinitionsTab />}
-      {tab === 2 && <LiveDemoTab />}
+      {tab === 2 && <DesignerTab />}
+      {tab === 3 && <LiveDemoTab />}
     </Box>
   );
 }

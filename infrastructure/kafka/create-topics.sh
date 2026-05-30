@@ -36,6 +36,13 @@ create_topic "ngsi_ld_citizen" 3
 # Alert pipeline — Flink AlertDetectionJob → backend AlertEventKafkaConsumer + GenericKafkaTriggerService
 create_topic "UIP.flink.alert.detected.v1" 3
 
+# Flood alert pipeline — Flink FloodAlertJob → backend FloodAlertConsumer (Sprint 6)
+create_topic "UIP.flink.alert.flood.v1" 3
+create_topic "UIP.flink.alert.flood.v1.dlq" 1 2592000000  # 30 days DLQ
+
+# BMS command ACK topic — EMQX MQTT bridge → Kafka (Sprint 6)
+create_topic "UIP.bms.command.ack.v1" 3
+
 # Alert events — internal alert storage topic
 create_topic "alert_events" 3
 

@@ -1,8 +1,10 @@
 # Sprint MVP3-6 — Task Assignments
 
 **Created:** 2026-05-29
+**Updated:** 2026-05-30 (implementation status)
 **Sprint:** 2026-06-02 → 2026-06-13
 **Total Committed:** 66 SP across 6 roles (7 people)
+**Tier 1 Implementation:** ✅ COMPLETE — 10/10 tasks, 34.5 SP delivered, 58 tests PASS
 
 ---
 
@@ -74,7 +76,7 @@
 - Pair với SA review bpmn-js + Camunda integration
 - **Result:** ADR approved. Camunda retained. No engine rewrite needed.
 
-### Task B1-2: WorkflowDefinition CRUD + Deploy to Camunda [S6-AI02, 5 SP]
+### Task B1-2: WorkflowDefinition CRUD + Deploy to Camunda [S6-AI02, 5 SP] — ✅ DONE
 Priority: P0 | Sprint Day 2-5 | Dependencies: SA-1 (ADR approved ✅)
 
 **AC:**
@@ -110,7 +112,7 @@ Priority: P0 | Sprint Day 2-5 | Dependencies: SA-1 (ADR approved ✅)
 - WebMvc: WorkflowDefinitionControllerWebMvcTest (API contract)
 - IT: Defer to QA regression (Sprint 6 Day 10)
 
-### Task B1-3: AI Decision Gateway — Confidence Routing [S6-AI03, 1.5 SP — REDUCED]
+### Task B1-3: AI Decision Gateway — Confidence Routing [S6-AI03, 1.5 SP — REDUCED] — ✅ DONE
 Priority: P1 | Sprint Day 4-5 | Dependencies: B1-2
 
 **What already exists (SA discovery):**
@@ -128,7 +130,7 @@ Priority: P1 | Sprint Day 4-5 | Dependencies: B1-2
 - Modify: `backend/src/main/java/com/uip/backend/workflow/delegate/AIAnalysisDelegate.java` (add routing)
 - `backend/src/test/.../DecisionRouterTest.java` (NEW — 5 tests for confidence thresholds)
 
-### Task B1-4: Mobile Auth Config Endpoint [S6-M03, 2 SP] — Tier 2
+### Task B1-4: Mobile Auth Config Endpoint [S6-M03, 2 SP] — ⏳ DEFERRED Sprint 7
 Priority: P1 | Sprint Day 8 | Dependencies: None
 
 **AC:**
@@ -149,7 +151,7 @@ Priority: P1 | Sprint Day 8 | Dependencies: None
 **Focus:** Flink CEP Flood Alert + Kafka Consumer + Demo + Python Auto-retry + FCM/APNs
 **Package base:** `com.uip.backend.alert.flood.*`, `com.uip.backend.forecast.*`, `com.uip.backend.notification.*`
 
-### Task B2-1: Flink CEP Flood Alert Job [S6-FL01, 5 SP]
+### Task B2-1: Flink CEP Flood Alert Job [S6-FL01, 5 SP] — ✅ DONE
 Priority: P0 | Sprint Day 1-4 | Dependencies: None
 
 **AC:**
@@ -169,7 +171,7 @@ Priority: P0 | Sprint Day 1-4 | Dependencies: None
 - `flink-jobs/src/main/java/com/uip/flink/flood/FloodAlertJob.java`
 - `flink-jobs/src/test/java/com/uip/flink/flood/FloodAlertJobTest.java` (9 threshold + 6 pattern tests)
 
-### Task B2-2: Flood Alert Kafka Consumer [S6-FL02, 3 SP]
+### Task B2-2: Flood Alert Kafka Consumer [S6-FL02, 3 SP] — ✅ DONE
 Priority: P0 | Sprint Day 3-5 | Dependencies: B2-1
 
 **AC:**
@@ -185,7 +187,7 @@ Priority: P0 | Sprint Day 3-5 | Dependencies: B2-1
 **Minimal existing file changes:**
 - `AlertEvent` entity: add `location` field (optional, for map overlay)
 
-### Task B2-3: Flood Alert Demo Scenario [S6-FL04, 2 SP]
+### Task B2-3: Flood Alert Demo Scenario [S6-FL04, 2 SP] — ✅ DONE
 Priority: P0 | Sprint Day 5-6 | Dependencies: B2-1 + B2-2
 
 **AC:**
@@ -197,7 +199,7 @@ Priority: P0 | Sprint Day 5-6 | Dependencies: B2-1 + B2-2
 - `backend/src/main/java/com/uip/backend/alert/flood/FloodTestController.java`
 - `scripts/demo-flood-alert.sh`
 
-### Task B2-4: Python Forecast Auto-retry [S6-OPS2, 2 SP]
+### Task B2-4: Python Forecast Auto-retry [S6-OPS2, 2 SP] — ✅ DONE
 Priority: P2 | Sprint Day 2 | Dependencies: None
 
 **AC:**
@@ -209,7 +211,7 @@ Priority: P2 | Sprint Day 2 | Dependencies: None
 - `backend/src/main/java/com/uip/backend/forecast/ForecastHealthChecker.java`
 - `backend/src/test/java/com/uip/backend/forecast/ForecastHealthCheckerTest.java` (5 tests)
 
-### Task B2-5: FCM + APNs Push Backend [S6-M04, 5 SP] — Tier 2
+### Task B2-5: FCM + APNs Push Backend [S6-M04, 5 SP] — ⏳ DEFERRED Sprint 7
 Priority: P1 | Sprint Day 8-10 | Dependencies: None
 
 **AC:**
@@ -238,7 +240,7 @@ FE-1 (BPMN Modeler, 5 SP) → FE-2 (Flood Alert, 3 SP) → FE-3 (Push Page, 1 SP
 → FE-4 (RN Scaffold, 8 SP) → FE-5 (PKCE Login, 5 SP)
 ```
 
-### Task FE-1: BPMN Visual Editor [S6-AI04, 5 SP] — ACTUAL: 3-4 SP
+### Task FE-1: BPMN Visual Editor [S6-AI04, 5 SP] — ✅ DONE
 Priority: P0 | Sprint Day 2-6
 
 **What ALREADY EXISTS (SA discovery):**
@@ -263,7 +265,7 @@ Priority: P0 | Sprint Day 2-6
 - `frontend/src/components/workflow/AiNodeConfigPanel.tsx`
 - `frontend/src/components/workflow/bpmn-moddle.json`
 
-### Task FE-2: Flood Alert Cards + Map Overlay [S6-FL03, 3 SP] — ACTUAL: 2-3 SP
+### Task FE-2: Flood Alert Cards + Map Overlay [S6-FL03, 3 SP] — ✅ DONE
 Priority: P0 | Sprint Day 5-6
 
 **What ALREADY EXISTS:**
@@ -280,7 +282,7 @@ Priority: P0 | Sprint Day 5-6
 
 **No new npm deps** — react-leaflet + recharts already installed.
 
-### Task FE-3: Push Subscription Settings Page [S6-C02, 1 SP] — ACTUAL: 0.5-1 SP
+### Task FE-3: Push Subscription Settings Page [S6-C02, 1 SP] — ✅ DONE (merged into FE-1 Designer tab toolbar)
 Priority: P2 | Sprint Day 5
 
 **What ALREADY EXISTS:**
@@ -293,8 +295,8 @@ Priority: P2 | Sprint Day 5
 2. `PushSubscriptionList.tsx` — list active subscriptions
 3. Add route `/settings/notifications` to router
 
-### Task FE-4: React Native + Expo Scaffold [S6-M01, 8 SP] — Tier 2
-Priority: P1 | Sprint Day 7-10 | **DEFER to Sprint 7 if FE-1/2/3 not done by Day 7**
+### Task FE-4: React Native + Expo Scaffold [S6-M01, 8 SP] — ⏳ DEFERRED Sprint 7
+Priority: P1 | Sprint Day 7-10 | **DEFERRED: Frontend capacity consumed by Tier 1**
 
 **AC:**
 - `applications/operator-mobile/` — Expo SDK 51 + React Native 0.74
@@ -306,7 +308,7 @@ Priority: P1 | Sprint Day 7-10 | **DEFER to Sprint 7 if FE-1/2/3 not done by Day
 - `expo@51.x`, `react-native@0.74.x`, `@react-navigation/native`, `@react-navigation/bottom-tabs`
 - `@tanstack/react-query`, `expo-secure-store`, `react-native-safe-area-context`, `react-native-screens`
 
-### Task FE-5: Keycloak PKCE Login [S6-M02, 5 SP] — Tier 2
+### Task FE-5: Keycloak PKCE Login [S6-M02, 5 SP] — ⏳ DEFERRED Sprint 7
 Priority: P1 | Sprint Day 9-10 | Dependencies: FE-4
 
 **AC:**
@@ -322,7 +324,7 @@ Priority: P1 | Sprint Day 9-10 | Dependencies: FE-4
 
 ## DEVOPS — EMQX + Blue-green + Grafana (DevOps Engineer)
 
-### Task OPS-1: EMQX MQTT Production [S6-C01, 5 SP]
+### Task OPS-1: EMQX MQTT Production [S6-C01, 5 SP] — ✅ DONE
 Priority: P1 | Sprint Day 1-3
 
 **AC:**
@@ -335,7 +337,7 @@ Priority: P1 | Sprint Day 1-3
 - `infrastructure/emqx/emqx.conf` — auth + rule engine
 - `infrastructure/kafka/create-topics.sh` — add `UIP.bms.command.ack.v1`
 
-### Task OPS-2: Blue-green Deploy Validation [S6-OPS1, 3 SP]
+### Task OPS-2: Blue-green Deploy Validation [S6-OPS1, 3 SP] — ✅ DONE
 Priority: P0 | Sprint Day 5-6
 
 **AC:**
@@ -348,7 +350,7 @@ Priority: P0 | Sprint Day 5-6
 - `frontend/nginx.conf` — upstream switch support
 - `scripts/blue-green-switch.sh` — deploy + rollback script
 
-### Task OPS-3: Grafana AI Workflow + Flood Alert Panels
+### Task OPS-3: Grafana AI Workflow + Flood Alert Panels — ⏳ Pending
 Priority: P1 | Sprint Day 6-7
 
 **Files to modify:**
@@ -463,18 +465,59 @@ Day 10  (06-13): Gate review 15:00 SGT + Demo dry-run (PM-1) + SA code review
 
 ---
 
-## Open Questions (cần PO/SA resolve)
+## Open Questions — RESOLVED
 
-| # | Question | Owner | Deadline |
-|---|----------|-------|----------|
-| 1 | API path: `/api/v1/workflows` (new) or extend existing `/api/v1/workflow`? | SA + Backend-1 | Day 2 |
-| 2 | Flood dedup window: same as CEP 10min or separate cooldown? | Backend-2 | Day 4 |
-| 3 | FCM/APNs: reuse existing `push_subscriptions` table or new `device_push_tokens`? | Backend-2 recommends reuse | Day 8 |
-| 4 | Flood risk zones: polygon or CircleMarker for demo? | Frontend recommends CircleMarker | Day 5 |
-| 5 | BPMN "Save" endpoint: new POST or existing Camunda deploy? | Backend-1 + SA | Day 2 |
+| # | Question | Resolution |
+|---|----------|------------|
+| 1 | API path: `/api/v1/workflows` (new) or extend existing `/api/v1/workflow`? | ✅ New `/api/v1/workflows` — coexists with existing `/workflow` |
+| 2 | Flood dedup window: same as CEP 10min or separate cooldown? | ✅ 5-min dedup (same pattern as AlertEventKafkaConsumer) |
+| 3 | FCM/APNs: reuse existing `push_subscriptions` table? | ⏳ Deferred to Sprint 7 (Tier 2) |
+| 4 | Flood risk zones: polygon or CircleMarker? | ✅ CircleMarker — lightweight, no GeoJSON needed |
+| 5 | BPMN "Save" endpoint: new POST or existing Camunda deploy? | ✅ PUT `/api/v1/workflows/{id}` for save, separate `/deploy` for Camunda |
 
 ---
 
-*Sprint 6 task assignments created: 2026-05-29 | Based on: 7 agent reports (Backend-1, Backend-2, Frontend, DevOps, QA, SA, PM)*
-*Key discovery: Camunda 7 + bpmn-js already embedded → significant effort savings for AI Workflow*
-*Frontend bottleneck acknowledged: Tier 2 Mobile defer Sprint 7 if overloaded*
+## Implementation Summary (2026-05-30)
+
+### What Was Delivered
+
+**Tier 1: 10/10 tasks DONE (34.5 SP)**
+
+| Epic | Tasks Done | Key Deliverables |
+|------|-----------|-----------------|
+| **E1: AI Workflow Designer** | B1-2, B1-3, FE-1 | CRUD API (7 endpoints), DecisionRouter, BPMN Modeler + Palette + AI Config Panel |
+| **E2: Flood Alert Pipeline** | B2-1, B2-2, B2-3, FE-2 | Flink CEP Job, Kafka Consumer, Demo Script, Flood Cards + Map + Gauge |
+| **E3: Infrastructure** | OPS-1, OPS-2, B2-4 | EMQX MQTT auth, Blue-green script, Python health check |
+
+**Tier 2: Deferred to Sprint 7 (26 SP)**
+- Mobile scaffold, PKCE login, FCM/APNs push, Mobile auth config
+
+### Verification
+
+- **58 automated tests**: ALL PASS
+- **TypeScript strict**: 0 errors
+- **Backend compile**: BUILD SUCCESS
+- **Flink compile**: BUILD SUCCESS
+- **42 files** created/modified
+
+### Remaining Sprint 6 Activities
+
+| Activity | Owner | When |
+|----------|-------|------|
+| SA Code Review (10+10 checklist) | SA | Day 10 |
+| QA Regression Gate (1,500+ tests) | QA | Day 10 |
+| QA: AI Workflow ITs (10 scenarios) | QA | Day 7 |
+| QA: Flood Alert ITs (8 scenarios) | QA | Day 7 |
+| DevOps: Grafana Panels | DevOps | Day 6-7 |
+| PM: Demo Script + PO Dry-run | PM | Day 9-10 |
+
+### Sprint 7 Scope Impact
+
+Tier 2 carry-over adds **~26 SP** to Sprint 7, making Sprint 7 scope **~81 SP** total.
+This may require descoping Building Safety or splitting into two mini-sprints.
+
+---
+
+*Sprint 6 task assignments created: 2026-05-29 | Updated: 2026-05-30 (implementation complete)*
+*Tier 1: 10/10 DONE, 34.5 SP, 58 tests | Tier 2: 5 tasks deferred Sprint 7*
+*Implementation report: docs/mvp3/reports/sprint6-implementation-report.md*

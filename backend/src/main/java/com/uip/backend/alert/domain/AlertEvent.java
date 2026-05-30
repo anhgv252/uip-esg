@@ -63,4 +63,8 @@ public class AlertEvent implements TenantAware {
 
     @Column(columnDefinition = "TEXT")
     private String note;
+
+    /** Location description for map overlay (e.g. district name, coordinates) */
+    @Column(name = "location", length = 200)
+    private String location;
 }

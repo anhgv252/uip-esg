@@ -1,0 +1,30 @@
+{
+  "name": "AI",
+  "prefix": "ai",
+  "types": [
+    {
+      "name": "AiDecisionTask",
+      "extends": [
+        "bpmn:ServiceTask"
+      ],
+      "properties": [
+        {
+          "name": "prompt",
+          "isAttr": true,
+          "type": "String"
+        },
+        {
+          "name": "confidenceThreshold",
+          "isAttr": true,
+          "type": "String"
+        },
+        {
+          "name": "model",
+          "isAttr": true,
+          "type": "String"
+        }
+      ]
+    }
+  ],
+  "enumerations": []
+}
