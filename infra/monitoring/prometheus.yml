@@ -48,3 +48,27 @@ scrape_configs:
     scrape_interval: 30s
     static_configs:
       - targets: ['uip-forecast-service:8090']
+
+  # Sprint 6 — Flink JobManager + TaskManager metrics
+  - job_name: 'flink-jobmanager'
+    metrics_path: '/'
+    scrape_interval: 15s
+    static_configs:
+      - targets: ['flink-jobmanager:9250']
+    labels:
+      flink: 'jobmanager'
+
+  - job_name: 'flink-taskmanager'
+    metrics_path: '/'
+    scrape_interval: 15s
+    static_configs:
+      - targets: ['flink-taskmanager:9250']
+    labels:
+      flink: 'taskmanager'
+
+  # Sprint 6 — EMQX MQTT broker metrics
+  - job_name: 'emqx'
+    metrics_path: '/api/v5/prometheus/stats'
+    scrape_interval: 15s
+    static_configs:
+      - targets: ['emqx:18083']
