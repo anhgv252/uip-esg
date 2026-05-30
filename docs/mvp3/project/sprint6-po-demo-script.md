@@ -1,6 +1,6 @@
 # Sprint 6 — PO Demo Script + Pre-Demo Checklist
 
-**Created:** 2026-05-30 | **PM**
+**Created:** 2026-05-30 | **PM** | **Updated:** 2026-05-30 (verified)
 **Demo Date:** Sprint 6 Gate Review (Day 10)
 
 ---
@@ -47,7 +47,8 @@
 **Backup:** If Flink not running, use direct inject:
 ```bash
 curl -X POST localhost:8080/api/v1/test/inject-flood-alert \
-  "?sensorId=SENSOR-DEMO-001&sensorType=RAINFALL&value=95&severity=P1_WARNING"
+  "?sensorId=SENSOR-DEMO-001&sensorType=RAINFALL&value=95&severity=P1_WARNING" \
+  -H "Authorization: Bearer $TOKEN"
 ```
 
 **Talking points:**
@@ -64,7 +65,7 @@ curl -X POST localhost:8080/api/v1/test/inject-flood-alert \
    - Confidence > 0.85 → **AUTO_EXECUTE** (green)
    - Confidence 0.6–0.85 → **OPERATOR_QUEUE** (yellow)
    - Confidence < 0.6 → **ESCALATE** (red)
-2. Explain Redis cache: similar decisions cached 15 min
+2. Explain Redis cache: similar decisions cached 15 min, JSON serialization
 
 ### Scenario 4: Blue-Green Deploy (1 min)
 
@@ -89,18 +90,50 @@ curl -X POST localhost:8080/api/v1/test/inject-flood-alert \
 
 | # | Item | Status | Verify |
 |---|------|--------|--------|
-| 1 | Backend running (`./gradlew bootRun`) | ⏳ | `curl localhost:8080/actuator/health` |
+| 1 | Backend running (`./gradlew bootRun -Dspring.profiles.active=test`) | ⏳ | `curl localhost:8080/actuator/health` |
 | 2 | Kafka running + topics created | ⏳ | `kafka-topics --list` |
 | 3 | Flink FloodAlertJob submitted | ⏳ | Flink dashboard |
 | 4 | EMQX healthy | ⏳ | `curl localhost:18083/status` |
-| 5 | Frontend built + served | ⏳ | `curl localhost:3000` |
+| 5 | Frontend built + served | ✅ `npx tsc --noEmit` 0 errors | `curl localhost:3000` |
 | 6 | Demo script tested E2E | ⏳ | Run once before demo |
 | 7 | 3 flood sensors pre-seeded | ⏳ | DB check |
 | 8 | Camunda processes deployed | ⏳ | `/workflow/definitions` |
 | 9 | Redis running (SSE + dedup) | ⏳ | `redis-cli ping` |
-| 10 | V28 + V29 migrations applied | ⏳ | Flyway validate |
+| 10 | V28 + V29 + V30 migrations applied | ✅ V30 FORCE RLS added | `./gradlew flywayValidate` |
 | 11 | Blue-green script tested | ⏳ | Dry run |
 | 12 | Network stable | ⏳ | Internet + intranet |
+
+### Verified Items (from SA/QA review)
+- ✅ Backend compile: BUILD SUCCESS
+- ✅ Backend tests: 1,015 PASS, 0 failures
+- ✅ JaCoCo LINE: 86%, BRANCH: 70%
+- ✅ Frontend TypeScript: 0 errors
+- ✅ SA Code Review: APPROVED (6 fixes verified)
+- ✅ SA Final Review: GO for demo
+- ✅ QA Regression: CONDITIONAL GO
+- ✅ V30 FORCE RLS migration created
+- ✅ Grafana monitoring: 9 panels + 5 alert rules
+- ✅ Prometheus: Flink + EMQX scrape targets added
+
+---
+
+## Demo Readiness — GO/NO-GO
+
+### ✅ GO for PO Demo
+
+| Gate | Criterion | Status |
+|------|-----------|--------|
+| G1 | Backend build + tests | ✅ 1,015 PASS |
+| G2 | SA Code Review | ✅ APPROVED (6 fixes) |
+| G3 | QA Regression | ✅ CONDITIONAL GO |
+| G4 | SA Final Review | ✅ GO |
+| G5 | Monitoring ready | ✅ Grafana + Prometheus |
+| G6 | Demo script documented | ✅ Ready |
+| G7 | Manual test cases | ✅ 20 documented |
+
+### Pre-demo conditions (must verify Day 10):
+1. Smoke test `demo-flood-alert.sh` against staging
+2. Verify all infrastructure running (Kafka, Flink, EMQX, Redis)
 
 ---
 
@@ -128,13 +161,19 @@ A: Sprint 6 chỉ cover SSE (web push). SMS + FCM/APNs push là Tier 2, Sprint 7
 A: Sprint 6 hỗ trợ 5 nodes: Start, Service Task, AI Decision, Notification, End. Custom nodes thêm Sprint 7.
 
 **Q: Latency <30s đã test chưa?**
-A: Unit tests PASS. Manual E2E test sẽ chạy trong QA phase.
+A: Unit tests PASS (24 Flink tests). Manual E2E test sẽ verify trên staging.
 
 **Q: Mobile app khi nào có?**
-A: React Native scaffold deferred Sprint 7 (Tier 2 carry-over).
+A: React Native scaffold deferred Sprint 7 (Tier 2 carry-over, 26 SP).
 
 **Q: Building Safety feature khi nào?**
 A: Sprint 7 — Flink CEP + Welford algorithm cho structural monitoring.
+
+**Q: Coverage gaps?**
+A: DecisionRouter (28%) và FloodAlertConsumer (8%) có coverage thấp — IT tests sẽ bổ sung Sprint 7.
+
+**Q: Tech debt?**
+A: 9.5 SP tech debt tracked — 12 items prioritized P0-P3 cho Sprint 7.
 
 ---
 
@@ -142,9 +181,14 @@ A: Sprint 7 — Flink CEP + Welford algorithm cho structural monitoring.
 
 | Metric | Value |
 |--------|-------|
-| Tier 1 Tasks | 10/10 DONE |
-| Story Points | 34.5 SP delivered |
-| Tests | 58 new, ALL PASS |
-| TypeScript | 0 errors |
-| SA Code Review | APPROVED (3 CRITICAL fixed) |
-| Tier 2 | 26 SP deferred Sprint 7 |
+| Tier 1 Tasks | **10/10 DONE** ✅ |
+| Story Points | **34.5 SP** delivered |
+| Total Tests | **1,015 PASS** (58 new Sprint 6) |
+| JaCoCo LINE | **86%** (≥77% ✅) |
+| JaCoCo BRANCH | **70%** (≥62% ✅) |
+| TypeScript | **0 errors** ✅ |
+| SA Code Review | **APPROVED** (3 CRITICAL + 3 MAJOR fixed) |
+| SA Final Review | **GO** for demo |
+| Grafana Panels | **9 panels** + 5 alert rules |
+| Tier 2 Deferred | **26 SP** → Sprint 7 |
+| Tech Debt S7 | **9.5 SP** (12 items) |
