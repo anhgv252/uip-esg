@@ -92,6 +92,8 @@ public class SecurityConfig {
                 // Push notification endpoints
                 .requestMatchers(AntPathRequestMatcher.antMatcher(HttpMethod.GET, "/api/v1/push/vapid-key")).permitAll()
                 .requestMatchers(AntPathRequestMatcher.antMatcher("/api/v1/push/**")).authenticated()
+                // Mobile auth config — public (called before login)
+                .requestMatchers(AntPathRequestMatcher.antMatcher(HttpMethod.GET, "/api/v1/mobile/auth/config")).permitAll()
                 .anyRequest().authenticated()
             )
             .exceptionHandling(ex -> ex
