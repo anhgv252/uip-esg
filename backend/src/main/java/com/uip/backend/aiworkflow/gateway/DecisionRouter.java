@@ -7,6 +7,7 @@ import org.springframework.stereotype.Component;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.Duration;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -30,9 +31,11 @@ public class DecisionRouter {
     private static final String CACHE_PREFIX = "ai:decision:cache:";
 
     private final StringRedisTemplate redisTemplate;
+    private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
 
     public DecisionRouter(StringRedisTemplate redisTemplate) {
         this.redisTemplate = redisTemplate;
+        this.objectMapper = new com.fasterxml.jackson.databind.ObjectMapper();
     }
 
     /**
@@ -97,20 +100,19 @@ public class DecisionRouter {
         }
     }
 
+    @SuppressWarnings("unchecked")
     private Optional<RoutingResult> lookupCache(String cacheKey) {
         try {
             String cached = redisTemplate.opsForValue().get(cacheKey);
             if (cached != null) {
-                // Parse cached result: "ACTION|decision|reasoning|confidence"
-                String[] parts = cached.split("\\|", 4);
-                if (parts.length == 4) {
-                    return Optional.of(new RoutingResult(
-                            RoutingAction.valueOf(parts[0]),
-                            parts[1], parts[2],
-                            Double.parseDouble(parts[3]),
-                            true
-                    ));
-                }
+                Map<String, Object> map = objectMapper.readValue(cached, Map.class);
+                return Optional.of(new RoutingResult(
+                        RoutingAction.valueOf((String) map.get("action")),
+                        (String) map.get("decision"),
+                        (String) map.get("reasoning"),
+                        ((Number) map.get("confidence")).doubleValue(),
+                        true
+                ));
             }
         } catch (Exception e) {
             log.debug("Cache lookup failed for key={}: {}", cacheKey, e.getMessage());
@@ -120,10 +122,14 @@ public class DecisionRouter {
 
     private void cacheResult(String cacheKey, RoutingResult result) {
         try {
-            String value = "%s|%s|%s|%s".formatted(
-                    result.action(), result.decision(),
-                    result.reasoning(), result.confidence());
-            redisTemplate.opsForValue().set(cacheKey, value, CACHE_TTL);
+            Map<String, Object> map = Map.of(
+                    "action", result.action().name(),
+                    "decision", result.decision(),
+                    "reasoning", result.reasoning(),
+                    "confidence", result.confidence()
+            );
+            String json = objectMapper.writeValueAsString(map);
+            redisTemplate.opsForValue().set(cacheKey, json, CACHE_TTL);
         } catch (Exception e) {
             log.debug("Cache write failed for key={}: {}", cacheKey, e.getMessage());
         }

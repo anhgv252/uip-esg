@@ -100,7 +100,7 @@ public class FloodAlertConsumer {
         event.setSeverity(mapSeverity(getString(data, "severity")));
         event.setTenantId(getString(data, "tenantId"));
         event.setLocation(getString(data, "district"));
-        event.setDetectedAt(Instant.now());
+        event.setDetectedAt(parseTimestamp(data));
         event.setStatus("OPEN");
         return event;
     }
@@ -145,5 +145,14 @@ public class FloodAlertConsumer {
         if (val instanceof Number n) return n.doubleValue();
         try { return Double.parseDouble(val.toString()); }
         catch (NumberFormatException e) { return 0.0; }
+    }
+
+    /** Parse timestamp from Flink event, fallback to now() if missing. */
+    private static Instant parseTimestamp(Map<String, Object> data) {
+        Object ts = data.get("timestamp");
+        if (ts instanceof Number n) {
+            return Instant.ofEpochMilli(n.longValue());
+        }
+        return Instant.now();
     }
 }
