@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.uip.backend.alert.domain.AlertEvent;
 import com.uip.backend.alert.repository.AlertEventRepository;
+import com.uip.backend.tenant.context.TenantContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -68,7 +69,13 @@ public class FloodAlertConsumer {
                 return;
             }
 
-            AlertEvent saved = alertEventRepository.save(event);
+            AlertEvent saved;
+            TenantContext.setCurrentTenant(event.getTenantId());
+            try {
+                saved = alertEventRepository.save(event);
+            } finally {
+                TenantContext.clear();
+            }
             publishToRedis(saved);
 
             log.info("Flood alert persisted and published: sensor={} severity={} module=FLOOD",

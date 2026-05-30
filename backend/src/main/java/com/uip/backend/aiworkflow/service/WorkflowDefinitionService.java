@@ -1,5 +1,6 @@
 package com.uip.backend.aiworkflow.service;
 
+import com.uip.backend.aiworkflow.dto.WorkflowSummaryDto;
 import com.uip.backend.aiworkflow.model.WorkflowDefinition;
 import com.uip.backend.aiworkflow.repository.WorkflowDefinitionRepository;
 import lombok.RequiredArgsConstructor;
@@ -12,7 +13,12 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.w3c.dom.Document;
 
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import java.io.ByteArrayInputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.UUID;
 
@@ -27,6 +33,8 @@ import java.util.UUID;
 @Slf4j
 public class WorkflowDefinitionService {
 
+    private static final int MAX_BPMN_BYTES = 1_000_000;
+
     private final WorkflowDefinitionRepository repository;
     private final RepositoryService camundaRepositoryService;
     private final RuntimeService camundaRuntimeService;
@@ -37,6 +45,11 @@ public class WorkflowDefinitionService {
     @Transactional
     public WorkflowDefinition create(String tenantId, String name, String description, String bpmnXml) {
         validateBpmnXml(bpmnXml);
+
+        if (repository.existsByTenantIdAndNameAndIsActiveTrue(tenantId, name)) {
+            throw new IllegalArgumentException(
+                    "Workflow with name '" + name + "' already exists for tenant: " + tenantId);
+        }
 
         WorkflowDefinition def = new WorkflowDefinition();
         def.setTenantId(tenantId);
@@ -53,10 +66,26 @@ public class WorkflowDefinitionService {
 
     /**
      * AC-2: List active workflow definitions for a tenant (paginated).
+     * Returns summary DTOs — excludes bpmnXml to prevent large transfers.
      */
     @Transactional(readOnly = true)
-    public Page<WorkflowDefinition> list(String tenantId, Pageable pageable) {
-        return repository.findByTenantIdAndIsActiveTrue(tenantId, pageable);
+    public Page<WorkflowSummaryDto> list(String tenantId, Pageable pageable) {
+        return repository.findByTenantIdAndIsActiveTrue(tenantId, pageable)
+                .map(this::toSummary);
+    }
+
+    private WorkflowSummaryDto toSummary(WorkflowDefinition def) {
+        return new WorkflowSummaryDto(
+                def.getId(),
+                def.getTenantId(),
+                def.getName(),
+                def.getDescription(),
+                def.getVersion(),
+                def.getIsActive(),
+                def.getCamundaDeploymentId() != null,
+                def.getCreatedAt(),
+                def.getUpdatedAt()
+        );
     }
 
     /**
@@ -165,8 +194,28 @@ public class WorkflowDefinitionService {
         if (bpmnXml == null || bpmnXml.isBlank()) {
             throw new IllegalArgumentException("BPMN XML must not be empty");
         }
-        if (!bpmnXml.contains("<definitions") && !bpmnXml.contains("<bpmn:definitions")) {
-            throw new IllegalArgumentException("BPMN XML must contain a <definitions> root element");
+        if (bpmnXml.getBytes(StandardCharsets.UTF_8).length > MAX_BPMN_BYTES) {
+            throw new IllegalArgumentException("BPMN XML exceeds maximum allowed size of 1MB");
+        }
+        try {
+            DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+            // Disable XXE attacks
+            factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+            factory.setFeature("http://xml.org/sax/features/external-general-entities", false);
+            factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
+            factory.setNamespaceAware(true);
+            DocumentBuilder builder = factory.newDocumentBuilder();
+            Document doc = builder.parse(new ByteArrayInputStream(
+                    bpmnXml.getBytes(StandardCharsets.UTF_8)));
+            String localName = doc.getDocumentElement().getLocalName();
+            if (!"definitions".equals(localName)) {
+                throw new IllegalArgumentException(
+                        "BPMN XML must have <definitions> as root element, found: <" + localName + ">");
+            }
+        } catch (IllegalArgumentException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Invalid BPMN XML: " + e.getMessage(), e);
         }
     }
 

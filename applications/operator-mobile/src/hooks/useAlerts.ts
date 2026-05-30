@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { apiClient } from '../api/client'
+import { useAuth } from '../context/AuthContext'
 
 export interface AlertItem {
   id: number
@@ -14,12 +15,14 @@ export interface AlertItem {
 }
 
 export function useAlerts(module?: string) {
+  const { token } = useAuth()
   return useQuery({
     queryKey: ['alerts', module],
     queryFn: () => {
       const params = module ? `?module=${module}` : ''
-      return apiClient.get<AlertItem[]>(`/api/v1/alerts${params}`)
+      return apiClient.get<AlertItem[]>(`/api/v1/alerts${params}`, token ?? undefined)
     },
     staleTime: 10_000,
+    enabled: !!token,
   })
 }

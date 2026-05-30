@@ -1,6 +1,7 @@
 package com.uip.backend.aiworkow.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.uip.backend.aiworkflow.dto.WorkflowSummaryDto;
 import com.uip.backend.aiworkflow.model.WorkflowDefinition;
 import com.uip.backend.aiworkflow.service.WorkflowDefinitionService;
 import com.uip.backend.auth.config.JwtAuthenticationFilter;
@@ -85,6 +86,12 @@ class WorkflowDefinitionControllerWebMvcTest {
         return def;
     }
 
+    private WorkflowSummaryDto toSummary(WorkflowDefinition def) {
+        return new WorkflowSummaryDto(def.getId(), def.getTenantId(), def.getName(),
+                def.getDescription(), def.getVersion(), def.getIsActive(),
+                def.getCamundaDeploymentId() != null, def.getCreatedAt(), def.getUpdatedAt());
+    }
+
     @Test
     @DisplayName("POST /api/v1/workflows — AC-1: create workflow")
     void createWorkflow() throws Exception {
@@ -112,7 +119,7 @@ class WorkflowDefinitionControllerWebMvcTest {
     void listWorkflows() throws Exception {
         WorkflowDefinition def = sampleDefinition();
         when(service.list(eq(TENANT), any(PageRequest.class)))
-                .thenReturn(new PageImpl<>(List.of(def)));
+                .thenReturn(new PageImpl<>(List.of(toSummary(def))));
 
         try (MockedStatic<TenantContext> tc = Mockito.mockStatic(TenantContext.class)) {
             tc.when(TenantContext::getCurrentTenant).thenReturn(TENANT);

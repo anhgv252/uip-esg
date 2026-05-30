@@ -1,5 +1,6 @@
 package com.uip.backend.aiworkow.controller;
 
+import com.uip.backend.aiworkflow.dto.WorkflowSummaryDto;
 import com.uip.backend.aiworkflow.model.WorkflowDefinition;
 import com.uip.backend.aiworkflow.service.WorkflowDefinitionService;
 import com.uip.backend.tenant.context.TenantContext;
@@ -53,8 +54,8 @@ public class WorkflowDefinitionController {
 
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'OPERATOR')")
-    @Operation(summary = "List workflow definitions (paginated)")
-    public ResponseEntity<Page<WorkflowDefinition>> list(
+    @Operation(summary = "List workflow definitions (paginated, without bpmnXml)")
+    public ResponseEntity<Page<WorkflowSummaryDto>> list(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         String tenantId = TenantContext.getCurrentTenant();

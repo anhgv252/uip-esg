@@ -57,14 +57,16 @@ public class DecisionRouter {
 
     /**
      * Route with cache lookup — checks Redis for a similar decision first.
+     * tenantId is included in cache key to prevent cross-tenant cache sharing.
      *
+     * @param tenantId the tenant identifier (prevents cross-tenant cache sharing)
      * @param scenarioKey the scenario identifier (e.g. "flood-alert")
      * @param context the context hash input (sensor data, rules, etc.)
      * @param decision the AI decision
      * @return routing result (may be cached)
      */
-    public RoutingResult routeWithCache(String scenarioKey, String context, AiDecisionInput decision) {
-        String cacheKey = buildCacheKey(scenarioKey, context);
+    public RoutingResult routeWithCache(String tenantId, String scenarioKey, String context, AiDecisionInput decision) {
+        String cacheKey = buildCacheKey(tenantId, scenarioKey, context);
 
         // Check cache first
         Optional<RoutingResult> cached = lookupCache(cacheKey);
@@ -88,15 +90,15 @@ public class DecisionRouter {
         return RoutingAction.ESCALATE;
     }
 
-    private String buildCacheKey(String scenarioKey, String context) {
+    private String buildCacheKey(String tenantId, String scenarioKey, String context) {
         try {
             MessageDigest md = MessageDigest.getInstance("SHA-256");
             byte[] hash = md.digest(context.getBytes(StandardCharsets.UTF_8));
             String hexHash = bytesToHex(hash);
-            return CACHE_PREFIX + scenarioKey + ":" + hexHash;
+            return CACHE_PREFIX + tenantId + ":" + scenarioKey + ":" + hexHash;
         } catch (Exception e) {
             // Fallback to raw key (should never happen with SHA-256)
-            return CACHE_PREFIX + scenarioKey + ":" + context.hashCode();
+            return CACHE_PREFIX + tenantId + ":" + scenarioKey + ":" + context.hashCode();
         }
     }
 

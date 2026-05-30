@@ -108,7 +108,7 @@ class DecisionRouterExtendedTest {
             String cachedJson = "{\"action\":\"AUTO_EXECUTE\",\"decision\":\"EVACUATE\",\"reasoning\":\"Cached\",\"confidence\":0.9}";
             when(valueOps.get(anyString())).thenReturn(cachedJson);
 
-            var result = router.routeWithCache("flood-risk", "context-hash", createInput(0.50, "TEST", "Test"));
+            var result = router.routeWithCache("hcm", "flood-risk", "context-hash", createInput(0.50, "TEST", "Test"));
 
             assertTrue(result.cached());
             assertEquals(DecisionRouter.RoutingAction.AUTO_EXECUTE, result.action());
@@ -120,7 +120,7 @@ class DecisionRouterExtendedTest {
         void cacheMiss_routesNormally() {
             when(valueOps.get(anyString())).thenReturn(null);
 
-            var result = router.routeWithCache("flood-risk", "context-hash", createInput(0.90, "EVACUATE", "High"));
+            var result = router.routeWithCache("hcm", "flood-risk", "context-hash", createInput(0.90, "EVACUATE", "High"));
 
             assertFalse(result.cached());
             assertEquals(DecisionRouter.RoutingAction.AUTO_EXECUTE, result.action());
@@ -131,7 +131,7 @@ class DecisionRouterExtendedTest {
         void cacheWrite_succeedsForHighConfidence() {
             when(valueOps.get(anyString())).thenReturn(null);
 
-            router.routeWithCache("flood-risk", "context-hash", createInput(0.90, "EVACUATE", "High"));
+            router.routeWithCache("hcm", "flood-risk", "context-hash", createInput(0.90, "EVACUATE", "High"));
 
             verify(valueOps).set(anyString(), anyString(), any());
         }

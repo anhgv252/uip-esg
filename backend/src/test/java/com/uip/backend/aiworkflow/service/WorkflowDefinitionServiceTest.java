@@ -1,5 +1,6 @@
 package com.uip.backend.aiworkflow.service;
 
+import com.uip.backend.aiworkflow.dto.WorkflowSummaryDto;
 import com.uip.backend.aiworkflow.model.WorkflowDefinition;
 import com.uip.backend.aiworkflow.repository.WorkflowDefinitionRepository;
 import org.camunda.bpm.engine.RepositoryService;
@@ -101,10 +102,10 @@ class WorkflowDefinitionServiceTest {
         when(repository.findByTenantIdAndIsActiveTrue(TENANT, pageable))
                 .thenReturn(new PageImpl<>(List.of(def)));
 
-        Page<WorkflowDefinition> result = service.list(TENANT, pageable);
+        Page<WorkflowSummaryDto> result = service.list(TENANT, pageable);
 
         assertThat(result.getContent()).hasSize(1);
-        assertThat(result.getContent().get(0).getTenantId()).isEqualTo(TENANT);
+        assertThat(result.getContent().get(0).tenantId()).isEqualTo(TENANT);
     }
 
     // --- AC-3: GetById ---

@@ -31,6 +31,15 @@ BLUE='\033[0;34m'
 YELLOW='\033[1;33m'
 NC='\033[0m'
 
+# Returns port for a given slot name (blue=8081, green=8082)
+slot_port() {
+  if [ "$1" = "blue" ]; then
+    echo 8081
+  else
+    echo 8082
+  fi
+}
+
 # Get current active slot (default: blue)
 get_active() {
   if [ -f "$STATE_FILE" ]; then
@@ -41,39 +50,47 @@ get_active() {
 }
 
 get_inactive() {
-  local active=$(get_active)
+  local active
+  active=$(get_active)
   if [ "$active" = "blue" ]; then echo "green"; else echo "blue"; fi
 }
 
 # --- Status ---
 cmd_status() {
-  local active=$(get_active)
-  local inactive=$(get_inactive)
-  echo -e "Current active:  ${GREEN}${active}${NC}"
+  local active
+  local inactive
+  active=$(get_active)
+  inactive=$(get_inactive)
+  echo -e "Current active:   ${GREEN}${active}${NC}"
   echo -e "Current inactive: ${BLUE}${inactive}${NC}"
 
-  # Check if both containers are running
   for slot in blue green; do
-    local port=$((slot == "blue" ? 8081 : 8082))
+    local port
+    port=$(slot_port "$slot")
     local name="uip-backend-${slot}"
-    local running=$(docker ps --filter "name=${name}" --format "{{.Status}}" 2>/dev/null || echo "not running")
+    local running
+    running=$(docker ps --filter "name=${name}" --format "{{.Status}}" 2>/dev/null || echo "not running")
     echo -e "  ${slot}: ${name} (port ${port}) — ${running}"
   done
 }
 
 # --- Deploy to inactive slot ---
 cmd_deploy() {
-  local inactive=$(get_inactive)
-  local port=$((inactive == "blue" ? 8081 : 8082))
+  local inactive
+  inactive=$(get_inactive)
+  local port
+  port=$(slot_port "$inactive")
   local name="uip-backend-${inactive}"
 
   echo -e "${YELLOW}Deploying to ${inactive} slot...${NC}"
   echo "  Container: ${name}"
   echo "  Port: ${port}"
 
-  # Build new image
   echo "Building backend image..."
-  docker build -t uip-backend:${inactive} "${PROJECT_DIR}/backend" --quiet
+  if ! docker build -t "uip-backend:${inactive}" "${PROJECT_DIR}/backend" --quiet; then
+    echo -e "${RED}ERROR: docker build failed. Aborting deploy.${NC}"
+    exit 1
+  fi
 
   # Stop old inactive container if running
   if docker ps --format "{{.Names}}" | grep -q "^${name}$"; then
@@ -87,9 +104,9 @@ cmd_deploy() {
     --name "$name" \
     --network infrastructure_default \
     -e SPRING_PROFILES_ACTIVE=docker \
-    -e SERVER_PORT=${port} \
-    -p ${port}:${port} \
-    uip-backend:${inactive}
+    -e SERVER_PORT="${port}" \
+    -p "${port}:${port}" \
+    "uip-backend:${inactive}"
 
   # Wait for health check
   echo "Waiting for health check..."
@@ -110,9 +127,14 @@ cmd_deploy() {
 
 # --- Switch active slot ---
 cmd_switch() {
-  local inactive=$(get_inactive)
-  local active=$(get_active)
-  local new_port=$((inactive == "blue" ? 8081 : 8082))
+  local inactive
+  inactive=$(get_inactive)
+  local active
+  active=$(get_active)
+  local new_port
+  new_port=$(slot_port "$inactive")
+  local active_port
+  active_port=$(slot_port "$active")
   local name="uip-backend-${inactive}"
 
   # Verify new container is healthy
@@ -122,31 +144,34 @@ cmd_switch() {
   fi
 
   echo -e "${YELLOW}Switching traffic from ${active} to ${inactive}...${NC}"
-  local start_time=$(date +%s%N)
+  local start_time
+  start_time=$(date +%s%N)
 
   # Update nginx upstream
   if [ -f "$NGINX_CONF" ]; then
-    sed -i.bak "s/server uip-backend:${active == "blue" ? 8081 : 8082}/server uip-backend:${new_port}/g" "$NGINX_CONF"
-    sed -i.bak "s/server 127.0.0.1:${active == "blue" ? 8081 : 8082}/server 127.0.0.1:${new_port}/g" "$NGINX_CONF"
-    # Reload nginx
+    sed -i.bak "s/server uip-backend:${active_port}/server uip-backend:${new_port}/g" "$NGINX_CONF"
+    sed -i.bak "s/server 127.0.0.1:${active_port}/server 127.0.0.1:${new_port}/g" "$NGINX_CONF"
     docker exec uip-nginx nginx -s reload 2>/dev/null || true
   fi
 
   # Update state file
   echo "$inactive" > "$STATE_FILE"
 
-  local end_time=$(date +%s%N)
+  local end_time
+  end_time=$(date +%s%N)
   local duration_ms=$(( (end_time - start_time) / 1000000 ))
 
   echo -e "${GREEN}Switch complete in ${duration_ms}ms${NC}"
-  echo -e "  Active:  ${GREEN}${inactive}${NC} (port ${new_port})"
+  echo -e "  Active:   ${GREEN}${inactive}${NC} (port ${new_port})"
   echo -e "  Inactive: ${BLUE}${active}${NC}"
 }
 
 # --- Rollback ---
 cmd_rollback() {
-  local active=$(get_active)
-  local old_port=$((active == "blue" ? 8081 : 8082))
+  local active
+  active=$(get_active)
+  local old_port
+  old_port=$(slot_port "$active")
   local previous_name="uip-backend-${active}"
 
   echo -e "${YELLOW}Rolling back to previous: ${active} (port ${old_port})...${NC}"
@@ -162,12 +187,15 @@ cmd_rollback() {
   fi
 
   # Swap state back
-  local previous=$(get_inactive)
+  local previous
+  previous=$(get_inactive)
+  local previous_port
+  previous_port=$(slot_port "$previous")
   echo "$previous" > "$STATE_FILE"
 
   # Update nginx
   if [ -f "$NGINX_CONF" ]; then
-    sed -i.bak "s/server 127.0.0.1:${old_port}/server 127.0.0.1:$((previous == "blue" ? 8081 : 8082))/g" "$NGINX_CONF"
+    sed -i.bak "s/server 127.0.0.1:${old_port}/server 127.0.0.1:${previous_port}/g" "$NGINX_CONF"
     docker exec uip-nginx nginx -s reload 2>/dev/null || true
   fi
 
