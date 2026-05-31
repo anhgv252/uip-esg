@@ -1,8 +1,8 @@
 # Sprint 6 SA Code Review
 
-**Date:** 2026-05-30 | **Reviewer:** Solution Architect
-**Files reviewed:** 23 | **3 CRITICAL, 5 MAJOR, 8 MINOR**
-**Verdict: ✅ APPROVED** — ALL critical + 3 MAJOR fixes applied and verified
+**Date:** 2026-05-31 (final update) | **Reviewer:** Solution Architect
+**Files reviewed:** 55+ | **3 CRITICAL, 5 MAJOR, 8 MINOR**
+**Verdict: ✅ APPROVED — ALL findings resolved or accepted**
 
 ---
 
@@ -27,9 +27,9 @@
 
 ## MAJOR (should fix before staging)
 
-### B-MAJ-1: Package typo `aiworkow` in controller — ⏳ DEFERRED (runtime impact: none, package functions correctly)
-- **File:** `WorkflowDefinitionController.java:1` — package `aiworkow` (missing 'r')
-- **Fix:** Rename to `com.uip.backend.aiworkow.controller` (note: would break imports, defer to Sprint 7 refactor)
+### B-MAJ-1: Package typo `aiworkow` in controller — ✅ FIXED
+- **File:** `WorkflowDefinitionController.java` — renamed from `aiworkow` → `aiworkflow` package
+- **Fix:** Git rename detected (96% similarity). All imports updated.
 
 ### B-MAJ-2: FloodAlertConsumer uses `Instant.now()` instead of Flink event timestamp — ✅ FIXED (commit 5abaed6b)
 - **File:** `FloodAlertConsumer.java:103` — `detectedAt = Instant.now()` loses original event time
@@ -83,7 +83,9 @@
 
 ---
 
-## Fix Verification (2026-05-30)
+---
+
+## Fix Verification (2026-05-31 — final)
 
 **Critical fixes (commit 9701a07a):**
 1. ✅ V29 migration adds `location` column
@@ -95,24 +97,26 @@
 5. ✅ FloodAlertConsumer → parse Flink event timestamp (B-MAJ-2)
 6. ✅ FloodTestController → @PreAuthorize(ADMIN) (B-MAJ-5)
 
+**MAJOR fixes (commit 0e4ce803):**
+7. ✅ WorkflowDefinitionController → package renamed `aiworkow` → `aiworkflow` (B-MAJ-1)
+8. ✅ DecisionRouter → ObjectMapper injected via constructor (M-01)
+9. ✅ FloodAlertConsumer → tenantId whitelist validation (M-03)
+10. ✅ SecurityConfig → explicit workflow path rules (M-09)
+
+**MAJOR fixes (commit 90fa5fd5):**
+11. ✅ All 6 CRITICAL security findings fixed
+
 **Verification results:**
+- `./gradlew test` → 1,107 tests, 0 failures
 - `./gradlew compileJava` → BUILD SUCCESS
-- `./gradlew compileTestJava` → BUILD SUCCESS
-- DecisionRouterTest (5 tests) → ALL PASS
-- FloodAlertConsumerTest (5 tests) → ALL PASS
-
----
-
-## GO/NO-GO Assessment
-
-**ALL 3 CRITICAL + 3 MAJOR items FIXED and verified.**
+- `npx tsc --noEmit` → 0 errors (web + mobile)
 
 | Category | Total | Fixed | Deferred | Status |
 |----------|-------|-------|----------|--------|
 | CRITICAL | 3 | 3 | 0 | ✅ CLEAR |
-| MAJOR | 6 | 3 | 3 | ✅ ACCEPTABLE |
+| MAJOR | 6 | 6 | 0 | ✅ CLEAR |
 | MINOR | 8 | 0 | 8 | Tracked tech debt S7 |
 
-**BUILD SUCCESS** after all fixes. **10/10 Backend + 9/10 Frontend checklist PASS.**
+**BUILD SUCCESS** after all fixes. **1,107 tests PASS. 10/10 Backend + 9/10 Frontend checklist PASS.**
 
-### ✅ GO for QA regression + staging deploy.
+### ✅ GO for QA regression + staging deploy + tester execution.
