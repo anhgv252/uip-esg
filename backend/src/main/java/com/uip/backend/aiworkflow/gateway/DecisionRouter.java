@@ -1,5 +1,6 @@
 package com.uip.backend.aiworkflow.gateway;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
@@ -31,11 +32,11 @@ public class DecisionRouter {
     private static final String CACHE_PREFIX = "ai:decision:cache:";
 
     private final StringRedisTemplate redisTemplate;
-    private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
+    private final ObjectMapper objectMapper;
 
-    public DecisionRouter(StringRedisTemplate redisTemplate) {
+    public DecisionRouter(StringRedisTemplate redisTemplate, ObjectMapper objectMapper) {
         this.redisTemplate = redisTemplate;
-        this.objectMapper = new com.fasterxml.jackson.databind.ObjectMapper();
+        this.objectMapper = objectMapper;
     }
 
     /**

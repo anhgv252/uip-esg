@@ -94,6 +94,10 @@ public class SecurityConfig {
                 .requestMatchers(AntPathRequestMatcher.antMatcher("/api/v1/push/**")).authenticated()
                 // Mobile auth config — public (called before login)
                 .requestMatchers(AntPathRequestMatcher.antMatcher(HttpMethod.GET, "/api/v1/mobile/auth/config")).permitAll()
+                // AI Workflow Designer — explicit role restriction
+                .requestMatchers(AntPathRequestMatcher.antMatcher(HttpMethod.DELETE, "/api/v1/workflows/**")).hasRole("ADMIN")
+                .requestMatchers(AntPathRequestMatcher.antMatcher(HttpMethod.POST, "/api/v1/workflows/*/deploy")).hasRole("ADMIN")
+                .requestMatchers(AntPathRequestMatcher.antMatcher("/api/v1/workflows/**")).hasAnyRole("ADMIN", "OPERATOR")
                 .anyRequest().authenticated()
             )
             .exceptionHandling(ex -> ex

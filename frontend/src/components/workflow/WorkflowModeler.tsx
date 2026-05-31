@@ -5,7 +5,6 @@ import { Box, CircularProgress, Alert, Snackbar } from '@mui/material';
 interface Props {
   initialXml?: string | null;
   onSave?: (xml: string) => void;
-  readOnly?: boolean;
   height?: number;
 }
 
@@ -37,41 +36,34 @@ export default function WorkflowModeler({ initialXml, onSave, height = 500 }: Pr
   const [loading, setLoading] = useState(true);
   const [snackbar, setSnackbar] = useState<string | null>(null);
 
-  // Initialize modeler
+  // Initialize modeler instance only once on mount
   useEffect(() => {
     if (!containerRef.current) return;
-
     const modeler = new BpmnModeler({
       container: containerRef.current,
       keyboard: { bindTo: document },
     });
-
     modelerRef.current = modeler;
+    return () => {
+      modeler.destroy();
+      modelerRef.current = null;
+    };
+  }, []);
 
+  // Load / reload XML whenever initialXml changes (or on first render)
+  useEffect(() => {
+    if (!modelerRef.current) return;
     const xml = initialXml || EMPTY_BPMN;
-    modeler
+    modelerRef.current
       .importXML(xml)
       .then(() => {
-        const canvas = modeler.get<{ zoom: (level: string) => void }>('canvas');
-        canvas.zoom('fit-viewport');
+        const canvas = modelerRef.current?.get<{ zoom: (level: string) => void }>('canvas');
+        canvas?.zoom('fit-viewport');
       })
       .catch((err: Error) => {
         setError(err.message ?? 'Failed to load BPMN diagram');
       })
       .finally(() => setLoading(false));
-
-    return () => {
-      modeler.destroy();
-      modelerRef.current = null;
-    };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Reload XML when initialXml changes
-  useEffect(() => {
-    if (!modelerRef.current || !initialXml) return;
-    modelerRef.current
-      .importXML(initialXml)
-      .catch((err: Error) => setError(err.message));
   }, [initialXml]);
 
   /** Save current BPMN XML and call onSave callback */

@@ -1,4 +1,4 @@
-import { CircleMarker, Popup } from 'react-leaflet';
+import { Circle, Popup } from 'react-leaflet';
 import { Typography } from '@mui/material';
 
 interface FloodAlertPoint {
@@ -43,10 +43,10 @@ export default function FloodRiskMapOverlay({ alerts }: Props) {
         const radius = SEVERITY_RADII[alert.severity] ?? 200;
 
         return (
-          <CircleMarker
+          <Circle
             key={alert.id}
             center={[alert.latitude, alert.longitude]}
-            radius={radius / 50} // Scale down for CircleMarker (uses pixels)
+            radius={radius}
             pathOptions={{
               color,
               fillColor: color,
@@ -67,7 +67,7 @@ export default function FloodRiskMapOverlay({ alerts }: Props) {
                 )}
               </div>
             </Popup>
-          </CircleMarker>
+          </Circle>
         );
       })}
     </>

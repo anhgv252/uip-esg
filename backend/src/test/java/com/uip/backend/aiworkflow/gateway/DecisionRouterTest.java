@@ -14,7 +14,9 @@ import static org.mockito.Mockito.mock;
 @DisplayName("DecisionRouter — unit")
 class DecisionRouterTest {
 
-    private final DecisionRouter router = new DecisionRouter(mock(org.springframework.data.redis.core.StringRedisTemplate.class));
+    private final DecisionRouter router = new DecisionRouter(
+            mock(org.springframework.data.redis.core.StringRedisTemplate.class),
+            new com.fasterxml.jackson.databind.ObjectMapper());
 
     private AiDecisionInput decision(double confidence) {
         AiDecisionInput d = new AiDecisionInput();

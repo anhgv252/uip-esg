@@ -8,6 +8,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
+import org.springframework.data.redis.core.Cursor;
+import org.springframework.data.redis.core.ScanOptions;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
@@ -15,9 +17,10 @@ import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
 
 import java.util.Set;
+import java.util.function.Consumer;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.*;
@@ -48,6 +51,9 @@ class ForecastHealthCheckerTest {
     @Mock
     private StringRedisTemplate redisTemplate;
 
+    @Mock
+    private Cursor<String> scanCursor;
+
     private MockRestServiceServer mockServer;
     private ForecastHealthChecker healthChecker;
 
@@ -61,7 +67,6 @@ class ForecastHealthCheckerTest {
     @Test
     @DisplayName("checkHealth — UP with no prior DOWN → no cache clear")
     void checkHealth_upNoPriorDown_noCacheClear() {
-        // Python health returns UP
         mockServer.expect(requestTo(containsString("/actuator/health")))
                 .andExpect(method(HttpMethod.GET))
                 .andRespond(withSuccess("{\"status\":\"UP\"}", MediaType.APPLICATION_JSON));
@@ -70,14 +75,13 @@ class ForecastHealthCheckerTest {
 
         assertThat(healthChecker.isPreviouslyDown()).isFalse();
         verifyNoInteractions(cacheManager);
-        verify(redisTemplate, never()).keys(anyString());
+        verify(redisTemplate, never()).scan(any());
         mockServer.verify();
     }
 
     @Test
     @DisplayName("checkHealth — DOWN → sets previouslyDown, no cache clear")
     void checkHealth_down_setsPreviouslyDown() {
-        // Python health endpoint is unreachable (server error)
         mockServer.expect(requestTo(containsString("/actuator/health")))
                 .andExpect(method(HttpMethod.GET))
                 .andRespond(withServerError());
@@ -92,22 +96,26 @@ class ForecastHealthCheckerTest {
     @Test
     @DisplayName("checkHealth — UP after DOWN → clears forecast cache (auto-recover)")
     void checkHealth_upAfterDown_clearsForecastCache() {
-        // Set the checker into DOWN state
         healthChecker.setPreviouslyDown(true);
 
-        // Python health returns UP
         mockServer.expect(requestTo(containsString("/actuator/health")))
                 .andExpect(method(HttpMethod.GET))
                 .andRespond(withSuccess("{\"status\":\"UP\"}", MediaType.APPLICATION_JSON));
 
         when(cacheManager.getCache("forecasts")).thenReturn(forecastsCache);
-        when(redisTemplate.keys("forecasts::*")).thenReturn(Set.of("forecasts::hcm|B1|30"));
+        when(redisTemplate.scan(any(ScanOptions.class))).thenReturn(scanCursor);
+        doAnswer(inv -> {
+            @SuppressWarnings("unchecked")
+            Consumer<String> action = inv.getArgument(0);
+            action.accept("forecasts::hcm|B1|30");
+            return null;
+        }).when(scanCursor).forEachRemaining(any());
 
         healthChecker.checkHealth();
 
         assertThat(healthChecker.isPreviouslyDown()).isFalse();
         verify(forecastsCache).clear();
-        verify(redisTemplate).keys("forecasts::*");
+        verify(redisTemplate).scan(any(ScanOptions.class));
         verify(redisTemplate).delete(Set.of("forecasts::hcm|B1|30"));
         mockServer.verify();
     }
@@ -115,8 +123,6 @@ class ForecastHealthCheckerTest {
     @Test
     @DisplayName("checkHealth — continuous UP → no cache clear on subsequent checks")
     void checkHealth_continuousUp_noCacheClear() {
-        // Set both expectations upfront — MockRestServiceServer requires all
-        // expectations before the first request is executed
         mockServer.expect(requestTo(containsString("/actuator/health")))
                 .andExpect(method(HttpMethod.GET))
                 .andRespond(withSuccess("{\"status\":\"UP\"}", MediaType.APPLICATION_JSON));
@@ -125,28 +131,22 @@ class ForecastHealthCheckerTest {
                 .andExpect(method(HttpMethod.GET))
                 .andRespond(withSuccess("{\"status\":\"UP\"}", MediaType.APPLICATION_JSON));
 
-        // First check — UP
         healthChecker.checkHealth();
         assertThat(healthChecker.isPreviouslyDown()).isFalse();
 
-        // Second check — still UP
         healthChecker.checkHealth();
         assertThat(healthChecker.isPreviouslyDown()).isFalse();
 
-        // No cache interaction across both checks
         verifyNoInteractions(cacheManager);
-        verify(redisTemplate, never()).keys(anyString());
+        verify(redisTemplate, never()).scan(any());
         mockServer.verify();
     }
 
     @Test
     @DisplayName("checkHealth — DOWN after recovery → correctly tracks new DOWN state")
     void checkHealth_downAfterRecovery_tracksNewDown() {
-        // Simulate recovery: was DOWN, now UP → clears cache
         healthChecker.setPreviouslyDown(true);
 
-        // Set both expectations upfront — MockRestServiceServer requires all
-        // expectations before the first request is executed
         mockServer.expect(requestTo(containsString("/actuator/health")))
                 .andExpect(method(HttpMethod.GET))
                 .andRespond(withSuccess("{\"status\":\"UP\"}", MediaType.APPLICATION_JSON));
@@ -156,7 +156,8 @@ class ForecastHealthCheckerTest {
                 .andRespond(withServerError());
 
         when(cacheManager.getCache("forecasts")).thenReturn(forecastsCache);
-        when(redisTemplate.keys("forecasts::*")).thenReturn(null);
+        when(redisTemplate.scan(any(ScanOptions.class))).thenReturn(scanCursor);
+        // scanCursor.forEachRemaining is a no-op by default — empty result, delete not called
 
         // First check — UP (recovery) → clears cache
         healthChecker.checkHealth();

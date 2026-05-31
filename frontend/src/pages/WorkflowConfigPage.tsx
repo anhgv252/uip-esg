@@ -698,12 +698,12 @@ export default function WorkflowConfigPage() {
                     </TableCell>
                     <TableCell align="center">
                       <Tooltip title="Edit">
-                        <IconButton size="small" onClick={() => handleEdit(config)}>
+                        <IconButton size="small" aria-label="Edit config" onClick={() => handleEdit(config)}>
                           <EditIcon fontSize="small" />
                         </IconButton>
                       </Tooltip>
                       <Tooltip title="Dry-run test (no process started)">
-                        <IconButton size="small" onClick={() => { setTesting(config); setTestOpen(true); }}>
+                        <IconButton size="small" aria-label="Test config" onClick={() => { setTesting(config); setTestOpen(true); }}>
                           <ScienceIcon fontSize="small" />
                         </IconButton>
                       </Tooltip>
@@ -713,6 +713,7 @@ export default function WorkflowConfigPage() {
                           <IconButton
                             size="small"
                             color="error"
+                            aria-label="Simulate event"
                             onClick={() => handleFire(config)}
                             disabled={!config.enabled}
                           >

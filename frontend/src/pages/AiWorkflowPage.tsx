@@ -1093,6 +1093,7 @@ function DesignerTab() {
   const [selectedNodeId, _setSelectedNodeId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [deploying, setDeploying] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [snackbar, setSnackbar] = useState<{ msg: string; severity: 'success' | 'error' | 'info' } | null>(null);
 
   // Load workflow definitions
@@ -1170,7 +1171,13 @@ function DesignerTab() {
     }
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
+    if (!selectedId) return;
+    setDeleteConfirmOpen(true);
+  };
+
+  const handleDeleteConfirmed = async () => {
+    setDeleteConfirmOpen(false);
     if (!selectedId) return;
     try {
       await deleteWorkflowDefinition(selectedId);
@@ -1277,6 +1284,22 @@ function DesignerTab() {
           {snackbar.msg}
         </MuiAlert>
       )}
+
+      <Dialog open={deleteConfirmOpen} onClose={() => setDeleteConfirmOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>Delete Workflow?</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2">
+            Are you sure you want to delete <strong>{selectedName || 'this workflow'}</strong>?
+            This action cannot be undone.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteConfirmOpen(false)}>Cancel</Button>
+          <Button variant="contained" color="error" startIcon={<DeleteOutlineIcon />} onClick={handleDeleteConfirmed}>
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

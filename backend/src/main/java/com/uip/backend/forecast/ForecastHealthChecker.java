@@ -10,7 +10,11 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
-import java.util.Objects;
+import org.springframework.data.redis.core.Cursor;
+import org.springframework.data.redis.core.ScanOptions;
+
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * Scheduled health check for the Python forecast-service.
@@ -112,14 +116,16 @@ public class ForecastHealthChecker {
             log.info("Cleared 'forecasts' cache via CacheManager");
         }
 
-        // Strategy 2: Direct Redis key scan for thorough cleanup
-        // The Spring CacheManager clear() works for RedisCache, but we also scan
-        // for any stray keys matching forecasts::* pattern for safety.
+        // Strategy 2: Direct Redis SCAN for thorough cleanup (O(1) per iteration vs KEYS O(N))
         try {
-            var keys = redisTemplate.keys("forecasts::*");
-            if (keys != null && !keys.isEmpty()) {
-                redisTemplate.delete(Objects.requireNonNull(keys));
-                log.info("Cleared {} Redis keys matching forecasts::*", keys.size());
+            Set<String> keysToDelete = new HashSet<>();
+            ScanOptions options = ScanOptions.scanOptions().match("forecasts::*").count(100).build();
+            try (Cursor<String> cursor = redisTemplate.scan(options)) {
+                cursor.forEachRemaining(keysToDelete::add);
+            }
+            if (!keysToDelete.isEmpty()) {
+                redisTemplate.delete(keysToDelete);
+                log.info("Cleared {} Redis keys matching forecasts::*", keysToDelete.size());
             }
         } catch (Exception e) {
             log.warn("Redis key scan for forecasts::* failed (cache may already be clear): {}", e.getMessage());

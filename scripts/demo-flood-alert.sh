@@ -54,8 +54,17 @@ sleep 30
 echo ""
 echo "🔍 Step 3: Checking for flood alerts in the system..."
 
-ALERTS=$(curl -s "${BASE_URL}/api/v1/alerts?module=FLOOD&page=0&size=5" \
-  -H "Authorization: Bearer ${DEMO_TOKEN:-dummy}" 2>/dev/null || echo "[]")
+if [ -z "${DEMO_TOKEN:-}" ]; then
+  echo "⚠️  DEMO_TOKEN not set — alert check skipped."
+  echo "   Export a bearer token to enable: export DEMO_TOKEN=\$(curl -s -X POST \\"
+  echo "     http://localhost:8180/realms/uip/protocol/openid-connect/token \\"
+  echo "     -d 'client_id=uip-backend&grant_type=password&username=operator&password=operator' \\"
+  echo "     | python3 -c \"import sys,json; print(json.load(sys.stdin)['access_token'])\")"
+  ALERTS='[]'
+else
+  ALERTS=$(curl -s "${BASE_URL}/api/v1/alerts?module=FLOOD&page=0&size=5" \
+    -H "Authorization: Bearer ${DEMO_TOKEN}" 2>/dev/null || echo "[]")
+fi
 
 echo "   Alerts response: $ALERTS"
 echo ""

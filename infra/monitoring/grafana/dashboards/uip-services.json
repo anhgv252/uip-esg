@@ -149,10 +149,120 @@
           { "matcher": { "id": "byName", "options": "successful" }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "green" } }] }
         ]
       }
+    },
+    {
+      "title": "Sprint 6 — AI Workflow + Flood Alert",
+      "type": "row",
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 30 },
+      "panels": []
+    },
+    {
+      "title": "Flood Alert Events by Severity",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 31 },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "targets": [
+        {
+          "expr": "sum(increase(flood_alert_events_total{severity=\"CRITICAL\"}[5m]))",
+          "legendFormat": "CRITICAL (P0)",
+          "refId": "A"
+        },
+        {
+          "expr": "sum(increase(flood_alert_events_total{severity=\"HIGH\"}[5m]))",
+          "legendFormat": "HIGH (P1)",
+          "refId": "B"
+        },
+        {
+          "expr": "sum(increase(flood_alert_events_total{severity=\"WARNING\"}[5m]))",
+          "legendFormat": "WARNING (P2)",
+          "refId": "C"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": { "fillOpacity": 20, "lineWidth": 2 }
+        },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "CRITICAL (P0)" }, "properties": [{ "id": "color", "value": { "fixedColor": "dark-red", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "HIGH (P1)" }, "properties": [{ "id": "color", "value": { "fixedColor": "orange", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "WARNING (P2)" }, "properties": [{ "id": "color", "value": { "fixedColor": "yellow", "mode": "fixed" } }] }
+        ]
+      },
+      "options": { "tooltip": { "mode": "multi" } }
+    },
+    {
+      "title": "AI Workflow — Decision Routing",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 31 },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "targets": [
+        {
+          "expr": "sum(rate(ai_workflow_decision_total{action=\"AUTO_EXECUTE\"}[5m]))",
+          "legendFormat": "AUTO_EXECUTE (>85%)",
+          "refId": "A"
+        },
+        {
+          "expr": "sum(rate(ai_workflow_decision_total{action=\"OPERATOR_QUEUE\"}[5m]))",
+          "legendFormat": "OPERATOR_QUEUE (60-85%)",
+          "refId": "B"
+        },
+        {
+          "expr": "sum(rate(ai_workflow_decision_total{action=\"ESCALATE\"}[5m]))",
+          "legendFormat": "ESCALATE (<60%)",
+          "refId": "C"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops/sec",
+          "custom": { "fillOpacity": 10, "lineWidth": 2 }
+        },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "AUTO_EXECUTE (>85%)" }, "properties": [{ "id": "color", "value": { "fixedColor": "green", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "OPERATOR_QUEUE (60-85%)" }, "properties": [{ "id": "color", "value": { "fixedColor": "blue", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "ESCALATE (<60%)" }, "properties": [{ "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } }] }
+        ]
+      }
+    },
+    {
+      "title": "AI Workflow Active Definitions",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 8, "x": 0, "y": 39 },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "targets": [
+        {
+          "expr": "sum(workflow_definitions_active_total)",
+          "legendFormat": "Active Workflows",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "value": null, "color": "blue" },
+              { "value": 10, "color": "green" }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "textMode": "auto",
+        "orientation": "auto"
+      }
     }
   ],
   "schemaVersion": 39,
-  "tags": ["uip", "services", "sprint5", "bms"],
+  "tags": ["uip", "services", "sprint5", "bms", "sprint6", "ai-workflow", "flood-alert"],
   "templating": { "list": [] },
   "time": { "from": "now-1h", "to": "now" },
   "timepicker": {},

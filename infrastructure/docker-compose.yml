@@ -394,6 +394,7 @@ services:
       JWT_HMAC_ISSUER: ${JWT_HMAC_ISSUER:-uip-legacy}
       JWT_KEYCLOAK_ISSUER: ${JWT_KEYCLOAK_ISSUER:-http://keycloak:8085/realms/uip}
       JWT_KEYCLOAK_JWK_SET_URI: ${JWT_KEYCLOAK_JWK_SET_URI:-http://keycloak:8085/realms/uip/protocol/openid-connect/certs}
+      KEYCLOAK_AUTH_SERVER_URL: ${KEYCLOAK_AUTH_SERVER_URL:-https://voice-engineers-recognize-nevada.trycloudflare.com/realms/uip}
     ports:
       - "8080:8080"
       - "8086:8081"  # management/actuator port (container 8081 → host 8086; host 8081 used by Flink)

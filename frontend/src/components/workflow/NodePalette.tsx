@@ -39,11 +39,20 @@ export default function NodePalette({ onNodeSelect }: Props) {
           <Box
             key={node.type}
             draggable
+            role="button"
+            tabIndex={0}
+            aria-label={`Drag to add ${node.label}`}
             onDragStart={(e) => {
               e.dataTransfer.setData('text/plain', node.type);
               e.dataTransfer.effectAllowed = 'copy';
             }}
             onClick={() => onNodeSelect?.(node.type)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onNodeSelect?.(node.type);
+              }
+            }}
             sx={{
               display: 'flex',
               alignItems: 'center',

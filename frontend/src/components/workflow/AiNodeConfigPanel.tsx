@@ -124,6 +124,7 @@ export default function AiNodeConfigPanel({ selectedNodeId, config, onConfigChan
             valueLabelDisplay="auto"
             valueLabelFormat={(v) => `${Math.round(v * 100)}%`}
             size="small"
+            aria-label="Confidence threshold"
           />
           <Box display="flex" justifyContent="space-between">
             <Chip label="Operator Queue" size="small" variant="outlined" color="warning" sx={{ fontSize: '0.65rem' }} />

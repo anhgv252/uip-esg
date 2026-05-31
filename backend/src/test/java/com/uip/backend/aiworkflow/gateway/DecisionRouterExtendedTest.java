@@ -24,6 +24,8 @@ class DecisionRouterExtendedTest {
 
     @Mock private StringRedisTemplate redisTemplate;
     @Mock private ValueOperations<String, String> valueOps;
+    private final com.fasterxml.jackson.databind.ObjectMapper objectMapper =
+            new com.fasterxml.jackson.databind.ObjectMapper();
 
     private DecisionRouter router;
 
@@ -39,7 +41,7 @@ class DecisionRouterExtendedTest {
     @BeforeEach
     void setUp() {
         lenient().when(redisTemplate.opsForValue()).thenReturn(valueOps);
-        router = new DecisionRouter(redisTemplate);
+        router = new DecisionRouter(redisTemplate, objectMapper);
     }
 
     @Nested

@@ -1,4 +1,4 @@
-package com.uip.backend.aiworkow.controller;
+package com.uip.backend.aiworkflow.controller;
 
 import com.uip.backend.aiworkflow.dto.WorkflowSummaryDto;
 import com.uip.backend.aiworkflow.model.WorkflowDefinition;
@@ -21,8 +21,6 @@ import java.util.UUID;
 
 /**
  * REST API for AI Workflow Designer — WorkflowDefinition CRUD.
- * Note: package `aiworkow` (typo) intentional to avoid classpath collision —
- * see task B1-2 notes.
  *
  * Endpoints:
  *   POST   /api/v1/workflows              — create

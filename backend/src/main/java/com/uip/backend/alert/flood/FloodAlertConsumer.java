@@ -7,6 +7,7 @@ import com.uip.backend.alert.repository.AlertEventRepository;
 import com.uip.backend.tenant.context.TenantContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.KafkaHeaders;
@@ -17,7 +18,9 @@ import org.springframework.stereotype.Component;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * S6-FL02 — Flood Alert Kafka Consumer.
@@ -39,6 +42,9 @@ public class FloodAlertConsumer {
     private static final Duration DEDUP_TTL = Duration.ofMinutes(5);
     private static final String SSE_CHANNEL = "uip:alerts";
 
+    @Value("${uip.tenant.allowed-ids:hcm,hanoi,danang}")
+    private String allowedTenantsConfig;
+
     private final AlertEventRepository alertEventRepository;
     private final StringRedisTemplate redisTemplate;
     private final KafkaTemplate<String, String> kafkaTemplate;
@@ -56,6 +62,15 @@ public class FloodAlertConsumer {
             @SuppressWarnings("unchecked")
             Map<String, Object> data = objectMapper.readValue(payload, Map.class);
             AlertEvent event = mapToAlertEvent(data);
+
+            // Validate tenantId against allowed list to prevent cross-tenant injection
+            Set<String> allowedTenants = Set.of(allowedTenantsConfig.split(","));
+            if (event.getTenantId() == null || !allowedTenants.contains(event.getTenantId())) {
+                log.warn("Flood alert rejected: unknown tenantId={}", event.getTenantId());
+                kafkaTemplate.send(DLQ_TOPIC, payload);
+                ack.acknowledge();
+                return;
+            }
 
             // Dedup: 5-min window per sensor+measureType+severity
             String dedupKey = "alert:dedup:flood:%s:%s:%s".formatted(
@@ -133,7 +148,10 @@ public class FloodAlertConsumer {
                     "measureType", event.getMeasureType(),
                     "value", event.getValue(),
                     "status", event.getStatus(),
-                    "location", event.getLocation() != null ? event.getLocation() : ""
+                    "location", event.getLocation() != null ? event.getLocation() : "",
+                    "tenantId", event.getTenantId() != null ? event.getTenantId() : "",
+                    "message", "%s alert: %s %.1f".formatted(
+                            event.getSeverity(), event.getMeasureType(), event.getValue())
             ));
             redisTemplate.convertAndSend(SSE_CHANNEL, json);
         } catch (JsonProcessingException e) {

@@ -1,4 +1,4 @@
-package com.uip.backend.aiworkow.controller;
+package com.uip.backend.aiworkflow.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.uip.backend.aiworkflow.dto.WorkflowSummaryDto;
@@ -36,12 +36,6 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-/**
- * WebMvc tests for WorkflowDefinitionController — 7 tests (one per AC).
- *
- * Uses @AutoConfigureMockMvc(addFilters = false) to bypass security filters,
- * matching the project's established pattern for controller slice tests.
- */
 @WebMvcTest(
     controllers = WorkflowDefinitionController.class,
     excludeFilters = {
