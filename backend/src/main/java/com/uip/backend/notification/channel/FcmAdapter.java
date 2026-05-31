@@ -44,9 +44,8 @@ public class FcmAdapter implements NotificationChannel {
             try {
                 sendFcmMessage(subscription.getDeviceToken(), notification);
             } catch (Exception e) {
-                log.warn("FCM send failed for token={} tenant={}: {}",
-                        maskToken(subscription.getDeviceToken()),
-                        notification.tenantId(), e.getMessage());
+                log.warn("FCM send failed for tenant={}: {}", notification.tenantId(), e.getMessage());
+                log.debug("Failed FCM token: {}", maskToken(subscription.getDeviceToken()));
                 handleInvalidToken(subscription, e);
             }
         }
@@ -62,7 +61,7 @@ public class FcmAdapter implements NotificationChannel {
      * For now, logs the notification — actual Firebase integration requires service account key.
      */
     private void sendFcmMessage(String token, AlertNotification notification) {
-        log.info("FCM push sent: token={} severity={} module={} sensor={}",
+        log.debug("FCM push sent: token={} severity={} module={} sensor={}",
                 maskToken(token), notification.severity(), notification.module(), notification.sensorId());
         // TODO: Wire FirebaseMessaging when service account key is configured
         // Message message = Message.builder()

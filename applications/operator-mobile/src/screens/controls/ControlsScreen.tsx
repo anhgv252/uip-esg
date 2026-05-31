@@ -1,9 +1,9 @@
-import { View, Text, StyleSheet, FlatList } from 'react-native'
+import { View, Text, FlatList, StyleSheet, RefreshControl, TouchableOpacity } from 'react-native'
 import { useBuildingList } from '../../hooks/useBuildingList'
 import type { Building } from '../../hooks/useBuildingList'
 
 export default function ControlsScreen() {
-  const { data: buildings, isLoading } = useBuildingList()
+  const { data: buildings, isLoading, isError, refetch } = useBuildingList()
 
   const renderItem = ({ item }: { item: Building }) => (
     <View style={styles.buildingCard}>
@@ -19,16 +19,32 @@ export default function ControlsScreen() {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Building Controls</Text>
-      {isLoading ? (
+
+      {isError ? (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>Failed to load buildings</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={() => refetch()}>
+            <Text style={styles.retryText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      ) : isLoading ? (
         <Text style={styles.empty}>Loading buildings...</Text>
       ) : !buildings?.length ? (
-        <Text style={styles.empty}>No buildings found</Text>
+        <View style={styles.emptyContainer}>
+          <Text style={styles.empty}>No buildings found</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={() => refetch()}>
+            <Text style={styles.retryText}>Refresh</Text>
+          </TouchableOpacity>
+        </View>
       ) : (
         <FlatList
           data={buildings}
           keyExtractor={item => item.id}
           renderItem={renderItem}
           contentContainerStyle={styles.list}
+          refreshControl={
+            <RefreshControl refreshing={isLoading} onRefresh={refetch} tintColor="#1565C0" />
+          }
         />
       )}
     </View>
@@ -45,5 +61,10 @@ const styles = StyleSheet.create({
   buildingMeta: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 },
   buildingStatus: { fontSize: 12, color: '#1565C0', fontWeight: '500' },
   buildingDevices: { fontSize: 12, color: '#999' },
-  empty: { textAlign: 'center', color: '#999', marginTop: 40 },
+  empty: { textAlign: 'center', color: '#999', marginTop: 16 },
+  emptyContainer: { alignItems: 'center', marginTop: 24 },
+  errorContainer: { alignItems: 'center', marginTop: 40 },
+  errorText: { fontSize: 14, color: '#B71C1C', marginBottom: 12 },
+  retryButton: { backgroundColor: '#1565C0', borderRadius: 8, paddingHorizontal: 24, paddingVertical: 10 },
+  retryText: { color: '#fff', fontSize: 14, fontWeight: '600' },
 })

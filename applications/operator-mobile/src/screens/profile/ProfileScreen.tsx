@@ -1,34 +1,56 @@
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native'
+import { useAuth } from '../../context/AuthContext'
 
-interface ProfileScreenProps {
-  onLogout?: () => void
+function parseJwtPayload(jwt: string | null): Record<string, unknown> | null {
+  if (!jwt) return null
+  try {
+    const b64 = jwt.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')
+    return JSON.parse(atob(b64))
+  } catch {
+    return null
+  }
 }
 
-export default function ProfileScreen({ onLogout }: ProfileScreenProps) {
+export default function ProfileScreen() {
+  const { logout, selectedTenant, token } = useAuth()
+
+  const claims = parseJwtPayload(token)
+  const displayName = (claims?.preferred_username as string) ?? 'UIP Operator'
+  const roles: string[] = (claims?.realm_access as { roles?: string[] })?.roles ?? []
+  const displayRole = roles.includes('admin') ? 'Admin'
+    : roles.includes('operator') ? 'Operator'
+    : roles.length > 0 ? roles[0] : 'User'
+
+  const tenantLabel: Record<string, string> = {
+    hcm: 'Ho Chi Minh City',
+    hanoi: 'Ha Noi',
+    danang: 'Da Nang',
+  }
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Profile</Text>
 
       <View style={styles.section}>
         <Text style={styles.label}>Name</Text>
-        <Text style={styles.value}>UIP Operator</Text>
+        <Text style={styles.value}>{displayName}</Text>
       </View>
 
       <View style={styles.section}>
         <Text style={styles.label}>Role</Text>
-        <Text style={styles.value}>Operator</Text>
+        <Text style={styles.value}>{displayRole}</Text>
       </View>
 
       <View style={styles.section}>
         <Text style={styles.label}>Tenant</Text>
-        <Text style={styles.value}>Ho Chi Minh City</Text>
+        <Text style={styles.value}>
+          {selectedTenant ? (tenantLabel[selectedTenant] ?? selectedTenant) : '—'}
+        </Text>
       </View>
 
-      {onLogout && (
-        <TouchableOpacity style={styles.logoutButton} onPress={onLogout}>
-          <Text style={styles.logoutText}>Sign Out</Text>
-        </TouchableOpacity>
-      )}
+      <TouchableOpacity style={styles.logoutButton} onPress={logout}>
+        <Text style={styles.logoutText}>Sign Out</Text>
+      </TouchableOpacity>
     </View>
   )
 }

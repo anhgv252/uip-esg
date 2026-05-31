@@ -44,9 +44,8 @@ public class ApnsAdapter implements NotificationChannel {
             try {
                 sendApnsMessage(subscription.getDeviceToken(), notification);
             } catch (Exception e) {
-                log.warn("APNs send failed for token={} tenant={}: {}",
-                        maskToken(subscription.getDeviceToken()),
-                        notification.tenantId(), e.getMessage());
+                log.warn("APNs send failed for tenant={}: {}", notification.tenantId(), e.getMessage());
+                log.debug("Failed APNs token: {}", maskToken(subscription.getDeviceToken()));
                 handleInvalidToken(subscription, e);
             }
         }
@@ -62,7 +61,7 @@ public class ApnsAdapter implements NotificationChannel {
      * For now, logs the notification — actual APNs integration requires .p8 certificate.
      */
     private void sendApnsMessage(String token, AlertNotification notification) {
-        log.info("APNs push sent: token={} severity={} module={} sensor={}",
+        log.debug("APNs push sent: token={} severity={} module={} sensor={}",
                 maskToken(token), notification.severity(), notification.module(), notification.sensorId());
         // TODO: Wire Pushy ApnsClient when certificate is configured
         // SimpleApnsPushNotification pushNotification = new SimpleApnsPushNotification(

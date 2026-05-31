@@ -3,11 +3,13 @@ import { useAuthMobile } from '../hooks/useAuthMobile'
 
 interface AuthContextValue {
   token: string | null
+  selectedTenant: string | null
   isLoading: boolean
   error: string | null
   isAuthenticated: boolean
   login: () => Promise<void>
   logout: () => Promise<void>
+  selectTenant: (tenantId: string) => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
