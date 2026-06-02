@@ -219,6 +219,54 @@ class EsgControllerWebMvcTest {
     }
 
     @Test
+    @WithMockUser(username = "operator-no-scope", roles = {"OPERATOR"})
+    @DisplayName("POST /esg/reports/generate — OPERATOR without esg:write scope → 403 Forbidden (BUG-2026-06-01-002)")
+    void generateReport_operatorWithoutEsgWrite_returns403() throws Exception {
+        mockMvc.perform(post("/api/v1/esg/reports/generate")
+                .with(csrf())
+                .param("year", "2026").param("quarter", "1")
+                .contentType(MediaType.APPLICATION_JSON))
+            .andExpect(status().isForbidden());
+
+        verifyNoInteractions(esgService);
+    }
+
+    @Test
+    @WithMockUser(username = "viewer", authorities = {"ROLE_OPERATOR", "esg:read"})
+    @DisplayName("POST /esg/reports/generate — OPERATOR with esg:read only → 403 Forbidden (BUG-2026-06-01-002)")
+    void generateReport_operatorWithEsgReadOnly_returns403() throws Exception {
+        mockMvc.perform(post("/api/v1/esg/reports/generate")
+                .with(csrf())
+                .param("year", "2026").param("quarter", "1")
+                .contentType(MediaType.APPLICATION_JSON))
+            .andExpect(status().isForbidden());
+
+        verifyNoInteractions(esgService);
+    }
+
+    @Test
+    @WithMockUser(username = "admin", authorities = {"ROLE_ADMIN", "esg:write"})
+    @DisplayName("POST /esg/reports/generate — ADMIN with esg:write → 202 Accepted (BUG-2026-06-01-002)")
+    void generateReport_adminWithEsgWrite_returns202() throws Exception {
+        UUID reportId = UUID.randomUUID();
+        EsgReportDto dto = EsgReportDto.builder()
+            .id(reportId).periodType("QUARTERLY").year(2026).quarter(1)
+            .status("PENDING").build();
+
+        try (MockedStatic<TenantContext> ctx = Mockito.mockStatic(TenantContext.class)) {
+            ctx.when(TenantContext::getCurrentTenant).thenReturn(TENANT_HCM);
+            when(esgService.triggerReportGeneration(eq(TENANT_HCM), anyString(), anyInt(), anyInt())).thenReturn(dto);
+
+            mockMvc.perform(post("/api/v1/esg/reports/generate")
+                    .with(csrf())
+                    .param("year", "2026").param("quarter", "1")
+                    .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.status").value("PENDING"));
+        }
+    }
+
+    @Test
     @WithMockUser(username = "operator", authorities = {"ROLE_OPERATOR", "esg:write"})
     @DisplayName("POST /esg/reports/generate — year=2019 → 400 Bad Request (BUG-S3-001)")
     void generateReport_invalidYear_returns400() throws Exception {
