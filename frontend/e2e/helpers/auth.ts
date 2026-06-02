@@ -66,6 +66,20 @@ export async function navigateTo(page: Page, sidebarLabel: string) {
     users: '/tenant-admin/users',
     usage: '/tenant-admin/usage',
     settings: '/tenant-admin/settings',
+    alerts: '/alerts',
+    traffic: '/traffic',
+    environment: '/environment',
+    'esg metrics': '/esg',
+    esg: '/esg',
+    dashboard: '/dashboard',
+    'city ops': '/city-ops',
+    'ai workflow': '/ai-workflow',
+    'ai workflows': '/ai-workflow',
+    'trigger config': '/workflow-config',
+    'workflow config': '/workflow-config',
+    admin: '/admin',
+    citizens: '/citizen',
+    citizen: '/citizen',
   }
 
   const button = page.getByRole('button', { name: new RegExp(sidebarLabel, 'i') }).first()

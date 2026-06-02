@@ -1,5 +1,6 @@
 package com.uip.backend.admin.api;
 
+import com.uip.backend.admin.api.dto.CreateSensorRequest;
 import com.uip.backend.admin.api.dto.SensorRegistryDto;
 import com.uip.backend.admin.api.dto.UserSummaryDto;
 import com.uip.backend.auth.domain.AppUser;
@@ -94,6 +95,16 @@ public class AdminController {
             @PathVariable UUID id,
             @RequestParam boolean active) {
         return ResponseEntity.ok(toSensorDto(environmentService.toggleSensor(id, active)));
+    }
+
+    @PostMapping("/sensors")
+    @Operation(summary = "Create a new sensor")
+    public ResponseEntity<SensorRegistryDto> createSensor(
+            @RequestBody @jakarta.validation.Valid CreateSensorRequest request) {
+        return ResponseEntity.status(201).body(
+                toSensorDto(environmentService.createSensor(
+                        request.sensorId(), request.sensorName(), request.sensorType(),
+                        request.districtCode(), request.latitude(), request.longitude())));
     }
 
     // ─── Mappers ────────────────────────────────────────────────────────────

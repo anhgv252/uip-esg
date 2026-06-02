@@ -79,6 +79,21 @@ SELECT
 FROM generate_series(1, 5) b, generate_series(0, 23) h
 ON CONFLICT DO NOTHING;
 
+-- BUG-001 fix: Seed 720 hours (30 days) of ENERGY data for Demo Building 1 fixed UUID.
+-- NaiveForecastAdapter requires >= 2 data points for the naive rolling-average forecast.
+-- Using fixed UUID '65c06d23-3cf3-4490-96a6-ac8ff2a17f2c' (ensured by V31 migration).
+INSERT INTO esg.clean_metrics (source_id, metric_type, timestamp, value, unit, building_id, district_code)
+SELECT
+    'ESG-ENERGY-DEMO-1',
+    'ENERGY',
+    NOW() - INTERVAL '1 hour' * h,
+    ROUND((950.0 + 50.0 * sin(2 * pi() * h / 24.0))::numeric, 2),
+    'kWh',
+    '65c06d23-3cf3-4490-96a6-ac8ff2a17f2c',
+    'D1'
+FROM generate_series(0, 719) h
+ON CONFLICT DO NOTHING;
+
 INSERT INTO esg.clean_metrics (source_id, metric_type, timestamp, value, unit, building_id, district_code)
 SELECT
     'ESG-WATER-' || b,

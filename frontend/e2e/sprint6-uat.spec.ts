@@ -154,6 +154,15 @@ async function loginWithMockJwt(
     }
   })
 
+  // 6. Buildings — returns array directly (fetchBuildings calls res.data expecting Building[])
+  await page.route(/\/api\/v1\/buildings/, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify([]),
+    })
+  })
+
   await page.goto('/login')
   await page.waitForLoadState('domcontentloaded')
 
@@ -432,20 +441,10 @@ test.describe('TC-S6-06: Scope-gated ESG report generation', () => {
     await page.waitForLoadState('networkidle').catch(() => {})
 
     // ReportGenerationPanel renders a Button disabled when !canWrite (useScope('esg:write'))
-    const generateBtn = page
-      .getByRole('button', { name: /generate.*report|download.*report/i })
-      .first()
-
-    if (await generateBtn.isVisible({ timeout: 8_000 }).catch(() => false)) {
-      await expect(generateBtn).toBeDisabled()
-    } else {
-      // Fallback: look for any disabled button with "report" context
-      const disabledReportBtn = page.locator('button[disabled]').filter({
-        hasText: /report/i,
-      })
-      const count = await disabledReportBtn.count()
-      expect(count).toBeGreaterThan(0)
-    }
+    // Button has data-testid="generate-report-btn" for reliable selection
+    const generateBtn = page.getByTestId('generate-report-btn')
+    await generateBtn.waitFor({ state: 'attached', timeout: 10_000 })
+    await expect(generateBtn).toBeDisabled()
   })
 
   test('user WITH esg:write → Generate Report button is enabled', async ({ page }) => {
@@ -461,14 +460,9 @@ test.describe('TC-S6-06: Scope-gated ESG report generation', () => {
     await page.waitForLoadState('domcontentloaded')
     await page.waitForLoadState('networkidle').catch(() => {})
 
-    const generateBtn = page
-      .getByRole('button', { name: /generate.*report|download.*report/i })
-      .first()
-
-    if (await generateBtn.isVisible({ timeout: 8_000 }).catch(() => false)) {
-      await expect(generateBtn).not.toBeDisabled()
-    }
-    // If button not found, test passes vacuously (page might not have loaded properly)
+    const generateBtn = page.getByTestId('generate-report-btn')
+    await generateBtn.waitFor({ state: 'attached', timeout: 10_000 })
+    await expect(generateBtn).not.toBeDisabled()
   })
 })
 

@@ -58,9 +58,10 @@ public class CitizenServiceRequestDelegate implements JavaDelegate {
 
         return switch (aiDecision.toUpperCase()) {
             case "ASSIGN_TO_ENVIRONMENT" -> "ENVIRONMENT";
-            case "ASSIGN_TO_UTILITIES" -> "UTILITIES";
+            case "ASSIGN_TO_UTILITY", "ASSIGN_TO_UTILITIES" -> "UTILITIES";
             case "ASSIGN_TO_TRAFFIC" -> "TRAFFIC";
             case "ASSIGN_TO_GENERAL" -> "GENERAL";
+            case "ESCALATE_TO_HUMAN" -> "EMERGENCY_OPS";
             default -> "GENERAL";
         };
     }

@@ -120,3 +120,95 @@
 **BUILD SUCCESS** after all fixes. **1,107 tests PASS. 10/10 Backend + 9/10 Frontend checklist PASS.**
 
 ### ✅ GO for QA regression + staging deploy + tester execution.
+
+---
+
+## Sprint 6 Bug-Fix Addendum — Code Review (2026-06-01)
+
+**Scope:** 4 post-sprint bugs found during TC-S6 testing (BUG-001 through BUG-004)
+**Reviewer:** Solution Architect | **Verdict: ✅ APPROVED**
+
+---
+
+### BUG-001 — Energy Forecast always returns empty
+
+**Files changed:**
+- `backend/src/main/java/com/uip/backend/forecast/NaiveForecastAdapter.java` — threshold 720 → 2
+- `backend/src/main/java/com/uip/backend/forecast/ForecastServiceAdapter.java` — detect Python NONE model, delegate to naive
+- `backend/src/main/java/com/uip/backend/forecast/ForecastServiceUnavailableException.java` — added single-arg constructor
+- `backend/src/main/resources/db/migration/V31__fix_demo_building_uuid.sql` — idempotent UUID fix migration
+- `scripts/demo-seed-data.sql` — 720 h of ENERGY data for fixed UUID
+
+**SA findings:**
+- ✅ `NaiveForecastAdapter` threshold lowered: correct minimum for rolling-average forecast
+- ✅ `ForecastServiceAdapter.mapResponse()` — NONE+empty guard throws `ForecastServiceUnavailableException` so `ForecastService` triggers naive fallback; pattern matches existing exception contract
+- ✅ V31 migration uses `DO $$` idempotent block — safe to re-run
+- ✅ Seed script uses `ON CONFLICT DO NOTHING` — safe re-run
+- ⚠️ Redis cache: `@Cacheable` TTL is 60 s (application.yml). Stale `NONE` result cached in Redis required manual `DEL`. Recommend adding CacheEvict on forecast trigger or shorter TTL for fallback results — deferred to S7 tech debt
+
+**Checklist:** No cross-module violation, no N+1, no PII logged, null-safe. ✅
+
+---
+
+### BUG-002 — TC-S6-06 Playwright test unreliable (ESG page crash)
+
+**Files changed:**
+- `frontend/src/components/esg/ReportGenerationPanel.tsx` — added `data-testid="generate-report-btn"` to Button
+- `frontend/e2e/sprint6-uat.spec.ts` — rewrote TC-S6-06 to use `getByTestId`; added `/api/v1/buildings` mock returning `[]`
+
+**Root cause (two-layer):**
+1. `getByRole('button', {name: /generate.*report/i})` was unreliable for MUI `<Button>` wrapped in `<Tooltip><span>` when disabled
+2. `EsgPage` crashed with `TypeError: v.map is not a function` — catch-all mock returned `{data:[], total:0}` (paginated format), but `fetchBuildings()` does `apiClient.get().then(res => res.data)` and maps the result as `Building[]` directly
+
+**SA findings:**
+- ✅ `data-testid` on Button component — correct Playwright pattern for MUI disabled buttons
+- ✅ Buildings mock returning `[]` — matches `fetchBuildings()` return type `Building[]`
+- ✅ `loginWithMockJwt` LIFO route registration order maintained
+- No production code change for the crash (crash was test-only mock mismatch) ✅
+
+**Checklist:** No prop-drilling, no accessibility regression. ✅
+
+---
+
+### BUG-003 — Analytics service offline (port not exposed)
+
+**Files changed:**
+- `infrastructure/docker-compose.yml` — uncommented `ports: ["8082:8081"]` for analytics-service
+
+**SA findings:**
+- ✅ Minimal change — uncomment only
+- ✅ Kong still routes via `:8000` for load-balanced access; `8082` is direct-access only
+- Host port `8082` is already documented in compose comment
+
+**Checklist:** No security surface expanded (internal port, Kong is the public gateway). ✅
+
+---
+
+### BUG-004 — Dashboard stats endpoint 404
+
+**Files changed:**
+- `backend/src/main/java/com/uip/backend/dashboard/api/DashboardController.java` — NEW
+
+**SA findings:**
+- ✅ `@PreAuthorize("isAuthenticated()")` — auth guard present
+- ✅ `JdbcTemplate` used instead of cross-module repository references (avoids ArchUnit boundary violations)
+- ✅ Null-safe: `activeSensors != null ? activeSensors : 0L` for each count
+- ✅ `Instant.now()` for `generatedAt` — not cached, always fresh
+- ⚠️ SQL queries use raw schema-qualified table names (`environment.sensors`, `alerts.alert_events`, `public.buildings`) — tied to current DB schema layout. If schema names change, these break silently. Accept for now (no better option without cross-module repositories).
+
+**Checklist:** No SQL injection (no user input in queries), no PII. ✅
+
+---
+
+### Overall Bug-Fix Verdict
+
+| Bug | Severity | Status |
+|-----|----------|--------|
+| BUG-001 Energy forecast empty | HIGH | ✅ FIXED + verified (168 points, NAIVE model) |
+| BUG-002 TC-S6-06 Playwright failure | HIGH | ✅ FIXED + verified (36/36 tests pass) |
+| BUG-003 Analytics offline | MEDIUM | ✅ FIXED + verified (port 8082 healthy) |
+| BUG-004 Dashboard stats 404 | MEDIUM | ✅ FIXED + verified (returns activeSensors/openAlerts/totalBuildings) |
+
+**Regression:** 36/36 Sprint 6 UAT Playwright tests PASS.
+
+### ✅ APPROVED — Bug fixes are production-ready.

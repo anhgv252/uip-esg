@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getAlerts, acknowledgeAlert, escalateAlert, getCitizenNotifications } from '@/api/alerts'
+import { getAlerts, acknowledgeAlert, escalateAlert, resolveAlert, getCitizenNotifications } from '@/api/alerts'
 
 export function useAlerts(filters?: {
   status?: string
@@ -30,6 +30,15 @@ export function useEscalateAlert() {
   return useMutation({
     mutationFn: ({ id, note }: { id: string; note?: string }) =>
       escalateAlert(id, note),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['alerts'] }),
+  })
+}
+
+export function useResolveAlert() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, note }: { id: string; note?: string }) =>
+      resolveAlert(id, note),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['alerts'] }),
   })
 }

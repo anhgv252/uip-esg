@@ -261,5 +261,37 @@ All GO factors met:
 
 ---
 
-*Sprint 6 close-out: 2026-05-31 (updated) | Tier 1: 10/10 DONE | Tier 2: 5/5 DONE | Tests: 1,107 PASS | Coverage: 86%/70% | Verdict: GO for PO Demo*
-*Tech debt: 9.5 SP → Sprint 7 total ~56.5 SP (down from 71.5 SP)*
+*Sprint 6 close-out: 2026-06-02 (final) | Tier 1: 10/10 DONE | Tier 2: 5/5 DONE | Tests: 1,107 PASS | Coverage: 86%/70% | Verdict: GO for PO Demo*
+*Tech debt: 9.5 SP → Sprint 7 total ~65 SP (carry-over + new scope)*
+
+---
+
+## 12. Demo Verification (2026-06-02)
+
+### Smoke Test Results — 16/16 PASS ✅
+
+| # | Endpoint/Service | Status | Detail |
+|---|-----------------|--------|--------|
+| 1 | Backend Health (port 8086) | ✅ | UP |
+| 2 | Frontend (port 3000) | ✅ | HTTP 200 |
+| 3 | Login API | ✅ | Token 667 chars |
+| 4 | Dashboard Stats | ✅ | 8 sensors, 3 buildings, 0 alerts |
+| 5 | Alerts API | ✅ | 10 alerts |
+| 6 | AI Workflow | ✅ | AQI Workflow v2, bpmnXml present |
+| 7 | BMS Devices | ✅ | MODBUS_TCP devices |
+| 8 | Energy Forecast | ✅ | 168 points / 7 days, confidence intervals |
+| 9 | Carbon Metrics | ✅ | ESG data returned |
+| 10 | Buildings | ✅ | Demo Building 1 |
+| 11 | Analytics Service | ✅ | Health UP |
+| 12 | Flink Dashboard | ✅ | Job Manager accessible |
+| 13 | Grafana | ✅ | HTTP 302 (login redirect) |
+| 14 | Kafka UI | ✅ | HTTP 200 |
+| 15 | EMQX Dashboard | ✅ | HTTP 200 |
+| 16 | Frontend /ai-workflow | ✅ | HTTP 200 |
+
+### Open Issues on Deployed Environment (2 P1 bugs)
+
+| ID | Issue | Impact | Sprint 7 Action |
+|----|-------|--------|-----------------|
+| BUG-2026-06-01-002 | ESG permission bypass — user không có `esg:write` vẫn generate report | Security | Fix Day 1-2 (2 SP) |
+| BUG-2026-06-01-003 | Analytics service was offline (now recovered, 10 regression tests need re-run) | Test coverage | Verify + re-run Day 1-2 (2 SP) |

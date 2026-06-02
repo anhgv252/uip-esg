@@ -121,11 +121,11 @@ test.describe('Sprint 2 PO Demo — Analytics Dashboard', () => {
 
   // ─── AC-08: Responsive 768px ─────────────────────────────────
 
-  test('AC-08: Dashboard responsive on tablet (768px)', async ({ browser }) => {
+  test('AC-08: Dashboard responsive on tablet (768px)', async ({ browser, browserName }) => {
+    // isMobile / hasTouch are Chromium/WebKit-only options — skip them for Firefox
     const context = await browser.newContext({
       viewport: { width: 768, height: 1024 },
-      isMobile: true,
-      hasTouch: true,
+      ...(browserName !== 'firefox' ? { isMobile: true, hasTouch: true } : {}),
     })
     const page = await context.newPage()
 

@@ -66,4 +66,15 @@ public class AlertController {
         String note = req != null ? req.getNote() : null;
         return ResponseEntity.ok(alertService.escalateAlert(id, auth.getName(), note));
     }
+
+    @PutMapping("/{id}/resolve")
+    @Operation(summary = "Resolve an escalated alert")
+    @PreAuthorize("hasAnyRole('OPERATOR', 'ADMIN')")
+    public ResponseEntity<AlertEventDto> resolve(
+            @PathVariable UUID id,
+            @RequestBody(required = false) AcknowledgeRequest req,
+            Authentication auth) {
+        String note = req != null ? req.getNote() : null;
+        return ResponseEntity.ok(alertService.resolveAlert(id, auth.getName(), note));
+    }
 }

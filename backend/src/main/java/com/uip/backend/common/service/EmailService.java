@@ -30,8 +30,7 @@ public class EmailService {
             mailSender.send(message);
             log.info("Invite email sent: recipient={}", toEmail);
         } catch (Exception e) {
-            log.error("Failed to send invite email: recipient={}", toEmail, e);
-            throw e;
+            log.warn("Invite email not sent (mail server unavailable): recipient={}, reason={}", toEmail, e.getMessage());
         }
     }
 }

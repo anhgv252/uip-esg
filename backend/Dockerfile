@@ -1,14 +1,14 @@
 # ── Build stage ──────────────────────────────────────────────────────────────
+# Option A (CI/full): build inside Docker
+# FROM eclipse-temurin:17-jdk AS build
+# WORKDIR /workspace
+# COPY gradlew . && COPY gradle gradle && COPY build.gradle . && COPY settings.gradle . && COPY src src
+# RUN chmod +x ./gradlew && ./gradlew bootJar -x test -x spotbugsMain -x spotbugsTest --no-daemon
+
+# Option B (fast-rebuild): copy pre-built JAR from host
 FROM eclipse-temurin:17-jdk AS build
 WORKDIR /workspace
-
-COPY gradlew .
-COPY gradle gradle
-COPY build.gradle .
-COPY settings.gradle .
-COPY src src
-
-RUN chmod +x ./gradlew && ./gradlew bootJar -x test --no-daemon
+COPY build/libs/app.jar app.jar
 
 # ── Runtime stage ─────────────────────────────────────────────────────────────
 FROM eclipse-temurin:17-jre
@@ -18,7 +18,7 @@ WORKDIR /app
 RUN groupadd --system uip && useradd --system --gid uip uip
 USER uip
 
-COPY --from=build /workspace/build/libs/app.jar app.jar
+COPY --from=build /workspace/app.jar app.jar
 
 EXPOSE 8080
 

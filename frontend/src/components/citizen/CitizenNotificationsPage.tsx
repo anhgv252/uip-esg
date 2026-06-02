@@ -27,9 +27,6 @@ export default function CitizenNotificationsPage({ liveAlerts }: Props) {
   const liveIds = new Set(liveAlerts.map((a) => a.id))
   const dedupedApi = apiAlerts.filter((a) => !liveIds.has(a.id))
 
-  if (isLoading && page === 0) return <CircularProgress sx={{ mt: 2 }} />
-  if (error) return <Alert severity="error">Không thể tải thông báo.</Alert>
-
   const hasMore = data ? data.number < data.totalPages - 1 : false
 
   return (
@@ -40,6 +37,10 @@ export default function CitizenNotificationsPage({ liveAlerts }: Props) {
           Cập nhật tự động mỗi 30 giây
         </Typography>
       </Box>
+
+      {isLoading && page === 0 && <CircularProgress sx={{ mt: 2 }} />}
+      {error && <Alert severity="error">Không thể tải thông báo.</Alert>}
+      {(isLoading && page === 0) || error ? null : (<>
 
       {liveAlerts.length === 0 && dedupedApi.length === 0 ? (
         <Alert severity="info">Không có cảnh báo nào trong 48 giờ qua.</Alert>
@@ -135,6 +136,8 @@ export default function CitizenNotificationsPage({ liveAlerts }: Props) {
           )}
         </>
       )}
+    </>
+    )}
     </Box>
   )
 }

@@ -85,7 +85,7 @@ public class AuthService {
                         return List.of(
                                 "environment:read", "environment:write",
                                 "esg:read", "esg:write",
-                                "alert:read", "alert:ack",
+                                "alert:read", "alert:ack", "alert:escalate",
                                 "traffic:read", "traffic:write",
                                 "sensor:read", "sensor:write",
                                 "citizen:read", "citizen:admin",
@@ -96,7 +96,7 @@ public class AuthService {
                         return List.of(
                                 "environment:read", "environment:write",
                                 "esg:read",
-                                "alert:read", "alert:ack",
+                                "alert:read", "alert:ack", "alert:escalate",
                                 "traffic:read", "traffic:write",
                                 "sensor:read", "sensor:write",
                                 "workflow:read"

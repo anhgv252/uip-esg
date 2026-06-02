@@ -34,7 +34,7 @@ import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive'
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward'
 import { formatDistanceToNow, format } from 'date-fns'
 import type { AlertEvent } from '@/api/alerts'
-import { useAlerts, useAcknowledgeAlert, useEscalateAlert } from '@/hooks/useAlertManagement'
+import { useAlerts, useAcknowledgeAlert, useEscalateAlert, useResolveAlert } from '@/hooks/useAlertManagement'
 import { useAlertStream } from '@/hooks/useAlertStream'
 import { useScope } from '@/hooks/useScope'
 
@@ -59,7 +59,7 @@ function SeverityBadge({ severity }: { severity: string }) {
 }
 
 function StatusBadge({ status }: { status: string }) {
-  const color = status === 'ACKNOWLEDGED' ? 'success' : status === 'ESCALATED' ? 'error' : 'warning'
+  const color = status === 'ACKNOWLEDGED' ? 'success' : status === 'ESCALATED' ? 'error' : status === 'RESOLVED' ? 'default' : 'warning'
   return <Chip label={status} size="small" variant="outlined" color={color} />
 }
 
@@ -68,15 +68,17 @@ interface AlertDetailDrawerProps {
   onClose: () => void
   onAcknowledge: (id: string, note?: string) => void
   onEscalate: (id: string, note?: string) => void
+  onResolve: (id: string, note?: string) => void
   acknowledging: boolean
   escalating: boolean
+  resolving: boolean
   isMobile: boolean
   canEscalate: boolean
 }
 
-function AlertDetailDrawer({ alert, onClose, onAcknowledge, onEscalate, acknowledging, escalating, isMobile, canEscalate }: AlertDetailDrawerProps) {
+function AlertDetailDrawer({ alert, onClose, onAcknowledge, onEscalate, onResolve, acknowledging, escalating, resolving, isMobile, canEscalate }: AlertDetailDrawerProps) {
   const [note, setNote] = useState('')
-  const actionLabel = alert?.status === 'ACKNOWLEDGED' ? 'Acknowledged by' : 'Escalated by'
+  const actionLabel = alert?.status === 'ACKNOWLEDGED' ? 'Acknowledged by' : alert?.status === 'RESOLVED' ? 'Resolved by' : 'Escalated by'
   return (
     <Drawer
       anchor={isMobile ? 'bottom' : 'right'}
@@ -123,7 +125,7 @@ function AlertDetailDrawer({ alert, onClose, onAcknowledge, onEscalate, acknowle
               <Typography variant="body2">{alert.note}</Typography>
             </Box>
           )}
-          {(alert.status === 'OPEN' || alert.status === 'ACKNOWLEDGED') && (
+          {(alert.status === 'OPEN' || alert.status === 'ACKNOWLEDGED' || alert.status === 'ESCALATED') && (
             <Box mt={3}>
               <Divider sx={{ mb: 2 }} />
               <TextField
@@ -134,21 +136,33 @@ function AlertDetailDrawer({ alert, onClose, onAcknowledge, onEscalate, acknowle
                 {alert.status === 'OPEN' && (
                   <Button
                     variant="contained" fullWidth startIcon={<CheckCircleIcon />}
-                    disabled={acknowledging || escalating} onClick={() => onAcknowledge(String(alert.id), note)}
+                    disabled={acknowledging || escalating || resolving} onClick={() => onAcknowledge(String(alert.id), note)}
                     sx={{ minHeight: 44 }}
                   >
                     {acknowledging ? <CircularProgress size={20} /> : 'Acknowledge'}
                   </Button>
                 )}
-                <Button
-                  variant="outlined" fullWidth startIcon={<ArrowUpwardIcon />}
-                  disabled={acknowledging || escalating || !canEscalate}
-                  onClick={() => onEscalate(String(alert.id), note)}
-                  color="warning"
-                  sx={{ minHeight: 44 }}
-                >
-                  {escalating ? <CircularProgress size={20} /> : 'Escalate'}
-                </Button>
+                {(alert.status === 'OPEN' || alert.status === 'ACKNOWLEDGED') && (
+                  <Button
+                    variant="outlined" fullWidth startIcon={<ArrowUpwardIcon />}
+                    disabled={acknowledging || escalating || resolving || !canEscalate}
+                    onClick={() => onEscalate(String(alert.id), note)}
+                    color="warning"
+                    sx={{ minHeight: 44 }}
+                  >
+                    {escalating ? <CircularProgress size={20} /> : 'Escalate'}
+                  </Button>
+                )}
+                {alert.status === 'ESCALATED' && (
+                  <Button
+                    variant="contained" fullWidth color="success" startIcon={<CheckCircleIcon />}
+                    disabled={acknowledging || escalating || resolving}
+                    onClick={() => onResolve(String(alert.id), note)}
+                    sx={{ minHeight: 44 }}
+                  >
+                    {resolving ? <CircularProgress size={20} /> : 'Resolve'}
+                  </Button>
+                )}
               </Box>
             </Box>
           )}
@@ -158,14 +172,16 @@ function AlertDetailDrawer({ alert, onClose, onAcknowledge, onEscalate, acknowle
   )
 }
 
-function MobileAlertCard({ alert, onAck, onEscalate, canAck, canEscalate, acknowledging, escalating }: {
+function MobileAlertCard({ alert, onAck, onEscalate, onResolve, canAck, canEscalate, acknowledging, escalating, resolving }: {
   alert: AlertEvent
   onAck: (id: string) => void
   onEscalate: (id: string) => void
+  onResolve: (id: string) => void
   canAck: boolean
   canEscalate: boolean
   acknowledging: boolean
   escalating: boolean
+  resolving: boolean
 }) {
   return (
     <Card variant="outlined" sx={{ mb: 1 }}>
@@ -204,6 +220,15 @@ function MobileAlertCard({ alert, onAck, onEscalate, canAck, canEscalate, acknow
               Escalate
             </Button>
           )}
+          {alert.status === 'ESCALATED' && (
+            <Button
+              size="small" color="success" startIcon={<CheckCircleIcon />}
+              onClick={() => onResolve(String(alert.id))} disabled={resolving}
+              sx={{ minHeight: 44 }}
+            >
+              Resolve
+            </Button>
+          )}
         </Box>
       </CardContent>
     </Card>
@@ -232,6 +257,7 @@ export default function AlertsPage() {
 
   const { mutate: acknowledge, isPending: acknowledging } = useAcknowledgeAlert()
   const { mutate: escalate, isPending: escalating } = useEscalateAlert()
+  const { mutate: resolve, isPending: resolving } = useResolveAlert()
 
   const handleAck = (id: string, note?: string) => {
     acknowledge({ id, note }, { onSuccess: () => { setSelectedAlert(null) } })
@@ -239,6 +265,10 @@ export default function AlertsPage() {
 
   const handleEscalate = (id: string, note?: string) => {
     escalate({ id, note }, { onSuccess: () => { setSelectedAlert(null) } })
+  }
+
+  const handleResolve = (id: string, note?: string) => {
+    resolve({ id, note }, { onSuccess: () => { setSelectedAlert(null) } })
   }
 
   const handleBulkAck = () => {
@@ -269,7 +299,7 @@ export default function AlertsPage() {
           onChange={(e) => { setFilters((f) => ({ ...f, status: e.target.value })); setPage(0) }}
           sx={{ minWidth: isMobile ? '100%' : 140 }}>
           <MenuItem value="">All</MenuItem>
-          {['NEW', 'OPEN', 'ACKNOWLEDGED', 'ESCALATED'].map((s) => <MenuItem key={s} value={s}>{s}</MenuItem>)}
+          {['NEW', 'OPEN', 'ACKNOWLEDGED', 'ESCALATED', 'RESOLVED'].map((s) => <MenuItem key={s} value={s}>{s}</MenuItem>)}
         </TextField>
         <TextField select size="small" label="Severity" value={filters.severity}
           onChange={(e) => { setFilters((f) => ({ ...f, severity: e.target.value })); setPage(0) }}
@@ -303,10 +333,12 @@ export default function AlertsPage() {
                 alert={alert}
                 onAck={(id) => handleAck(id)}
                 onEscalate={(id) => handleEscalate(id)}
+                onResolve={(id) => handleResolve(id)}
                 canAck={canAck}
                 canEscalate={canEscalate}
                 acknowledging={acknowledging}
                 escalating={escalating}
+                resolving={resolving}
               />
             </Box>
           ))}
@@ -390,6 +422,13 @@ export default function AlertsPage() {
                           </span>
                         </Tooltip>
                       )}
+                      {alert.status === 'ESCALATED' && (
+                        <Tooltip title="Resolve">
+                          <IconButton size="small" color="success" onClick={() => handleResolve(String(alert.id))} disabled={resolving}>
+                            <CheckCircleIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      )}
                     </Box>
                   </TableCell>
                 </TableRow>
@@ -408,8 +447,8 @@ export default function AlertsPage() {
 
       <AlertDetailDrawer
         alert={selectedAlert} onClose={() => setSelectedAlert(null)}
-        onAcknowledge={handleAck} onEscalate={handleEscalate}
-        acknowledging={acknowledging} escalating={escalating}
+        onAcknowledge={handleAck} onEscalate={handleEscalate} onResolve={handleResolve}
+        acknowledging={acknowledging} escalating={escalating} resolving={resolving}
         isMobile={isMobile} canEscalate={canEscalate}
       />
     </Box>

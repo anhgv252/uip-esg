@@ -68,10 +68,10 @@ apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   return config
 })
 
-// Attach tenant context header
+// Attach tenant context header — skip for default tenant (no override needed)
 apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   const tid = tenantStore.get()
-  if (tid) {
+  if (tid && tid !== 'default') {
     config.headers['X-Tenant-Id'] = tid
   }
   return config

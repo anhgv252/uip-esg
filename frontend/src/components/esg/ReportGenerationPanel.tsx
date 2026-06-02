@@ -109,6 +109,7 @@ export function ReportGenerationPanel() {
               variant="contained"
               onClick={() => triggerMutation.mutate()}
               disabled={isGenerating || triggerMutation.isPending || !canWrite}
+              data-testid="generate-report-btn"
             >
               Generate Report
             </Button>

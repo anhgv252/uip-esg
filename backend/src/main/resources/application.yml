@@ -245,6 +245,9 @@ springdoc:
     operationsSorter: method
 
 uip:
+  management:
+    prometheus:
+      password: ${PROMETHEUS_SCRAPE_PASSWORD:prometheus-dev-scrape}
   rate-limit:
     default:
       requests-per-minute: 100000

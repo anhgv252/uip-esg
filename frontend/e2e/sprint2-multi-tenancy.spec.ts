@@ -464,8 +464,13 @@ test.describe('TC-S2-08: AppShell sidebar collapse with feature flags', () => {
       // Click to collapse
       await (btnExists ? chevronBtn : collapseBtn).click()
       await page.waitForTimeout(500)
-      // After collapse, text labels should be hidden
-      const navTextAfter = await page.getByRole('button', { name: /^Environment$/ }).isVisible().catch(() => false)
+      // After collapse, the ListItemText labels should be removed from DOM
+      // (button still exists as icon-only, accessible via Tooltip title — so getByRole still matches)
+      const navTextAfter = await page.locator('.MuiListItemText-primary')
+        .filter({ hasText: /^Environment$/ })
+        .first()
+        .isVisible({ timeout: 1_000 })
+        .catch(() => false)
       // Collapsed sidebar hides text labels (just icons remain)
       expect(navTextAfter).toBe(false)
     }

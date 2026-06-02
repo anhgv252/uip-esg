@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -92,6 +93,41 @@ public class TenantAdminController {
             Authentication auth) {
         String effective = tenantAdminService.resolveEffectiveTenantId(tenantId, auth);
         tenantAdminService.updateSettings(effective, request.configKey(), request.configValue(), auth.getName());
+        return ResponseEntity.ok().build();
+    }
+
+    // ─── Tenant CRUD (ADMIN only) ─────────────────────────────────────────
+
+    @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "List all tenants")
+    public ResponseEntity<List<TenantSummaryDto>> listAllTenants() {
+        return ResponseEntity.ok(tenantAdminService.listAllTenants());
+    }
+
+    @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Create a new tenant")
+    public ResponseEntity<TenantSummaryDto> createTenant(
+            @RequestBody @jakarta.validation.Valid CreateTenantRequest request) {
+        TenantSummaryDto created = tenantAdminService.createTenant(request);
+        return ResponseEntity.status(201).body(created);
+    }
+
+    @GetMapping("/{tenantId}/features")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Get feature flags for a tenant")
+    public ResponseEntity<Map<String, Boolean>> getFeatureFlags(@PathVariable String tenantId) {
+        return ResponseEntity.ok(tenantAdminService.getFeatureFlags(tenantId));
+    }
+
+    @PutMapping("/{tenantId}/features")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Enable or disable a feature flag for a tenant")
+    public ResponseEntity<Void> updateFeature(
+            @PathVariable String tenantId,
+            @RequestBody @jakarta.validation.Valid UpdateFeatureRequest request) {
+        tenantAdminService.updateFeatureFlag(tenantId, request.featureKey(), request.enabled());
         return ResponseEntity.ok().build();
     }
 }

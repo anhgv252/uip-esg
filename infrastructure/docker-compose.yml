@@ -465,10 +465,9 @@ services:
       UIP_SECURITY_KEYCLOAK_PUBLIC_KEY: ${KEYCLOAK_RS256_PUBLIC_KEY:-}
     expose:
       - "8081"
-    # Host port 8082 available only for single-replica direct access; use Kong :8000 for load-balanced access
-    # Uncomment below for single-replica debugging:
-    # ports:
-    #   - "8082:8081"
+    # Host port 8082 for direct access; use Kong :8000 for load-balanced access
+    ports:
+      - "8082:8081"
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:8081/actuator/health 2>/dev/null | grep -q UP || exit 1"]
       interval: 15s

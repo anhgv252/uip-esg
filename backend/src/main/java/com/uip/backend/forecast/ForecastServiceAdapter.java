@@ -74,14 +74,23 @@ public class ForecastServiceAdapter implements ForecastPort {
                 ))
                 .toList();
 
+        String model = (String) response.getOrDefault("model", "ARIMA");
+        boolean isFallback = Boolean.TRUE.equals(response.get("is_fallback"));
+
+        // Python service signals insufficient data via NONE model + empty points — trigger naive fallback
+        if ("NONE".equals(model) && isFallback && points.isEmpty()) {
+            log.warn("Python forecast-service returned insufficient data (NONE model), delegating to naive fallback");
+            throw new ForecastServiceUnavailableException("Python service: insufficient data for forecast");
+        }
+
         String generatedAtStr = (String) response.get("generated_at");
         Instant generatedAt = generatedAtStr != null ? Instant.parse(generatedAtStr) : Instant.now();
 
         return new ForecastResult(
                 (String) response.getOrDefault("tenant_id", tenantId),
                 (String) response.getOrDefault("building_id", buildingId),
-                (String) response.getOrDefault("model", "ARIMA"),
-                Boolean.TRUE.equals(response.get("is_fallback")),
+                model,
+                isFallback,
                 (Double) response.get("mape"),
                 points,
                 generatedAt

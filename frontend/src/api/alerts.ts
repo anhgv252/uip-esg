@@ -11,7 +11,7 @@ export interface AlertEvent {
   value: number;
   threshold: number;
   note: string | null;
-  status: 'OPEN' | 'ACKNOWLEDGED' | 'ESCALATED';
+  status: 'OPEN' | 'ACKNOWLEDGED' | 'ESCALATED' | 'RESOLVED';
   acknowledgedBy: string | null;
   acknowledgedAt: string | null;
   detectedAt: string;
@@ -61,6 +61,9 @@ export const acknowledgeAlert = (id: string, note?: string, tenantId?: string) =
 
 export const escalateAlert = (id: string, note?: string, tenantId?: string) =>
   apiClient.put<AlertEvent>(`/alerts/${id}/escalate`, { note, tenantId }).then((r) => r.data);
+
+export const resolveAlert = (id: string, note?: string) =>
+  apiClient.put<AlertEvent>(`/alerts/${id}/resolve`, { note }).then((r) => r.data);
 
 export const getCitizenNotifications = (params?: { page?: number; size?: number }) =>
   apiClient.get<AlertEventsPage>('/alerts/notifications', { params }).then((r) => r.data);

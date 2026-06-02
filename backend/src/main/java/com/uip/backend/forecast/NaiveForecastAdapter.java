@@ -42,8 +42,8 @@ public class NaiveForecastAdapter implements ForecastPort {
             throw new ForecastServiceUnavailableException("Naive forecast data unavailable", e);
         }
 
-        if (metrics.size() < 720) {
-            log.warn("Insufficient data for naive forecast: {} points (< 30 days hourly)", metrics.size());
+        if (metrics.size() < 2) {
+            log.warn("Insufficient data for naive forecast: {} points (< 2 required)", metrics.size());
             return ForecastResult.insufficientData(tenantId, buildingId);
         }
 

@@ -103,6 +103,24 @@ public class EnvironmentService {
         return toSensorDto(sensorRepository.save(sensor));
     }
 
+    /** Admin: create a new sensor in the current tenant context. */
+    @Transactional
+    public SensorDto createSensor(String sensorId, String sensorName, String sensorType,
+                                   String districtCode, Double latitude, Double longitude) {
+        if (sensorRepository.findBySensorId(sensorId).isPresent()) {
+            throw new IllegalArgumentException("Sensor ID already exists: " + sensorId);
+        }
+        Sensor sensor = new Sensor();
+        sensor.setSensorId(sensorId);
+        sensor.setSensorName(sensorName);
+        sensor.setSensorType(sensorType);
+        sensor.setDistrictCode(districtCode);
+        sensor.setLatitude(latitude);
+        sensor.setLongitude(longitude);
+        sensor.setActive(true);
+        return toSensorDto(sensorRepository.save(sensor));
+    }
+
     // ─── Readings ─────────────────────────────────────────────────────────────
 
     public List<SensorReadingDto> getReadings(String sensorId, Instant from, Instant to, int limit) {

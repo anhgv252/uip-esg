@@ -16,6 +16,9 @@ alerting:
 scrape_configs:
   - job_name: 'uip-backend'
     metrics_path: '/actuator/prometheus'
+    basic_auth:
+      username: prometheus
+      password: prometheus-dev-scrape
     static_configs:
       - targets: ['uip-backend:8081']
 

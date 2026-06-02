@@ -73,7 +73,11 @@ export const routes: RouteObject[] = [
       // Citizen routes — all wrapped in MobileLayout to render bottom navigation
       {
         path: '/citizen',
-        element: <MobileLayout />,
+        element: (
+          <ProtectedRoute requiredRoles={['ROLE_CITIZEN']} redirectTo="/login">
+            <MobileLayout />
+          </ProtectedRoute>
+        ),
         children: [
           { index: true, element: <CitizenPage /> },
           { path: 'bills', element: <MobileBillsPage /> },

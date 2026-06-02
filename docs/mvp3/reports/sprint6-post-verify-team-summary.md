@@ -51,6 +51,7 @@ Sau khi verify Tier 1, SA phát hiện **6 CRITICAL + 10 MAJOR + 14 MINOR** find
 | **Delete Confirmation UI** | **2026-05-30** | ✅ `DesignerTab` — confirm Dialog trước khi gọi `deleteWorkflowDefinition()` |
 | **aria-label + accessibility** | **2026-05-30** | ✅ `NodePalette` role/tabIndex/aria-label, `AiNodeConfigPanel` Slider aria-label, `WorkflowConfigPage` IconButton aria-labels |
 | **Mobile Manual Test (Web mode)** | **2026-05-30** | ✅ 8/8 TC PASS — bundle 686 modules, TypeScript 0 errors. Xem `sprint6-mobile-manual-test-report.md` |
+| **Manual Demo Verification (UI+API)** | **2026-05-31** | ✅ 8/8 TC PASS — login/dashboard/alerts + auth/api checks. Xem `docs/mvp3/testing/sprint6-manual-demo-test-session-2026-05-31.md` |
 | Sprint 6 Close | 2026-06-13 | Full verify Tier 1 + Tier 2 + Tech Debt |
 
 ---
@@ -200,6 +201,15 @@ Sau khi verify Tier 1, SA phát hiện **6 CRITICAL + 10 MAJOR + 14 MINOR** find
 - TC-MOB-07: Foreground Notification handler — PASS
 - TC-MOB-08: Bundle Build (686 modules, 0 TS errors) — PASS
 - **Còn lại:** Test PKCE end-to-end + push token trên native device (iOS/Android) — cần Xcode hoặc Android Studio
+
+**Demo verification (2026-05-31) — PO demo path ✅ Done:**
+- `docs/mvp3/testing/sprint6-manual-demo-test-session-2026-05-31.md` — re-assessed: 8 PASS / 1 FAIL (Energy Forecast)
+- `docs/mvp3/reports/sprint6-po-demo-5min-checklist-2026-05-31.md` — runbook demo 5 phút (Dashboard → Alerts → BMS → AI Workflow → ESG)
+- `docs/mvp3/reports/sprint6-full-manual-demo-flow-2026-05-31.md` — full manual demo script 25-30 phút (A→D segments, API evidence, sign-off gate)
+- Verified end-to-end local demo flow: `http://localhost:3000/login` + backend API `http://localhost:8080`
+- Core checks passed: login, dashboard KPI render, alerts list render, API token/auth flow, API/UI consistency (Open Alerts = 0)
+- Forecast blocker: API `GET /api/v1/forecast/energy` trả `model=NONE`, `isFallback=true`, `points=[]` trên 4/4 buildings tested → full ESG forecast demo chưa đạt.
+- Bug report: `docs/mvp3/testing/bug-energy-forecast-empty-points-2026-05-31.md`.
 
 ---
 

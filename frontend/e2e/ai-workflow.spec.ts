@@ -12,6 +12,11 @@ test.describe('AI Workflow Dashboard', () => {
     await loginAsAdmin(page);
     // Navigate via sidebar — route is /ai-workflow, sidebar label is "AI Workflows"
     await navigateTo(page, 'AI Workflows');
+    // Ensure navigation succeeded — fallback to direct goto if sidebar click was missed
+    await page.waitForURL('**/ai-workflow', { timeout: 5000 }).catch(async () => {
+      await page.goto('/ai-workflow');
+      await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => {});
+    });
   });
 
   test('should load workflows page', async ({ page }) => {

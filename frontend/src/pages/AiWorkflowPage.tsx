@@ -26,6 +26,9 @@ import {
   LinearProgress,
   Stack,
   Slider,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
 } from '@mui/material';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
@@ -56,6 +59,7 @@ import {
 import WorkflowModeler from '@/components/workflow/WorkflowModeler';
 import NodePalette from '@/components/workflow/NodePalette';
 import AiNodeConfigPanel from '@/components/workflow/AiNodeConfigPanel';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import AddIcon from '@mui/icons-material/Add';
 import SaveIcon from '@mui/icons-material/Save';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
@@ -382,6 +386,7 @@ function IoTSensorSection() {
   const [running, setRunning]       = useState(false);
   const [result, setResult]         = useState<Record<string, unknown> | null>(null);
   const [showPayload, setShowPayload] = useState(false);
+  const [iotPid, setIotPid] = useState<string | null>(null);
   const logIdRef  = useRef(0);
   const pollRef   = useRef<ReturnType<typeof setInterval> | null>(null);
   const logEndRef = useRef<HTMLDivElement>(null);
@@ -414,7 +419,7 @@ function IoTSensorSection() {
 
   const handleReset = useCallback(() => {
     if (pollRef.current) clearInterval(pollRef.current);
-    setLogs([]); setResult(null); setRunning(false);
+    setLogs([]); setResult(null); setRunning(false); setIotPid(null);
   }, []);
 
   const handleFire = useCallback(async () => {
@@ -480,6 +485,7 @@ function IoTSensorSection() {
           { sensorType: 'AQI', sensorId, value: aqiValue, district },
         );
         simResult = resp.data;
+        setIotPid(simResult.processInstanceId);
         updateLastLog('🔍  Filter match: module=ENVIRONMENT, AQI>150 → startProcess()', 'done',
           'processKey: aiC01_aqiCitizenAlert | triggerType: KAFKA');
       } catch {
@@ -719,15 +725,84 @@ function IoTSensorSection() {
       {/* Alert Result Card */}
       {result && (
         <Paper variant="outlined" sx={{ p: 2.5 }}>
-          <Box display="flex" alignItems="center" gap={1} mb={2}>
+          <Box display="flex" alignItems="center" gap={1} mb={2} flexWrap="wrap">
             <SmartToyIcon color="error" />
             <Typography variant="subtitle2" fontWeight={700}>Kết quả xử lý AQI Alert</Typography>
-            <Chip label={`${Math.round(Number(result.aiConfidence ?? 0) * 100)}% confidence`} size="small" color="primary" />
-            <Chip label={String(result.aiSeverity ?? 'MEDIUM')} size="small"
-              color={result.aiSeverity === 'HIGH' ? 'error' : 'warning'} />
+            {(() => {
+              const conf = Number(result.aiConfidence ?? 0);
+              const ro = conf > 0.85 ? 'AUTO_EXECUTE' : conf >= 0.6 ? 'OPERATOR_QUEUE' : 'ESCALATE';
+              const roColor: 'success' | 'warning' | 'error' = conf > 0.85 ? 'success' : conf >= 0.6 ? 'warning' : 'error';
+              return (
+                <>
+                  <Chip label={`${Math.round(conf * 100)}% confidence`} size="small" color="primary" />
+                  <Chip label={String(result.aiSeverity ?? 'MEDIUM')} size="small"
+                    color={result.aiSeverity === 'HIGH' ? 'error' : 'warning'} />
+                  <Chip label={`⚡ ${ro}`} size="small" color={roColor} variant="outlined" />
+                </>
+              );
+            })()}
           </Box>
           <Divider sx={{ mb: 2 }} />
-          <Stack spacing={1.5}>
+          <Stack spacing={2}>
+            {/* DecisionRouter Panel */}
+            {(() => {
+              const conf = Number(result.aiConfidence ?? 0);
+              const confPct = Math.min(Math.round(conf * 100), 100);
+              const ro = conf > 0.85 ? 'AUTO_EXECUTE' : conf >= 0.6 ? 'OPERATOR_QUEUE' : 'ESCALATE';
+              const roColor: 'success' | 'warning' | 'error' = conf > 0.85 ? 'success' : conf >= 0.6 ? 'warning' : 'error';
+              const thresholdLabel = conf > 0.85 ? 'conf > 0.85 → AUTO_EXECUTE' : conf >= 0.6 ? '0.60 ≤ conf ≤ 0.85 → OPERATOR_QUEUE' : 'conf < 0.60 → ESCALATE';
+              return (
+                <Paper variant="outlined" sx={{ p: 1.5, bgcolor: 'action.hover' }}>
+                  <Typography variant="caption" fontWeight={700} color="text.secondary" display="block" mb={1.5}>
+                    ⚡ DecisionRouter — Sprint 6 (confidence-based routing)
+                  </Typography>
+                  <Box mb={1.5}>
+                    <Box display="flex" justifyContent="space-between" mb={0.5}>
+                      <Typography variant="caption" color="text.secondary">AI Confidence Score</Typography>
+                      <Typography variant="caption" fontWeight={700} color={`${roColor}.main`}>{confPct}%</Typography>
+                    </Box>
+                    <Box position="relative" sx={{ height: 10, borderRadius: 5, bgcolor: 'grey.300', overflow: 'visible' }}>
+                      <Box sx={{
+                        position: 'absolute', left: 0, top: 0, height: '100%', borderRadius: 5,
+                        width: `${confPct}%`,
+                        bgcolor: conf > 0.85 ? 'success.main' : conf >= 0.6 ? 'warning.main' : 'error.main',
+                        transition: 'width 0.6s ease',
+                      }} />
+                      <Box sx={{ position: 'absolute', left: '60%', top: -3, bottom: -3, width: 2, bgcolor: 'warning.dark', borderRadius: 1 }} />
+                      <Box sx={{ position: 'absolute', left: '85%', top: -3, bottom: -3, width: 2, bgcolor: 'success.dark', borderRadius: 1 }} />
+                    </Box>
+                    <Box display="flex" sx={{ mt: 0.5, position: 'relative', height: 18 }}>
+                      <Typography variant="caption" color="error.main" sx={{ position: 'absolute', left: 0 }}>ESCALATE</Typography>
+                      <Typography variant="caption" color="warning.dark" sx={{ position: 'absolute', left: '60%', transform: 'translateX(-50%)' }}>60%</Typography>
+                      <Typography variant="caption" color="success.dark" sx={{ position: 'absolute', left: '85%', transform: 'translateX(-50%)' }}>85%</Typography>
+                      <Typography variant="caption" color="text.secondary" sx={{ position: 'absolute', right: 0 }}>AUTO</Typography>
+                    </Box>
+                  </Box>
+                  <Stack direction="row" spacing={2} flexWrap="wrap" rowGap={1}>
+                    <Box>
+                      <Typography variant="caption" color="text.secondary" display="block">Routing Outcome</Typography>
+                      <Chip label={`⚡ ${ro}`} size="small" color={roColor} />
+                    </Box>
+                    <Box>
+                      <Typography variant="caption" color="text.secondary" display="block">Ngưỡng áp dụng</Typography>
+                      <Typography variant="caption" fontWeight={600} sx={{ fontFamily: 'monospace', fontSize: '0.7rem' }}>{thresholdLabel}</Typography>
+                    </Box>
+                    <Box>
+                      <Typography variant="caption" color="text.secondary" display="block">Cache</Typography>
+                      <Chip label="Redis TTL 15m" size="small" variant="outlined" />
+                    </Box>
+                    {iotPid && (
+                      <Box>
+                        <Typography variant="caption" color="text.secondary" display="block">Process ID</Typography>
+                        <Typography variant="caption" sx={{ fontFamily: 'monospace', fontSize: '0.7rem', color: 'primary.main' }}>{iotPid}</Typography>
+                      </Box>
+                    )}
+                  </Stack>
+                </Paper>
+              );
+            })()}
+
+            {/* Main fields */}
             <Box display="flex" gap={2} flexWrap="wrap">
               <Box flex={1} minWidth={160}>
                 <Typography variant="caption" color="text.secondary" display="block">AI Decision</Typography>
@@ -746,10 +821,14 @@ function IoTSensorSection() {
                 </Typography>
               </Box>
             </Box>
+
+            {/* AI Reasoning */}
             <Box>
               <Typography variant="caption" color="text.secondary" display="block">AI Reasoning</Typography>
               <Typography variant="body2" sx={{ mt: 0.5, lineHeight: 1.6 }}>{String(result.aiReasoning ?? '—')}</Typography>
             </Box>
+
+            {/* Recommended actions */}
             {Array.isArray(result.aiRecommendedActions) && (
               <Box>
                 <Typography variant="caption" color="text.secondary" display="block" mb={0.5}>Khuyến nghị</Typography>
@@ -763,6 +842,18 @@ function IoTSensorSection() {
                 </Stack>
               </Box>
             )}
+
+            {/* Raw process variables */}
+            <Accordion disableGutters elevation={0} sx={{ border: '1px solid', borderColor: 'divider', '&:before': { display: 'none' }, borderRadius: 1 }}>
+              <AccordionSummary expandIcon={<ExpandMoreIcon sx={{ fontSize: 18 }} />} sx={{ minHeight: 36, '& .MuiAccordionSummary-content': { margin: '6px 0' } }}>
+                <Typography variant="caption" fontWeight={600}>📊 Raw Process Variables ({Object.keys(result).length} fields)</Typography>
+              </AccordionSummary>
+              <AccordionDetails sx={{ p: 0 }}>
+                <Box component="pre" sx={{ fontFamily: 'monospace', fontSize: '0.7rem', color: '#a5d6a7', bgcolor: '#0d1117', p: 2, m: 0, overflowX: 'auto', maxHeight: 240, overflowY: 'auto' }}>
+                  {JSON.stringify(result, null, 2)}
+                </Box>
+              </AccordionDetails>
+            </Accordion>
           </Stack>
         </Paper>
       )}
@@ -777,7 +868,7 @@ function LiveDemoTab() {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [running, setRunning] = useState(false);
   const [result, setResult] = useState<Record<string, unknown> | null>(null);
-  const [_processId, setProcessId] = useState<string | null>(null);
+  const [processId, setProcessId] = useState<string | null>(null);
   const logIdRef = useRef(0);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -1029,15 +1120,84 @@ function LiveDemoTab() {
       {/* AI Decision Card */}
       {result && (
         <Paper variant="outlined" sx={{ p: 2.5 }}>
-          <Box display="flex" alignItems="center" gap={1} mb={2}>
+          <Box display="flex" alignItems="center" gap={1} mb={2} flexWrap="wrap">
             <SmartToyIcon color="primary" />
             <Typography variant="subtitle2" fontWeight={700}>Kết quả phân tích AI</Typography>
-            <Chip label={`${Math.round(Number(result.aiConfidence ?? 0) * 100)}% confidence`} size="small" color="primary" />
-            <Chip label={String(result.aiSeverity ?? 'MEDIUM')} size="small"
-              color={result.aiSeverity === 'HIGH' || result.aiSeverity === 'CRITICAL' ? 'error' : 'warning'} />
+            {(() => {
+              const conf = Number(result.aiConfidence ?? 0);
+              const ro = conf > 0.85 ? 'AUTO_EXECUTE' : conf >= 0.6 ? 'OPERATOR_QUEUE' : 'ESCALATE';
+              const roColor: 'success' | 'warning' | 'error' = conf > 0.85 ? 'success' : conf >= 0.6 ? 'warning' : 'error';
+              return (
+                <>
+                  <Chip label={`${Math.round(conf * 100)}% confidence`} size="small" color="primary" />
+                  <Chip label={String(result.aiSeverity ?? 'MEDIUM')} size="small"
+                    color={result.aiSeverity === 'HIGH' || result.aiSeverity === 'CRITICAL' ? 'error' : 'warning'} />
+                  <Chip label={`⚡ ${ro}`} size="small" color={roColor} variant="outlined" />
+                </>
+              );
+            })()}
           </Box>
           <Divider sx={{ mb: 2 }} />
-          <Stack spacing={1.5}>
+          <Stack spacing={2}>
+            {/* DecisionRouter Panel */}
+            {(() => {
+              const conf = Number(result.aiConfidence ?? 0);
+              const confPct = Math.min(Math.round(conf * 100), 100);
+              const ro = conf > 0.85 ? 'AUTO_EXECUTE' : conf >= 0.6 ? 'OPERATOR_QUEUE' : 'ESCALATE';
+              const roColor: 'success' | 'warning' | 'error' = conf > 0.85 ? 'success' : conf >= 0.6 ? 'warning' : 'error';
+              const thresholdLabel = conf > 0.85 ? 'conf > 0.85 → AUTO_EXECUTE' : conf >= 0.6 ? '0.60 ≤ conf ≤ 0.85 → OPERATOR_QUEUE' : 'conf < 0.60 → ESCALATE';
+              return (
+                <Paper variant="outlined" sx={{ p: 1.5, bgcolor: 'action.hover' }}>
+                  <Typography variant="caption" fontWeight={700} color="text.secondary" display="block" mb={1.5}>
+                    ⚡ DecisionRouter — Sprint 6 (confidence-based routing)
+                  </Typography>
+                  <Box mb={1.5}>
+                    <Box display="flex" justifyContent="space-between" mb={0.5}>
+                      <Typography variant="caption" color="text.secondary">AI Confidence Score</Typography>
+                      <Typography variant="caption" fontWeight={700} color={`${roColor}.main`}>{confPct}%</Typography>
+                    </Box>
+                    <Box position="relative" sx={{ height: 10, borderRadius: 5, bgcolor: 'grey.300', overflow: 'visible' }}>
+                      <Box sx={{
+                        position: 'absolute', left: 0, top: 0, height: '100%', borderRadius: 5,
+                        width: `${confPct}%`,
+                        bgcolor: conf > 0.85 ? 'success.main' : conf >= 0.6 ? 'warning.main' : 'error.main',
+                        transition: 'width 0.6s ease',
+                      }} />
+                      <Box sx={{ position: 'absolute', left: '60%', top: -3, bottom: -3, width: 2, bgcolor: 'warning.dark', borderRadius: 1 }} />
+                      <Box sx={{ position: 'absolute', left: '85%', top: -3, bottom: -3, width: 2, bgcolor: 'success.dark', borderRadius: 1 }} />
+                    </Box>
+                    <Box display="flex" sx={{ mt: 0.5, position: 'relative', height: 18 }}>
+                      <Typography variant="caption" color="error.main" sx={{ position: 'absolute', left: 0 }}>ESCALATE</Typography>
+                      <Typography variant="caption" color="warning.dark" sx={{ position: 'absolute', left: '60%', transform: 'translateX(-50%)' }}>60%</Typography>
+                      <Typography variant="caption" color="success.dark" sx={{ position: 'absolute', left: '85%', transform: 'translateX(-50%)' }}>85%</Typography>
+                      <Typography variant="caption" color="text.secondary" sx={{ position: 'absolute', right: 0 }}>AUTO</Typography>
+                    </Box>
+                  </Box>
+                  <Stack direction="row" spacing={2} flexWrap="wrap" rowGap={1}>
+                    <Box>
+                      <Typography variant="caption" color="text.secondary" display="block">Routing Outcome</Typography>
+                      <Chip label={`⚡ ${ro}`} size="small" color={roColor} />
+                    </Box>
+                    <Box>
+                      <Typography variant="caption" color="text.secondary" display="block">Ngưỡng áp dụng</Typography>
+                      <Typography variant="caption" fontWeight={600} sx={{ fontFamily: 'monospace', fontSize: '0.7rem' }}>{thresholdLabel}</Typography>
+                    </Box>
+                    <Box>
+                      <Typography variant="caption" color="text.secondary" display="block">Cache</Typography>
+                      <Chip label="Redis TTL 15m" size="small" variant="outlined" />
+                    </Box>
+                    {processId && (
+                      <Box>
+                        <Typography variant="caption" color="text.secondary" display="block">Process ID</Typography>
+                        <Typography variant="caption" sx={{ fontFamily: 'monospace', fontSize: '0.7rem', color: 'primary.main' }}>{processId}</Typography>
+                      </Box>
+                    )}
+                  </Stack>
+                </Paper>
+              );
+            })()}
+
+            {/* Main decision fields */}
             <Box display="flex" gap={2} flexWrap="wrap">
               <Box flex={1} minWidth={160}>
                 <Typography variant="caption" color="text.secondary" display="block">Quyết định</Typography>
@@ -1052,10 +1212,14 @@ function LiveDemoTab() {
                 <Typography variant="body2" fontWeight={600}>{String(result.priority ?? '—')}</Typography>
               </Box>
             </Box>
+
+            {/* AI reasoning */}
             <Box>
               <Typography variant="caption" color="text.secondary" display="block">Lý giải của AI</Typography>
               <Typography variant="body2" sx={{ mt: 0.5, lineHeight: 1.6 }}>{String(result.aiReasoning ?? '—')}</Typography>
             </Box>
+
+            {/* Recommended actions */}
             {Array.isArray(result.aiRecommendedActions) && (
               <Box>
                 <Typography variant="caption" color="text.secondary" display="block" mb={0.5}>Hành động được đề xuất</Typography>
@@ -1069,10 +1233,24 @@ function LiveDemoTab() {
                 </Stack>
               </Box>
             )}
+
+            {/* Auto-response text */}
             <Box>
               <Typography variant="caption" color="text.secondary">Auto-response gửi công dân: </Typography>
               <Typography variant="caption" fontStyle="italic">"{String(result.autoResponseText ?? '')}"</Typography>
             </Box>
+
+            {/* Raw process variables */}
+            <Accordion disableGutters elevation={0} sx={{ border: '1px solid', borderColor: 'divider', '&:before': { display: 'none' }, borderRadius: 1 }}>
+              <AccordionSummary expandIcon={<ExpandMoreIcon sx={{ fontSize: 18 }} />} sx={{ minHeight: 36, '& .MuiAccordionSummary-content': { margin: '6px 0' } }}>
+                <Typography variant="caption" fontWeight={600}>📊 Raw Process Variables ({Object.keys(result).length} fields)</Typography>
+              </AccordionSummary>
+              <AccordionDetails sx={{ p: 0 }}>
+                <Box component="pre" sx={{ fontFamily: 'monospace', fontSize: '0.7rem', color: '#a5d6a7', bgcolor: '#0d1117', p: 2, m: 0, overflowX: 'auto', maxHeight: 240, overflowY: 'auto' }}>
+                  {JSON.stringify(result, null, 2)}
+                </Box>
+              </AccordionDetails>
+            </Accordion>
           </Stack>
         </Paper>
       )}

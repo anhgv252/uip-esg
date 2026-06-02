@@ -116,6 +116,21 @@ public class AlertService {
         return toDto(alertEventRepository.save(event), Map.of());
     }
 
+    @Transactional
+    @CacheEvict(value = "alerts", allEntries = true)
+    public AlertEventDto resolveAlert(UUID alertId, String username, String note) {
+        AlertEvent event = alertEventRepository.findById(alertId)
+                .orElseThrow(() -> new EntityNotFoundException("Alert not found: " + alertId));
+
+        event.setStatus("RESOLVED");
+        event.setAcknowledgedBy(username);
+        event.setAcknowledgedAt(Instant.now());
+        if (note != null) {
+            event.setNote(note);
+        }
+        return toDto(alertEventRepository.save(event), Map.of());
+    }
+
     @Scheduled(fixedDelayString = "${uip.cagg.alert-refresh-ms:15000}")
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public void refreshAlertCountSummary() {

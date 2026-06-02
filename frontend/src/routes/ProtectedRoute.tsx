@@ -9,6 +9,7 @@ interface ProtectedRouteProps {
   requiredRole?: UserRole
   requiredRoles?: UserRole[]
   requiredScope?: string
+  redirectTo?: string
 }
 
 export default function ProtectedRoute({
@@ -16,6 +17,7 @@ export default function ProtectedRoute({
   requiredRole,
   requiredRoles,
   requiredScope,
+  redirectTo,
 }: ProtectedRouteProps) {
   const { isAuthenticated, isLoading, user } = useAuth()
   const location = useLocation()
@@ -39,12 +41,12 @@ export default function ProtectedRoute({
 
   // Single role check (backward compatible)
   if (requiredRole && user?.role !== requiredRole) {
-    return <Navigate to="/dashboard" replace />
+    return <Navigate to={redirectTo ?? '/dashboard'} replace />
   }
 
   // Multiple roles check — user must have at least one matching role
   if (requiredRoles?.length && !requiredRoles.includes(user?.role as UserRole)) {
-    return <Navigate to="/dashboard" replace />
+    return <Navigate to={redirectTo ?? '/dashboard'} replace />
   }
 
   // Scope check — user must have the required scope in their scopes array

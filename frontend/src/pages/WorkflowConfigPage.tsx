@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -29,6 +29,7 @@ import {
   AccordionDetails,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
+import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import ScienceIcon from '@mui/icons-material/Science';
 import SendIcon from '@mui/icons-material/Send';
@@ -167,6 +168,141 @@ function configToForm(c: TriggerConfig): ConfigFormData {
     aiConfidenceThreshold: c.aiConfidenceThreshold?.toString() ?? '0.85',
     deduplicationKey: c.deduplicationKey ?? '',
   };
+}
+
+interface FilterCondition {
+  field: string;
+  op: string;
+  value: string;
+}
+
+const FILTER_OPS = ['EQ', 'NEQ', 'GT', 'GTE', 'LT', 'LTE', 'CONTAINS', 'IN'] as const;
+
+const COMMON_FIELDS = [
+  'module', 'measureType', 'districtCode', 'sensorId', 'alertLevel', 'value',
+];
+
+interface FilterConditionBuilderProps {
+  value: string;
+  onChange: (json: string) => void;
+}
+
+function FilterConditionBuilder({ value, onChange }: FilterConditionBuilderProps) {
+  const [jsonMode, setJsonMode] = useState(false);
+
+  // Derive conditions directly from value prop (fully controlled)
+  let conditions: FilterCondition[] = [];
+  try {
+    const parsed = JSON.parse(value || '[]');
+    if (Array.isArray(parsed)) conditions = parsed;
+  } catch {
+    // invalid JSON — treat as empty
+  }
+
+  const emit = useCallback((next: FilterCondition[]) => {
+    onChange(JSON.stringify(next));
+  }, [onChange]);
+
+  const addRow = () => emit([...conditions, { field: '', op: 'EQ', value: '' }]);
+
+  const updateRow = (i: number, patch: Partial<FilterCondition>) => {
+    const next = conditions.map((c, idx) => idx === i ? { ...c, ...patch } : c);
+    emit(next);
+  };
+
+  const removeRow = (i: number) => emit(conditions.filter((_, idx) => idx !== i));
+
+  if (jsonMode) {
+    return (
+      <Box>
+        <Box display="flex" justifyContent="flex-end" mb={0.5}>
+          <Button size="small" onClick={() => {
+            try { JSON.parse(value); setJsonMode(false); } catch { /* keep in JSON mode */ }
+          }}>Visual Builder</Button>
+        </Box>
+        <TextField
+          label="Filter Conditions (JSON)"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          fullWidth
+          multiline
+          rows={4}
+          inputProps={{ style: { fontFamily: 'monospace', fontSize: 13 } }}
+          placeholder='[{"field":"module","op":"EQ","value":"ENVIRONMENT"}]'
+        />
+      </Box>
+    );
+  }
+
+  return (
+    <Box>
+      <Box display="flex" alignItems="center" justifyContent="space-between" mb={1}>
+        <Typography variant="body2" color="text.secondary">Filter Conditions</Typography>
+        <Box display="flex" gap={1}>
+          <Button size="small" onClick={() => setJsonMode(true)}>Edit JSON</Button>
+          <Button size="small" variant="outlined" startIcon={<AddIcon />} onClick={addRow}>
+            Add Condition
+          </Button>
+        </Box>
+      </Box>
+      {conditions.length === 0 ? (
+        <Typography variant="caption" color="text.disabled">
+          No filter conditions — all events will trigger this workflow.
+        </Typography>
+      ) : (
+        <Stack spacing={1}>
+          {conditions.map((cond, i) => (
+            <Box key={i} display="flex" gap={1} alignItems="center">
+              <TextField
+                select
+                size="small"
+                label="Field"
+                value={cond.field}
+                onChange={(e) => updateRow(i, { field: e.target.value })}
+                sx={{ minWidth: 150 }}
+                SelectProps={{ onKeyDown: (e) => { if (e.key === 'Escape') e.stopPropagation(); } }}
+              >
+                {COMMON_FIELDS.map((f) => <MenuItem key={f} value={f}>{f}</MenuItem>)}
+                {!COMMON_FIELDS.includes(cond.field) && cond.field && (
+                  <MenuItem value={cond.field}>{cond.field}</MenuItem>
+                )}
+                <MenuItem value="_custom_">
+                  <em>Custom…</em>
+                </MenuItem>
+              </TextField>
+              {cond.field === '_custom_' && (
+                <TextField size="small" label="Custom field" value=""
+                  onChange={(e) => updateRow(i, { field: e.target.value })} sx={{ minWidth: 130 }} />
+              )}
+              <TextField
+                select
+                size="small"
+                label="Op"
+                value={cond.op}
+                onChange={(e) => updateRow(i, { op: e.target.value })}
+                sx={{ minWidth: 90 }}
+                SelectProps={{ onKeyDown: (e) => { if (e.key === 'Escape') e.stopPropagation(); } }}
+              >
+                {FILTER_OPS.map((op) => <MenuItem key={op} value={op}>{op}</MenuItem>)}
+              </TextField>
+              <TextField
+                size="small"
+                label="Value"
+                value={cond.value}
+                onChange={(e) => updateRow(i, { value: e.target.value })}
+                sx={{ flex: 1 }}
+                placeholder={cond.op === 'IN' ? 'A,B,C' : ''}
+                helperText={cond.op === 'IN' ? 'comma-separated' : undefined}
+              />
+              <IconButton size="small" onClick={() => removeRow(i)} aria-label="Remove condition">
+                <DeleteIcon fontSize="small" />
+              </IconButton>
+            </Box>
+          ))}
+        </Stack>
+      )}
+    </Box>
+  );
 }
 
 interface ConfigFormDialogProps {
@@ -342,16 +478,9 @@ function ConfigFormDialog({ open, editing, onClose }: ConfigFormDialogProps) {
           )}
 
           {form.triggerType !== 'REST' && (
-            <TextField
-              label="Filter Conditions (JSON)"
+            <FilterConditionBuilder
               value={form.filterConditions}
-              onChange={(e) => setField('filterConditions', e.target.value)}
-              fullWidth
-              multiline
-              rows={4}
-              required
-              inputProps={{ style: { fontFamily: 'monospace', fontSize: 13 } }}
-              placeholder='[{"field":"module","op":"EQ","value":"ENVIRONMENT"}]'
+              onChange={(json) => setField('filterConditions', json)}
             />
           )}
 
