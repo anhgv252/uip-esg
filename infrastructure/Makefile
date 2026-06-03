@@ -8,6 +8,7 @@ COMPOSE_UAT_FILE = -f docker-compose.yml -f docker-compose.uat.yml
 .PHONY: help up down logs ps migrate test-mqtt test-pipeline \
         uat-up uat-down uat-logs uat-ps uat-test uat-clean seed-uat clean \
         regression-test regression-test-group \
+        flink-list flink-build flink-submit flink-cancel flink-savepoint flink-deploy flink-status \
         security-scan security-report security-open \
         spotbugs-scan spotbugs-report spotbugs-open security-full
 
@@ -47,6 +48,32 @@ test-mqtt: ## Send 10 MQTT test messages
 
 test-pipeline: ## Run integration test suite
 	@cd .. && python3 poc/scripts/integration_tests.py
+
+# ─── Flink Jobs (ADR-038, S8-OPS03) ────────────────────────────────────────────
+
+FLINK_SCRIPT := scripts/flink-deploy.sh
+FLINK_URL    ?= http://localhost:8081
+
+flink-list: ## List running Flink jobs
+	@bash $(FLINK_SCRIPT) list
+
+flink-build: ## Build Flink jobs JAR
+	@bash $(FLINK_SCRIPT) build
+
+flink-submit: ## Submit all Flink jobs to cluster
+	@FLINK_URL=$(FLINK_URL) bash $(FLINK_SCRIPT) submit
+
+flink-cancel: ## Cancel all running Flink jobs
+	@FLINK_URL=$(FLINK_URL) bash $(FLINK_SCRIPT) cancel
+
+flink-savepoint: ## Take savepoint of running jobs
+	@FLINK_URL=$(FLINK_URL) bash $(FLINK_SCRIPT) savepoint
+
+flink-deploy: ## Full deploy cycle: savepoint → cancel → submit (zero-downtime)
+	@FLINK_URL=$(FLINK_URL) bash $(FLINK_SCRIPT) deploy
+
+flink-status: ## Show Flink cluster + job status
+	@FLINK_URL=$(FLINK_URL) bash $(FLINK_SCRIPT) status
 
 # ─── UAT Stack ────────────────────────────────────────────────────────────────
 
