@@ -1,0 +1,54 @@
+<clickhouse>
+    <logger>
+        <level>information</level>
+        <size>1000M</size>
+        <count>3</count>
+    </logger>
+
+    <listen_host>0.0.0.0</listen_host>
+    <http_port>8123</http_port>
+    <tcp_port>9000</tcp_port>
+
+    <!-- Keeper connection for ReplicatedMergeTree coordination -->
+    <zookeeper>
+        <node>
+            <host>clickhouse-keeper</host>
+            <port>9181</port>
+        </node>
+    </zookeeper>
+
+    <!-- Cluster definition — 2 nodes, 1 shard, 2 replicas -->
+    <remote_servers>
+        <uip_cluster>
+            <shard>
+                <internal_replication>true</internal_replication>
+                <replica>
+                    <host>clickhouse-01</host>
+                    <port>9000</port>
+                </replica>
+                <replica>
+                    <host>clickhouse-02</host>
+                    <port>9000</port>
+                </replica>
+            </shard>
+        </uip_cluster>
+    </remote_servers>
+
+    <!-- Macros for Replicated table paths — overridden per node via env -->
+    <macros>
+        <shard>01</shard>
+        <replica from_env="CLICKHOUSE_REPLICA_NAME">node-01</replica>
+        <cluster>uip_cluster</cluster>
+    </macros>
+
+    <mark_cache_size>536870912</mark_cache_size>
+    <path>/var/lib/clickhouse/</path>
+    <tmp_path>/var/lib/clickhouse/tmp/</tmp_path>
+    <user_files_path>/var/lib/clickhouse/user_files/</user_files_path>
+
+    <profiles>
+        <default>
+            <max_memory_usage>1000000000</max_memory_usage>
+        </default>
+    </profiles>
+</clickhouse>

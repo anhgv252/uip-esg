@@ -1,0 +1,135 @@
+# ClickHouse HA Overlay — ADR-036 (S8-OPS01)
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.ha.yml up -d
+#
+# This overlay adds:
+#   1. ClickHouse Keeper (coordination service)
+#   2. clickhouse-01 + clickhouse-02 (ReplicatedReplacingMergeTree)
+#
+# The single-node "clickhouse" service from docker-compose.yml is stopped.
+# BACKWARD COMPAT: Tier 1 dev continues using docker-compose.yml only (single-node).
+#
+# Migration: run infrastructure/scripts/ch-migrate.sh after starting HA stack.
+
+services:
+  # ─── ClickHouse Keeper (coordination, replaces ZooKeeper) ──────────────────
+  clickhouse-keeper:
+    image: clickhouse/clickhouse-keeper:23.8-alpine
+    container_name: uip-clickhouse-keeper
+    restart: unless-stopped
+    volumes:
+      - clickhouse-keeper-data:/keeper
+      - ./clickhouse/keeper-config.xml:/etc/clickhouse-keeper/keeper_config.xml:ro
+    ports:
+      - "9181:9181"  # Keeper client port
+    healthcheck:
+      test: ["CMD-SHELL", "echo ruok | nc localhost 9181 | grep -q imok || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    networks:
+      - uip-network
+
+  # ─── ClickHouse Node 1 (primary) ──────────────────────────────────────────
+  clickhouse-01:
+    image: clickhouse/clickhouse-server:23.8
+    container_name: uip-clickhouse-01
+    restart: unless-stopped
+    environment:
+      CLICKHOUSE_DB: ${CLICKHOUSE_DB:-analytics}
+      CLICKHOUSE_USER: ${CLICKHOUSE_USER:-default}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-}
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+      CLICKHOUSE_REPLICA_NAME: replica-01
+    volumes:
+      - clickhouse-01-data:/var/lib/clickhouse
+      - ./clickhouse/node-config.xml:/etc/clickhouse-server/config.d/cluster-config.xml:ro
+      - ./clickhouse/init-replicated.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "8123:8123"   # HTTP API
+      - "9000:9000"   # Native protocol
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    depends_on:
+      clickhouse-keeper:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8123/ping | grep -q Ok. || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - uip-network
+
+  # ─── ClickHouse Node 2 (replica) ──────────────────────────────────────────
+  clickhouse-02:
+    image: clickhouse/clickhouse-server:23.8
+    container_name: uip-clickhouse-02
+    restart: unless-stopped
+    environment:
+      CLICKHOUSE_DB: ${CLICKHOUSE_DB:-analytics}
+      CLICKHOUSE_USER: ${CLICKHOUSE_USER:-default}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-}
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+      CLICKHOUSE_REPLICA_NAME: replica-02
+    volumes:
+      - clickhouse-02-data:/var/lib/clickhouse
+      - ./clickhouse/node-config.xml:/etc/clickhouse-server/config.d/cluster-config.xml:ro
+      - ./clickhouse/init-replicated.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "8124:8123"   # HTTP API (offset port)
+      - "9001:9000"   # Native protocol (offset port)
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    depends_on:
+      clickhouse-keeper:
+        condition: service_healthy
+      clickhouse-01:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8123/ping | grep -q Ok. || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - uip-network
+
+  # ─── Override: analytics-service → HA cluster ─────────────────────────────
+  analytics-service:
+    environment:
+      CLICKHOUSE_URL: jdbc:clickhouse://clickhouse-01:8123,clickhouse-02:8123/${CLICKHOUSE_DB:-analytics}
+    depends_on:
+      clickhouse-01:
+        condition: service_healthy
+      clickhouse-02:
+        condition: service_healthy
+
+  # ─── Override: backend → HA cluster (for ClickHouse queries if used) ──────
+  backend:
+    environment:
+      CLICKHOUSE_URL: jdbc:clickhouse://clickhouse-01:8123,clickhouse-02:8123/${CLICKHOUSE_DB:-analytics}
+
+  # ─── Override: Flink submitters → HA cluster ─────────────────────────────
+  flink-esg-job-submitter:
+    environment:
+      CLICKHOUSE_URL: jdbc:clickhouse://clickhouse-01:8123,clickhouse-02:8123/${CLICKHOUSE_DB:-analytics}
+
+  flink-structural-job-submitter:
+    environment:
+      CLICKHOUSE_URL: jdbc:clickhouse://clickhouse-01:8123,clickhouse-02:8123/${CLICKHOUSE_DB:-analytics}
+
+volumes:
+  clickhouse-keeper-data:
+    name: uip-clickhouse-keeper-data
+  clickhouse-01-data:
+    name: uip-clickhouse-01-data
+  clickhouse-02-data:
+    name: uip-clickhouse-02-data

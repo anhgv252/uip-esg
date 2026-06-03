@@ -5,10 +5,11 @@ COMPOSE_UAT      = docker compose --env-file .env.uat
 COMPOSE_FILE     = -f docker-compose.yml
 COMPOSE_UAT_FILE = -f docker-compose.yml -f docker-compose.uat.yml
 
-.PHONY: help up down logs ps migrate test-mqtt test-pipeline \
+.PHONY: help up up-ha down logs ps migrate test-mqtt test-pipeline \
         uat-up uat-down uat-logs uat-ps uat-test uat-clean seed-uat clean \
         regression-test regression-test-group \
         flink-list flink-build flink-submit flink-cancel flink-savepoint flink-deploy flink-status \
+        avro-register ch-migrate \
         security-scan security-report security-open \
         spotbugs-scan spotbugs-report spotbugs-open security-full
 
@@ -23,6 +24,15 @@ up: ## Start full dev stack
 	$(COMPOSE) $(COMPOSE_FILE) up -d
 	@echo "Waiting for all services to be healthy..."
 	$(COMPOSE) $(COMPOSE_FILE) ps
+
+up-ha: ## Start HA stack (ClickHouse 2-node + Kafka 3-broker — Tier 2 pilot)
+	@cp -n .env.example .env 2>/dev/null || true
+	$(COMPOSE) -f docker-compose.yml -f docker-compose.ha.yml up -d
+	@echo ""
+	@echo "=== HA Stack starting ==="
+	@echo "  ClickHouse: clickhouse-01 (:8123) + clickhouse-02 (:8124) + keeper (:9181)"
+	@echo ""
+	@echo "Run 'make ch-migrate' after stack is healthy."
 
 down: ## Stop dev stack
 	$(COMPOSE) $(COMPOSE_FILE) down
@@ -77,6 +87,9 @@ flink-status: ## Show Flink cluster + job status
 
 avro-register: ## Register Avro schemas into Apicurio Registry (idempotent)
 	@bash scripts/register-avro-schemas.sh
+
+ch-migrate: ## Migrate ClickHouse data from single-node to HA cluster (run after up-ha)
+	@bash scripts/ch-migrate.sh
 
 # ─── UAT Stack ────────────────────────────────────────────────────────────────
 
