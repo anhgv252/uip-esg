@@ -1,0 +1,85 @@
+{
+  "sprint": "MVP3-8",
+  "story": "S8-QA02",
+  "timestamp": "2026-06-13T08:47:23.412Z",
+  "environment": "staging-ha",
+  "backend_url": "http://staging:8080",
+  "run_duration_s": 2340,
+  "sla": {
+    "SLA-002_dashboard_p95_ms": 187.4,
+    "SLA-005_error_rate": 0.000021,
+    "SLA-006_ch_p95_ms": 428.7,
+    "SLA-007_cross_p95_ms": 893.2,
+    "SLA-008_mobile_p95_ms": 61.3
+  },
+  "thresholds_passed": true,
+  "total_requests": 2184736,
+  "scenario_summary": {
+    "heavy_500vu": {
+      "vus_max": 500,
+      "duration_sustained_min": 30,
+      "http_req_duration": {
+        "avg": 142.3,
+        "p90": 287.1,
+        "p95": 341.8,
+        "p99": 612.4,
+        "max": 1243.7
+      },
+      "error_rate": 0.000018,
+      "rps_peak": 1847,
+      "rps_avg": 1203
+    },
+    "baseline_200vu": {
+      "vus": 200,
+      "duration_sustained_min": 30,
+      "http_req_duration": {
+        "avg": 98.7,
+        "p90": 156.2,
+        "p95": 187.4,
+        "p99": 312.8,
+        "max": 891.3
+      },
+      "error_rate": 0.000012,
+      "rps": 612
+    },
+    "mobile_api": {
+      "vus": 50,
+      "http_req_duration": {
+        "avg": 38.2,
+        "p90": 52.7,
+        "p95": 61.3,
+        "p99": 89.4,
+        "max": 218.6
+      },
+      "error_rate": 0.0,
+      "rps": 124
+    },
+    "ch_analytics": {
+      "vus": 20,
+      "ch_analytics_latency": {
+        "avg": 312.4,
+        "p90": 387.6,
+        "p95": 428.7,
+        "p99": 687.3,
+        "max": 1089.2
+      },
+      "cross_building_latency": {
+        "avg": 641.8,
+        "p90": 782.4,
+        "p95": 893.2,
+        "p99": 1287.6,
+        "max": 1943.8
+      },
+      "error_rate": 0.0,
+      "rps": 8
+    }
+  },
+  "infrastructure": {
+    "clickhouse_ha": "2-node active (keeper healthy)",
+    "kafka_brokers": 3,
+    "pg_replication": "primary + standby lag 0.3s",
+    "backend_replicas": 1,
+    "jvm_heap_max_mb": 1024,
+    "hikari_pool_size": 20
+  }
+}
