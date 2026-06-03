@@ -241,6 +241,99 @@
           }
         }
       ]
+    },
+    {
+      "id": "uip-mobile",
+      "clientId": "uip-mobile",
+      "name": "UIP Mobile",
+      "description": "UIP Mobile operator app (PKCE via expo-auth-session)",
+      "enabled": true,
+      "publicClient": true,
+      "secret": "",
+      "bearerOnly": false,
+      "consentRequired": false,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "authorizationServicesEnabled": false,
+      "redirectUris": [
+        "uipmobile://*",
+        "exp+operator-mobile://*",
+        "http://localhost:8081/*"
+      ],
+      "webOrigins": [
+        "http://localhost:8081"
+      ],
+      "protocol": "openid-connect",
+      "attributes": {
+        "access.token.signed.response.alg": "RS256",
+        "pkce.code.challenge.method": "S256",
+        "use.refresh.tokens": "true"
+      },
+      "protocolMappers": [
+        {
+          "id": "mobile-tenant-id-mapper",
+          "name": "tenant-id-mapper",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "tenant_id",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "tenant_id",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "id": "mobile-building-ids-mapper",
+          "name": "building-ids-mapper",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "building_ids",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "building_ids",
+            "jsonType.label": "String",
+            "multivalued": "true"
+          }
+        },
+        {
+          "id": "mobile-is-aggregator-mapper",
+          "name": "is-aggregator-mapper",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "is_aggregator",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "is_aggregator",
+            "jsonType.label": "boolean"
+          }
+        },
+        {
+          "id": "mobile-realm-roles-mapper",
+          "name": "realm-roles-mapper",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "consentRequired": false,
+          "config": {
+            "multivalued": "true",
+            "userinfo.token.claim": "true",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "roles",
+            "jsonType.label": "String"
+          }
+        }
+      ]
     }
   ],
 
