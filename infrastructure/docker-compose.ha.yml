@@ -202,6 +202,52 @@ services:
     networks:
       - uip-network
 
+  # ═══════════════════════════════════════════════════════════════════════════
+  # PostgreSQL Streaming Replication — Primary + Hot Standby (S8-OPS04)
+  # Manual promotion (no auto-failover) — SA recommendation: false promotion
+  # from network noise is worse than brief downtime.
+  # ═══════════════════════════════════════════════════════════════════════════
+
+  # ─── Override: primary uses replication config ──────────────────────────────
+  timescaledb:
+    command: >
+      postgres
+      -c wal_level=replica
+      -c max_wal_senders=3
+      -c wal_keep_size=256MB
+      -c hot_standby=on
+
+  # ─── Standby replica (read-only) ──────────────────────────────────────────
+  timescaledb-standby:
+    image: timescale/timescaledb:2.13.1-pg15
+    container_name: uip-timescaledb-standby
+    restart: unless-stopped
+    entrypoint: ["/usr/local/bin/standby-entrypoint.sh"]
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-uip}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-uip_smartcity}
+      PGUSER: ${POSTGRES_USER:-uip}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      STANDBY_PRIMARY_HOST: timescaledb
+      STANDBY_PRIMARY_PORT: "5432"
+    volumes:
+      - timescaledb-standby-data:/var/lib/postgresql/data
+      - ./timescaledb/standby-entrypoint.sh:/usr/local/bin/standby-entrypoint.sh:ro
+    ports:
+      - "5433:5432"   # Read-only access on offset port
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-uip} -d ${POSTGRES_DB:-uip_smartcity}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+    networks:
+      - uip-network
+
 volumes:
   clickhouse-keeper-data:
     name: uip-clickhouse-keeper-data
@@ -213,3 +259,5 @@ volumes:
     name: uip-kafka-2-data
   kafka-3-data:
     name: uip-kafka-3-data
+  timescaledb-standby-data:
+    name: uip-timescaledb-standby-data
