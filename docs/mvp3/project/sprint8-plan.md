@@ -1,6 +1,6 @@
 # Sprint MVP3-8 — Master Plan
 
-**Status:** DRAFT — PO Brainstorming 2026-06-03
+**Status:** IN TEST — Dev DONE, SA APPROVED, Tester executing 2026-06-04
 **Document Date:** 2026-06-03
 **Sprint Start:** 2026-06-04 (Wed)
 **Sprint End:** 2026-06-17 (Tue EOD)
@@ -218,28 +218,28 @@ Day 1-7: Mobile (Frontend) ───→ Day 8-10: Mobile QA
 
 | Gate | Criterion | Verifier | Status |
 |------|-----------|----------|--------|
-| G1 | SLA-001 Fix: VibrationAnomalyJob consumes from Kafka, alert <15s | Unit + IT tests | ⬜ |
-| G2 | Mobile Dashboard: 4 KPI cards render with real API, bottom tabs work | Manual + screenshot | ⬜ |
-| G3 | Mobile Alerts: Alert list sorted by severity, safety score 0-100 | Manual + screenshot | ⬜ |
-| G4 | ClickHouse 2-node: node-1 down → queries route to node-2 | Chaos test | ⬜ |
-| G5 | ClickHouse replication: data inserted node-1 appears node-2 within 5s | Integration test | ⬜ |
-| G6 | Kafka 3-broker: broker down → no interruption | Chaos test | ⬜ |
-| G7 | Kafka replication: min.insync.replicas=2 verified | Config audit | ⬜ |
-| G8 | Flink CI/CD: `make flink-submit` submits job automatically | CI pipeline | ⬜ |
-| G9 | Pilot Regression: 243/243 TCs PASS on staging | QA report | ⬜ |
-| G10 | SLA Gate: all performance thresholds met | k6 report | ⬜ |
-| G11 | Tests: 1,200+ total, 0 failures | CI | ⬜ |
-| G12 | SA Code Review: APPROVED | SA | ⬜ |
+| G1 | SLA-001 Fix: VibrationAnomalyJob consumes from Kafka, alert <15s | Unit + IT tests | ✅ DEV DONE — Tester: TC-S8-024 |
+| G2 | Mobile Dashboard: 4 KPI cards render with real API, bottom tabs work | Manual + screenshot | 🔄 TESTER: TC-S8-030..037 |
+| G3 | Mobile Alerts: Alert list sorted by severity, safety score 0-100 | Manual + screenshot | 🔄 TESTER: TC-S8-038..045 |
+| G4 | ClickHouse 2-node: node-1 down → queries route to node-2 | Chaos test | 🔄 TESTER: TC-S8-010 |
+| G5 | ClickHouse replication: data inserted node-1 appears node-2 within 5s | Integration test | 🔄 TESTER: TC-S8-011 |
+| G6 | Kafka 3-broker: broker down → no interruption | Chaos test | 🔄 TESTER: TC-S8-020 |
+| G7 | Kafka replication: min.insync.replicas=2 verified | Config audit | 🔄 TESTER: TC-S8-022..023 |
+| G8 | Flink CI/CD: `make flink-submit` submits job automatically | CI pipeline | 🔄 TESTER: TC-S8-051 |
+| G9 | Pilot Regression: 285/285 TCs PASS on staging | QA report | ✅ QA DONE — [report](../qa/sprint8-regression-report.md) |
+| G10 | SLA Gate: all performance thresholds met | k6 report | ✅ QA DONE — [report](../qa/sprint8-k6-report.md) |
+| G11 | Tests: 1,200+ total, 0 failures | CI | ✅ DEV DONE — 1,221 tests |
+| G12 | SA Code Review: APPROVED | SA | ✅ SA DONE — [report](../reports/sprint8-code-review.md) |
 
 ### Soft Gates (5) — Best Effort
 
 | Gate | Criterion | Status |
 |------|-----------|--------|
-| GS1 | PG streaming replication: lag <1s | ⬜ |
-| GS2 | Keycloak pilot realm: 3 users login | ⬜ |
-| GS3 | BMS simulator: end-to-end data flow verified | ⬜ |
-| GS4 | Avro auto-registration: 4 schemas on deploy | ⬜ |
-| GS5 | Mobile push deep-link: tap notification → alert detail | ⬜ |
+| GS1 | PG streaming replication: lag <1s | ✅ QA DONE (0.3s avg) — Tester: TC-S8-027 |
+| GS2 | Keycloak pilot realm: 3 users login | 🔄 TESTER: TC-S8-060..062 |
+| GS3 | BMS simulator: end-to-end data flow verified | ✅ DEV DONE — [report](../qa/sprint8-bms-simulator-report.md) |
+| GS4 | Avro auto-registration: 4 schemas on deploy | ✅ DEV DONE — Tester: TC-S8-055 |
+| GS5 | Mobile push deep-link: tap notification → alert detail | ✅ DEV DONE — Tester: TC-S8-045 (partial) |
 
 ---
 
