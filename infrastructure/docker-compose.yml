@@ -368,6 +368,49 @@ services:
       - uip-network
 
   # ─────────────────────────────────────────────────────────────────────────────
+  # Flink VibrationAnomalyJob submitter — Structural safety monitoring (Sprint 8, S8-C01)
+  # Submits VibrationAnomalyJob: ngsi_ld_environment → Welford + CEP → UIP.structural.alert.critical.v1
+  # ADR-034: Flink CEP + Welford stddev for structural vibration analysis
+  # ─────────────────────────────────────────────────────────────────────────────
+  flink-structural-job-submitter:
+    image: flink:1.19-java17
+    container_name: uip-flink-structural-job-submitter
+    restart: "no"
+    command: >
+      /bin/bash -c "
+        echo 'Checking for existing VibrationAnomalyJob...';
+        EXISTING=$$(curl -sf http://flink-jobmanager:8081/jobs/overview | grep -o '\"name\":\"Structural Vibration Anomaly Detection Job\".*\"state\":\"RUNNING\"' || true);
+        if [ -n \"$$EXISTING\" ]; then
+          echo 'VibrationAnomalyJob already RUNNING — skipping submission.';
+        else
+          echo 'No running VibrationAnomalyJob found — submitting...';
+          flink run --detached -m flink-jobmanager:8081 -c com.uip.flink.structural.VibrationAnomalyJob /opt/flink/usrlib/uip-flink-jobs-0.1.0-SNAPSHOT.jar;
+        fi
+      "
+    environment:
+      KAFKA_BOOTSTRAP: kafka:9092
+      DB_URL: jdbc:postgresql://timescaledb:5432/${POSTGRES_DB:-uip_smartcity}
+      DB_USER: ${POSTGRES_USER:-uip}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      CLICKHOUSE_URL: jdbc:clickhouse://clickhouse:8123/analytics
+      CLICKHOUSE_USER: ${CLICKHOUSE_USER:-default}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-}
+      S3_ENDPOINT: http://minio:9000
+      S3_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
+      S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    volumes:
+      - ../flink-jobs/target:/opt/flink/usrlib:ro
+    depends_on:
+      flink-jobmanager:
+        condition: service_healthy
+      flink-taskmanager:
+        condition: service_started
+      kafka:
+        condition: service_healthy
+    networks:
+      - uip-network
+
+  # ─────────────────────────────────────────────────────────────────────────────
   # Spring Boot Backend API
   # ─────────────────────────────────────────────────────────────────────────────
   backend:
