@@ -75,6 +75,9 @@ flink-deploy: ## Full deploy cycle: savepoint → cancel → submit (zero-downti
 flink-status: ## Show Flink cluster + job status
 	@FLINK_URL=$(FLINK_URL) bash $(FLINK_SCRIPT) status
 
+avro-register: ## Register Avro schemas into Apicurio Registry (idempotent)
+	@bash scripts/register-avro-schemas.sh
+
 # ─── UAT Stack ────────────────────────────────────────────────────────────────
 
 uat-up: ## Start UAT stack (uses .env.uat — copy from .env.uat.example first)
