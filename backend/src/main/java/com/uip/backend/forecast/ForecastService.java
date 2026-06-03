@@ -25,7 +25,13 @@ public class ForecastService {
         this.naiveFallback = naiveFallback;
     }
 
-    @Cacheable(value = "forecasts", key = "#tenantId + '|' + #buildingId + '|' + #horizonDays")
+    // unless = isFallback: NONE/naive results are never cached so the next call retries the real service.
+    // Eliminates manual Redis DEL for stale NONE entries (B1-7).
+    @Cacheable(
+            value = "forecasts",
+            key = "#tenantId + '|' + #buildingId + '|' + #horizonDays",
+            unless = "#result.isFallback()"
+    )
     public ForecastResult forecast(String tenantId, String buildingId, int horizonDays) {
         log.info("Forecast request: tenant={}, building={}, horizon={}d", tenantId, buildingId, horizonDays);
         try {

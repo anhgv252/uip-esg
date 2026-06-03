@@ -67,4 +67,8 @@ public class AlertEvent implements TenantAware {
     /** Location description for map overlay (e.g. district name, coordinates) */
     @Column(name = "location", length = 200)
     private String location;
+
+    /** Building associated with this alert — set by structural/BMS consumers for safety score correlation. */
+    @Column(name = "building_id", length = 100)
+    private String buildingId;
 }

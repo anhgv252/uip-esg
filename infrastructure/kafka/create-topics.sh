@@ -52,5 +52,20 @@ create_topic "UIP.admin.trigger-config.updated.v1" 1
 # Workflow DLQ — GenericKafkaTriggerService sends failed trigger events here
 create_topic "UIP.workflow.trigger.dlq.v1" 1 2592000000  # 30 days
 
+# ─── Structural safety monitoring (Sprint 7) ─────────────────────────────────
+create_topic "UIP.structural.alert.critical.v1" 3
+create_topic "UIP.structural.alert.dlq.v1" 1 2592000000  # 30 days DLQ
+
+# BMS reading (Sprint 7) — v1 JSON (existing) + v2 Avro (dual-publish B1-3)
+create_topic "UIP.bms.reading.raw.v1" 6
+create_topic "UIP.bms.reading.raw.v1.dlq" 1 2592000000  # 30 days DLQ
+
+# ─── Avro v2 topics (Sprint 7 B1-3 dual-publish) ─────────────────────────────
+# v1 JSON topics remain active until Phase 3 deprecation — see kafka-avro-schema-versioning.md
+create_topic "UIP.bms.reading.raw.v2" 6            # Avro BmsReadingEvent
+create_topic "UIP.iot.sensor.reading.v2" 6         # Avro SensorReadingEvent
+create_topic "UIP.flink.alert.detected.v2" 3       # Avro AlertDetectedEvent
+create_topic "UIP.analytics.hourly.rollup.v2" 3    # Avro HourlyRollupEvent
+
 echo "=== All topics created successfully ==="
 kafka-topics --bootstrap-server "${BOOTSTRAP}" --list

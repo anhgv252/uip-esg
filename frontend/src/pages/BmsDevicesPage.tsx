@@ -12,6 +12,7 @@ import SendIcon from '@mui/icons-material/Send'
 import DeviceHubIcon from '@mui/icons-material/DeviceHub'
 import { formatDistanceToNow } from 'date-fns'
 import { useBmsDevices, useCreateBmsDevice, useDeleteBmsDevice, useSendBmsCommand } from '@/hooks/useBmsDevices'
+import { useBmsCommandAck } from '@/hooks/useBmsCommandAck'
 
 const PROTOCOL_COLORS: Record<string, string> = {
   MODBUS_TCP: '#1565c0',
@@ -24,15 +25,26 @@ function ProtocolBadge({ protocol }: { protocol: string }) {
   return <Chip label={protocol} size="small" sx={{ bgcolor: color, color: '#fff', fontWeight: 700, fontSize: 10 }} />
 }
 
+// FE-6: green=ONLINE, amber=UNKNOWN/connecting, gray=OFFLINE (per spec)
 function StatusDot({ status }: { status: string }) {
-  const color = status === 'ONLINE' ? '#4caf50' : status === 'OFFLINE' ? '#f44336' : '#ff9800'
-  return <Box component="span" sx={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', bgcolor: color, mr: 0.5 }} />
+  const color = status === 'ONLINE' ? '#4caf50' : status === 'OFFLINE' ? '#9CA3AF' : '#ff9800'
+  return (
+    <Box
+      component="span"
+      role="status"
+      aria-label={`Device status: ${status}`}
+      sx={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', bgcolor: color, mr: 0.5 }}
+    />
+  )
 }
 
 export default function BmsDevicesPage() {
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('md'))
   const [showForm, setShowForm] = useState(false)
+
+  // FE-6: subscribe to bms-command-ack SSE events → auto-refresh device status
+  useBmsCommandAck()
 
   const { data: devices = [], isLoading, error } = useBmsDevices()
   const { mutate: create, isPending: creating } = useCreateBmsDevice()

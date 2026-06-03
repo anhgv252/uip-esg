@@ -88,3 +88,9 @@ export const downloadReport = (id: string, format = 'xlsx') =>
   apiClient
     .get(`/esg/reports/${id}/download`, { params: { format }, responseType: 'blob' })
     .then((r) => r.data as Blob);
+
+/** Synchronous on-demand PDF generation — POST /esg/reports/pdf, returns binary blob. */
+export const generatePdfReport = (year: number, quarter: number) =>
+  apiClient
+    .post('/esg/reports/pdf', null, { params: { year, quarter }, responseType: 'blob' })
+    .then((r) => r.data as Blob);

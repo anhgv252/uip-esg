@@ -35,6 +35,15 @@ const CrossBuildingDashboardPage = lazy(
 const CrossBuildingShell = lazy(
   () => import('@/components/buildings/CrossBuildingShell').then((m) => ({ default: m.CrossBuildingShell }))
 )
+const BuildingDetailPage = lazy(
+  () => import('@/pages/buildings/BuildingDetailPage').then((m) => ({ default: m.BuildingDetailPage }))
+)
+const MobileOperatorDashboard = lazy(
+  () => import('@/pages/mobile/MobileOperatorDashboard').then((m) => ({ default: m.MobileOperatorDashboard }))
+)
+const MobileAlertsPage = lazy(
+  () => import('@/pages/mobile/MobileAlertsPage').then((m) => ({ default: m.MobileAlertsPage }))
+)
 
 export const routes: RouteObject[] = [
   {
@@ -68,6 +77,16 @@ export const routes: RouteObject[] = [
         element: <CrossBuildingShell />,
         children: [
           { index: true, element: <CrossBuildingDashboardPage /> },
+          { path: ':id', element: <BuildingDetailPage /> },
+        ],
+      },
+      // Mobile Operator routes — FE-7/8/9 (mobile-first operator dashboard)
+      {
+        path: '/mobile',
+        element: <MobileLayout />,
+        children: [
+          { index: true, element: <MobileOperatorDashboard /> },
+          { path: 'alerts', element: <MobileAlertsPage /> },
         ],
       },
       // Citizen routes — all wrapped in MobileLayout to render bottom navigation

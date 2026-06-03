@@ -4,6 +4,7 @@ import { getAlerts, acknowledgeAlert, escalateAlert, resolveAlert, getCitizenNot
 export function useAlerts(filters?: {
   status?: string
   severity?: string
+  module?: string
   from?: string
   to?: string
   page?: number

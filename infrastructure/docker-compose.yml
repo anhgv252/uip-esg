@@ -388,6 +388,9 @@ services:
       EMQX_BROKER_URL: tcp://emqx:1883
       EMQX_CLIENT_ID: ${EMQX_CLIENT_ID:-uip-bms-backend}
       CLAUDE_API_KEY: ${CLAUDE_API_KEY:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin_Dev#2026!}
+      OPERATOR_PASSWORD: ${OPERATOR_PASSWORD:-operator_Dev#2026!}
+      CITIZEN_PASSWORD: ${CITIZEN_PASSWORD:-citizen1_Dev#2026!}
       JWT_SECRET: ${JWT_SECRET}
       JWT_EXPIRATION_MS: ${JWT_EXPIRATION_MS:-900000}
       JWT_REFRESH_EXPIRATION_MS: ${JWT_REFRESH_EXPIRATION_MS:-604800000}
@@ -395,6 +398,7 @@ services:
       JWT_KEYCLOAK_ISSUER: ${JWT_KEYCLOAK_ISSUER:-http://keycloak:8085/realms/uip}
       JWT_KEYCLOAK_JWK_SET_URI: ${JWT_KEYCLOAK_JWK_SET_URI:-http://keycloak:8085/realms/uip/protocol/openid-connect/certs}
       KEYCLOAK_AUTH_SERVER_URL: ${KEYCLOAK_AUTH_SERVER_URL:-https://voice-engineers-recognize-nevada.trycloudflare.com/realms/uip}
+      APICURIO_REGISTRY_URL: ${APICURIO_REGISTRY_URL:-http://apicurio-registry:8080/apis/registry/v2}
     ports:
       - "8080:8080"
       - "8086:8081"  # management/actuator port (container 8081 → host 8086; host 8081 used by Flink)
@@ -410,6 +414,8 @@ services:
       redis:
         condition: service_healthy
       kafka:
+        condition: service_healthy
+      apicurio-registry:
         condition: service_healthy
     networks:
       - uip-network
@@ -469,11 +475,18 @@ services:
     ports:
       - "8082:8081"
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:8081/actuator/health 2>/dev/null | grep -q UP || exit 1"]
+      test: ["CMD-SHELL", "curl -sf http://localhost:8081/actuator/health | grep -q UP || exit 1"]
       interval: 15s
       timeout: 10s
       retries: 5
       start_period: 60s
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+          cpus: '0.5'
+        reservations:
+          memory: 256m
     depends_on:
       clickhouse:
         condition: service_healthy
@@ -576,6 +589,31 @@ services:
           cpus: '1.0'
         reservations:
           memory: 512m
+    networks:
+      - uip-network
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Apicurio Schema Registry (Avro schema management for Kafka)
+  # ─────────────────────────────────────────────────────────────────────────────
+  apicurio-registry:
+    image: apicurio/apicurio-registry-mem:2.6.6.Final
+    container_name: uip-apicurio-registry
+    restart: unless-stopped
+    ports:
+      - "8087:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8080/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+          cpus: '0.5'
+        reservations:
+          memory: 256m
     networks:
       - uip-network
 

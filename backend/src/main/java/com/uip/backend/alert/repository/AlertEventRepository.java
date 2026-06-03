@@ -34,4 +34,16 @@ public interface AlertEventRepository extends JpaRepository<AlertEvent, UUID>, J
     org.springframework.data.domain.Page<AlertEvent> findRecentPublicAlerts(
             @Param("since") Instant since,
             org.springframework.data.domain.Pageable pageable);
+
+    @Query("""
+        SELECT a FROM AlertEvent a
+        WHERE a.module      = 'STRUCTURAL'
+          AND a.buildingId  = :buildingId
+          AND a.status      IN ('OPEN', 'ESCALATED')
+          AND a.detectedAt >= :since
+        ORDER BY a.detectedAt DESC
+        """)
+    List<AlertEvent> findOpenStructuralAlerts(
+            @Param("buildingId") String buildingId,
+            @Param("since")      Instant since);
 }

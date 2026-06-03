@@ -89,6 +89,31 @@ class ForecastServiceTest {
         );
     }
 
+    // ─── B1-7: Cache eviction for NONE/fallback results ──────────────────────
+
+    @Test
+    @DisplayName("B1-7: fallback result has isFallback=true — @Cacheable unless guards this")
+    void b17_fallbackResult_isFallbackTrue() {
+        // isFallback=true is what @Cacheable(unless="#result.isFallback()") evaluates.
+        // In production (Spring proxy active), isFallback=true results are NOT stored in cache.
+        // Next call re-invokes the service, enabling auto-recovery when forecast-service comes back.
+        assertThat(NAIVE_RESULT.isFallback()).isTrue();
+        assertThat(STUB_RESULT.isFallback()).isFalse();
+    }
+
+    @Test
+    @DisplayName("B1-7: non-fallback ARIMA result is caching-eligible (isFallback=false)")
+    void b17_arimaResult_cacheEligible() {
+        when(forecastPort.forecast("hcm", "B1", 30)).thenReturn(STUB_RESULT);
+
+        ForecastResult r1 = forecastService.forecast("hcm", "B1", 30);
+        ForecastResult r2 = forecastService.forecast("hcm", "B1", 30);
+
+        // Both calls return correct result; in production the second call would be cached
+        assertThat(r1.isFallback()).isFalse();
+        assertThat(r2.isFallback()).isFalse();
+    }
+
     @Test
     @DisplayName("forecast — different tenants are correctly passed to port")
     void forecast_multiTenant() {

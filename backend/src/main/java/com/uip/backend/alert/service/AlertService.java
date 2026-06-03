@@ -41,7 +41,7 @@ public class AlertService {
 
     // ─── Alert Events ─────────────────────────────────────────────────────────
 
-    public Page<AlertEventDto> queryAlerts(String status, String severity,
+    public Page<AlertEventDto> queryAlerts(String status, String severity, String module,
                                            Instant from, Instant to,
                                            int page, int size) {
         var pageable = PageRequest.of(page, Math.min(size, 100),
@@ -53,6 +53,9 @@ public class AlertService {
         }
         if (severity != null && !severity.isBlank()) {
             spec = spec.and((root, query, cb) -> cb.equal(root.get("severity"), severity));
+        }
+        if (module != null && !module.isBlank()) {
+            spec = spec.and((root, query, cb) -> cb.equal(root.get("module"), module));
         }
         if (from != null) {
             spec = spec.and((root, query, cb) -> cb.greaterThanOrEqualTo(root.get("detectedAt"), from));
@@ -71,6 +74,23 @@ public class AlertService {
                         .collect(Collectors.toMap(AlertRule::getId, AlertRule::getRuleName));
 
         return events.map(a -> toDto(a, ruleNames));
+    }
+
+    /**
+     * Persist a new alert event — used by consumers outside the alert.* package
+     * (e.g. StructuralAlertConsumer) to maintain module boundary rules.
+     */
+    @Transactional
+    public AlertEvent saveAlert(AlertEvent event) {
+        return alertEventRepository.save(event);
+    }
+
+    /**
+     * Query open structural alerts for a building — used by BuildingSafetyService.
+     */
+    @Transactional(readOnly = true)
+    public java.util.List<AlertEvent> findOpenStructuralAlerts(String buildingId, java.time.Instant since) {
+        return alertEventRepository.findOpenStructuralAlerts(buildingId, since);
     }
 
     @Transactional

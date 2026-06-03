@@ -60,9 +60,9 @@ class NaiveForecastAdapterTest {
     // ---------------------------------------------------------------------------
 
     @Test
-    @DisplayName("forecast — insufficient data (< 720 points) returns insufficientData result")
+    @DisplayName("forecast — insufficient data (< 2 points) returns insufficientData result")
     void forecast_insufficientData_returnsInsufficient() {
-        List<EsgMetric> fewMetrics = buildMetrics("hcm", "B1", 100, 50.0);
+        List<EsgMetric> fewMetrics = buildMetrics("hcm", "B1", 1, 50.0);
         when(esgMetricRepository.findByTypeAndBuilding(
                 eq("hcm"), eq("ENERGY"), eq("B1"), any(Instant.class), any(Instant.class)))
                 .thenReturn(fewMetrics);
@@ -78,9 +78,9 @@ class NaiveForecastAdapterTest {
     }
 
     @Test
-    @DisplayName("forecast — exactly 719 points is insufficient (boundary)")
-    void forecast_exactly719_returnsInsufficient() {
-        List<EsgMetric> metrics = buildMetrics("hcm", "B1", 719, 42.0);
+    @DisplayName("forecast — exactly 1 point is insufficient (boundary)")
+    void forecast_exactly1_returnsInsufficient() {
+        List<EsgMetric> metrics = buildMetrics("hcm", "B1", 1, 42.0);
         when(esgMetricRepository.findByTypeAndBuilding(any(), any(), any(), any(), any()))
                 .thenReturn(metrics);
 

@@ -131,7 +131,7 @@ class AlertServiceIT {
     void queryAlerts_all_returnsAllOpenAlerts() {
         TenantContext.setCurrentTenant(TENANT_A);
         try {
-            Page<AlertEventDto> alerts = alertService.queryAlerts("OPEN", null, null, null, 0, 20);
+            Page<AlertEventDto> alerts = alertService.queryAlerts("OPEN", null, null, null, null, 0, 20);
             assertThat(alerts.getTotalElements()).isGreaterThanOrEqualTo(2);
             assertThat(alerts.getContent()).allSatisfy(a -> assertThat(a.getStatus()).isEqualTo("OPEN"));
         } finally {
@@ -144,7 +144,7 @@ class AlertServiceIT {
     void queryAlerts_bySeverity_returnsOnlyCritical() {
         TenantContext.setCurrentTenant(TENANT_A);
         try {
-            Page<AlertEventDto> alerts = alertService.queryAlerts(null, "CRITICAL", null, null, 0, 20);
+            Page<AlertEventDto> alerts = alertService.queryAlerts(null, "CRITICAL", null, null, null, 0, 20);
             assertThat(alerts.getContent()).allSatisfy(a -> assertThat(a.getSeverity()).isEqualTo("CRITICAL"));
         } finally {
             TenantContext.clear();
@@ -156,7 +156,7 @@ class AlertServiceIT {
     void queryAlerts_tenantIsolation() {
         TenantContext.setCurrentTenant(TENANT_B);
         try {
-            Page<AlertEventDto> alerts = alertService.queryAlerts("OPEN", null, null, null, 0, 20);
+            Page<AlertEventDto> alerts = alertService.queryAlerts("OPEN", null, null, null, null, 0, 20);
             // Note: Testcontainers PG superuser bypasses RLS, so seed data is also visible.
             // Verify that at least our Tenant B alert is present with correct sensor.
             assertThat(alerts.getContent()).anySatisfy(a ->
@@ -171,7 +171,7 @@ class AlertServiceIT {
     void queryAlerts_noMatch_returnsEmpty() {
         TenantContext.setCurrentTenant(TENANT_A);
         try {
-            Page<AlertEventDto> alerts = alertService.queryAlerts("RESOLVED", "CRITICAL", null, null, 0, 20);
+            Page<AlertEventDto> alerts = alertService.queryAlerts("RESOLVED", "CRITICAL", null, null, null, 0, 20);
             assertThat(alerts.getContent()).isEmpty();
         } finally {
             TenantContext.clear();
@@ -184,7 +184,7 @@ class AlertServiceIT {
         TenantContext.setCurrentTenant(TENANT_A);
         try {
             Instant from = Instant.now().minus(30, ChronoUnit.MINUTES);
-            Page<AlertEventDto> alerts = alertService.queryAlerts("OPEN", null, from, Instant.now(), 0, 20);
+            Page<AlertEventDto> alerts = alertService.queryAlerts("OPEN", null, null, from, Instant.now(), 0, 20);
             assertThat(alerts.getContent()).isNotEmpty();
         } finally {
             TenantContext.clear();
@@ -196,7 +196,7 @@ class AlertServiceIT {
     void queryAlerts_ruleNameResolved() {
         TenantContext.setCurrentTenant(TENANT_A);
         try {
-            Page<AlertEventDto> alerts = alertService.queryAlerts("OPEN", null, null, null, 0, 20);
+            Page<AlertEventDto> alerts = alertService.queryAlerts("OPEN", null, null, null, null, 0, 20);
             assertThat(alerts.getContent()).anySatisfy(a ->
                     assertThat(a.getRuleName()).isEqualTo("High PM2.5"));
         } finally {
@@ -211,7 +211,7 @@ class AlertServiceIT {
     void acknowledgeAlert_updatesStatus() {
         TenantContext.setCurrentTenant(TENANT_A);
         try {
-            Page<AlertEventDto> openAlerts = alertService.queryAlerts("OPEN", "CRITICAL", null, null, 0, 20);
+            Page<AlertEventDto> openAlerts = alertService.queryAlerts("OPEN", "CRITICAL", null, null, null, 0, 20);
             assertThat(openAlerts.getContent()).isNotEmpty();
             UUID alertId = openAlerts.getContent().get(0).getId();
 
@@ -241,7 +241,7 @@ class AlertServiceIT {
     void escalateAlert_updatesStatus() {
         TenantContext.setCurrentTenant(TENANT_A);
         try {
-            Page<AlertEventDto> openAlerts = alertService.queryAlerts("OPEN", null, null, null, 0, 20);
+            Page<AlertEventDto> openAlerts = alertService.queryAlerts("OPEN", null, null, null, null, 0, 20);
             assertThat(openAlerts.getContent()).isNotEmpty();
             UUID alertId = openAlerts.getContent().get(0).getId();
 
@@ -356,7 +356,7 @@ class AlertServiceIT {
     void queryAlerts_pagination_works() {
         TenantContext.setCurrentTenant(TENANT_A);
         try {
-            Page<AlertEventDto> page0 = alertService.queryAlerts(null, null, null, null, 0, 2);
+            Page<AlertEventDto> page0 = alertService.queryAlerts(null, null, null, null, null, 0, 2);
             assertThat(page0.getSize()).isLessThanOrEqualTo(2);
             if (page0.getTotalElements() > 2) {
                 assertThat(page0.hasNext()).isTrue();
@@ -371,7 +371,7 @@ class AlertServiceIT {
     void queryAlerts_allStatuses_returnsFullList() {
         TenantContext.setCurrentTenant(TENANT_A);
         try {
-            Page<AlertEventDto> all = alertService.queryAlerts(null, null, null, null, 0, 50);
+            Page<AlertEventDto> all = alertService.queryAlerts(null, null, null, null, null, 0, 50);
             assertThat(all.getTotalElements()).isGreaterThanOrEqualTo(4);
         } finally {
             TenantContext.clear();

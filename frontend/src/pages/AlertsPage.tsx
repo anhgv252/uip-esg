@@ -58,6 +58,27 @@ function SeverityBadge({ severity }: { severity: string }) {
   )
 }
 
+// Distinct badge for module type — STRUCTURAL uses a different icon/color from FLOOD/ENVIRONMENT
+const MODULE_COLORS: Record<string, string> = {
+  STRUCTURAL: '#7B1FA2',   // purple — distinct from flood (blue) and environment (green)
+  FLOOD:      '#0288D1',
+  ENVIRONMENT:'#388E3C',
+  TRAFFIC:    '#F57C00',
+}
+
+function ModuleBadge({ module }: { module: string }) {
+  const bg = MODULE_COLORS[module] ?? '#616161'
+  return (
+    <Chip
+      label={module}
+      size="small"
+      variant="outlined"
+      sx={{ borderColor: bg, color: bg, fontWeight: 600, fontSize: 10, height: 20 }}
+      aria-label={`Module: ${module}`}
+    />
+  )
+}
+
 function StatusBadge({ status }: { status: string }) {
   const color = status === 'ACKNOWLEDGED' ? 'success' : status === 'ESCALATED' ? 'error' : status === 'RESOLVED' ? 'default' : 'warning'
   return <Chip label={status} size="small" variant="outlined" color={color} />
@@ -197,7 +218,7 @@ function MobileAlertCard({ alert, onAck, onEscalate, onResolve, canAck, canEscal
         </Box>
         <Typography variant="body2" fontWeight={600} noWrap>{alert.ruleName ?? '—'}</Typography>
         <Stack direction="row" spacing={2} mt={0.5}>
-          <Typography variant="caption" color="text.secondary">{alert.module}</Typography>
+          <ModuleBadge module={alert.module} />
           <Typography variant="caption" color="text.secondary">{alert.sensorId ?? '—'}</Typography>
           <Typography variant="caption" color="text.secondary">Value: {alert.value}</Typography>
         </Stack>
@@ -242,7 +263,7 @@ export default function AlertsPage() {
   const [selectedAlert, setSelectedAlert] = useState<AlertEvent | null>(null)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [page, setPage] = useState(0)
-  const [filters, setFilters] = useState({ status: '', severity: '' })
+  const [filters, setFilters] = useState({ status: '', severity: '', module: '' })
   const canAck = useScope('alert:ack')
   const canEscalate = useScope('alert:escalate')
 
@@ -251,6 +272,7 @@ export default function AlertsPage() {
   const { data, isLoading, error } = useAlerts({
     status: filters.status || undefined,
     severity: filters.severity || undefined,
+    module: filters.module || undefined,
     page,
     size: 20,
   })
@@ -306,6 +328,14 @@ export default function AlertsPage() {
           sx={{ minWidth: isMobile ? '100%' : 140 }}>
           <MenuItem value="">All</MenuItem>
           {['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'].map((s) => <MenuItem key={s} value={s}>{s}</MenuItem>)}
+        </TextField>
+        <TextField select size="small" label="Module" value={filters.module}
+          onChange={(e) => { setFilters((f) => ({ ...f, module: e.target.value })); setPage(0) }}
+          sx={{ minWidth: isMobile ? '100%' : 140 }}>
+          <MenuItem value="">All</MenuItem>
+          {['STRUCTURAL', 'FLOOD', 'ENVIRONMENT', 'TRAFFIC', 'BMS'].map((m) => (
+            <MenuItem key={m} value={m}>{m}</MenuItem>
+          ))}
         </TextField>
         {selected.size > 0 && (
           <Tooltip title={!canAck ? 'You need alert:ack scope' : ''}>

@@ -1,0 +1,18 @@
+{
+  "type": "record",
+  "name": "AlertDetectedEvent",
+  "namespace": "com.uip.iot.avro",
+  "doc": "Alert detection event — Avro v2 schema. Published when a sensor threshold breach is detected.",
+  "fields": [
+    {"name": "tenantId",    "type": "string",           "doc": "Tenant identifier for RLS"},
+    {"name": "sensorId",    "type": "string",           "doc": "Originating sensor ID"},
+    {"name": "module",      "type": "string",           "doc": "Source module: FLOOD, STRUCTURAL, ENVIRONMENT, TRAFFIC"},
+    {"name": "measureType", "type": "string",           "doc": "Measurement type that breached, e.g. VIBRATION"},
+    {"name": "value",       "type": "double",           "doc": "Measured value at time of breach"},
+    {"name": "threshold",   "type": "double",           "doc": "Threshold value that was breached"},
+    {"name": "severity",    "type": "string",           "doc": "Alert severity: WARNING, HIGH, CRITICAL"},
+    {"name": "timestampMs", "type": "long",             "doc": "Detection timestamp — epoch millis"},
+    {"name": "location",    "type": ["null", "string"], "doc": "Location label, e.g. district name", "default": null},
+    {"name": "buildingId",  "type": ["null", "string"], "doc": "Building ID if applicable (structural alerts)", "default": null}
+  ]
+}

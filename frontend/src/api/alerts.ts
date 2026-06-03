@@ -49,6 +49,7 @@ export interface AlertRuleRequest {
 export const getAlerts = (params?: {
   status?: string;
   severity?: string;
+  module?: string;
   from?: string;
   to?: string;
   page?: number;

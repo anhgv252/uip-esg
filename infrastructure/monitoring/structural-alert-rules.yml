@@ -1,0 +1,138 @@
+groups:
+  # ─── Structural Safety Monitoring ────────────────────────────────────────────
+  - name: structural_safety
+    interval: 30s
+    rules:
+      - alert: StructuralAlertP0Latency
+        expr: |
+          histogram_quantile(0.95,
+            rate(structural_alert_e2e_duration_seconds_bucket[5m])
+          ) > 15
+        for: 2m
+        labels:
+          severity: critical
+          team: backend
+        annotations:
+          summary: "Structural P0 alert latency >15s (SLA breach)"
+          description: "p95 latency {{ $value }}s exceeds 15s SLA for sensor→alert pipeline."
+          runbook: "docs/mvp3/project/sprint7-deployment-runbook.md#structural-latency"
+
+      - alert: WelfordColdStartRisk
+        expr: |
+          structural_sensor_reading_count < 1000
+        for: 5m
+        labels:
+          severity: warning
+          team: backend
+        annotations:
+          summary: "Structural sensor cold start — anomaly detection inactive"
+          description: "Sensor {{ $labels.sensor_id }} has {{ $value }} readings (<1000). Welford anomaly detection disabled until warm."
+
+      - alert: StructuralSensorOffline
+        expr: |
+          time() - structural_sensor_last_seen_timestamp > 300
+        for: 3m
+        labels:
+          severity: warning
+          team: devops
+        annotations:
+          summary: "Structural sensor offline >5 minutes"
+          description: "Sensor {{ $labels.sensor_id }} in building {{ $labels.building_id }} has not reported in >5min."
+
+  # ─── Kafka Health ─────────────────────────────────────────────────────────────
+  - name: kafka_health
+    interval: 60s
+    rules:
+      - alert: KafkaStructuralConsumerLag
+        expr: |
+          kafka_consumer_group_lag{group="uip-backend-structural-alerts"} > 1000
+        for: 5m
+        labels:
+          severity: critical
+          team: devops
+        annotations:
+          summary: "Structural alert Kafka consumer lag >1000"
+          description: "Consumer group lag={{ $value }}. StructuralAlertConsumer may be down or overwhelmed."
+          runbook: "docs/mvp3/project/sprint7-deployment-runbook.md#kafka-consumer-lag"
+
+      - alert: KafkaVibrationFlinkLag
+        expr: |
+          kafka_consumer_group_lag{group="flink-structural-anomaly-job"} > 5000
+        for: 3m
+        labels:
+          severity: warning
+          team: devops
+        annotations:
+          summary: "Flink VibrationAnomalyJob Kafka lag >5000"
+          description: "Flink job may be processing slowly. Welford state build-up may be affected."
+
+  # ─── Building Safety API ──────────────────────────────────────────────────────
+  - name: building_safety_api
+    interval: 60s
+    rules:
+      - alert: SafetyScoreApiSlow
+        expr: |
+          histogram_quantile(0.95,
+            rate(http_server_requests_seconds_bucket{uri="/api/v1/buildings/{id}/safety"}[5m])
+          ) > 2
+        for: 3m
+        labels:
+          severity: warning
+          team: backend
+        annotations:
+          summary: "Safety score API p95 >2s (SLA breach)"
+          description: "GET /buildings/{id}/safety p95={{ $value }}s. Check Redis cache hit rate."
+
+      - alert: SafetyScoreCacheMissHigh
+        expr: |
+          rate(cache_gets_total{name="safety:score",result="miss"}[5m])
+          / rate(cache_gets_total{name="safety:score"}[5m]) > 0.5
+        for: 5m
+        labels:
+          severity: warning
+          team: backend
+        annotations:
+          summary: "Safety score cache miss rate >50%"
+          description: "Redis cache for safety:score is frequently missing. TTL may be too short or evictions too frequent."
+
+  # ─── Flink Jobs ───────────────────────────────────────────────────────────────
+  - name: flink_jobs
+    interval: 30s
+    rules:
+      - alert: FlinkVibrationJobDown
+        expr: |
+          flink_jobmanager_job_uptime{job_name="Structural Vibration Anomaly Detection Job"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          team: devops
+        annotations:
+          summary: "Flink VibrationAnomalyJob is DOWN"
+          description: "Structural anomaly detection is offline. No P0 alerts will be generated."
+          runbook: "docs/mvp3/project/sprint7-deployment-runbook.md#flink-job-crash"
+
+      - alert: FlinkCheckpointStale
+        expr: |
+          time() - flink_taskmanager_job_task_operator_lastCheckpointSize > 600
+        for: 5m
+        labels:
+          severity: warning
+          team: devops
+        annotations:
+          summary: "Flink checkpoint not completed in >10 minutes"
+          description: "Job {{ $labels.job_name }} last checkpoint >10min ago. State recovery risk if job crashes."
+
+  # ─── Apicurio Schema Registry ─────────────────────────────────────────────────
+  - name: apicurio
+    interval: 60s
+    rules:
+      - alert: ApicurioRegistryDown
+        expr: |
+          up{job="apicurio-registry"} == 0
+        for: 2m
+        labels:
+          severity: warning
+          team: devops
+        annotations:
+          summary: "Apicurio Schema Registry is DOWN"
+          description: "Avro v2 dual-publish will fail. v1 JSON topics remain unaffected."

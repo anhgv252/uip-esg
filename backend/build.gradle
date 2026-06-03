@@ -63,6 +63,8 @@ dependencies {
     implementation 'io.micrometer:micrometer-tracing-bridge-otel'
     runtimeOnly    'io.opentelemetry:opentelemetry-exporter-otlp'
     implementation 'org.springframework.kafka:spring-kafka'
+    // Apicurio Schema Registry -- Avro serde for Kafka (S7-B08)
+    implementation 'io.apicurio:apicurio-registry-serdes-avro-serde:2.6.9.Final'
 
     // JWT + OAuth2 Resource Server (NimbusJwtDecoder for RSA/HMAC dual-issuer)
     implementation 'org.springframework.boot:spring-boot-starter-oauth2-resource-server'

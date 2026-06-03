@@ -65,7 +65,7 @@ class AlertServiceTest {
         when(alertEventRepository.findAll(ArgumentMatchers.<Specification<AlertEvent>>any(), any(Pageable.class)))
                 .thenReturn(page);
 
-        var result = alertService.queryAlerts("OPEN", "CRITICAL",
+        var result = alertService.queryAlerts("OPEN", "CRITICAL", null,
                 Instant.now().minusSeconds(3600), Instant.now(), 0, 20);
 
         assertThat(result.getContent()).hasSize(1);
@@ -79,7 +79,7 @@ class AlertServiceTest {
         when(alertEventRepository.findAll(ArgumentMatchers.<Specification<AlertEvent>>any(), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(openAlert)));
 
-        var result = alertService.queryAlerts(null, null, null, null, 0, 20);
+        var result = alertService.queryAlerts(null, null, null, null, null, 0, 20);
 
         assertThat(result.getContent()).hasSize(1);
     }
@@ -90,7 +90,7 @@ class AlertServiceTest {
         when(alertEventRepository.findAll(ArgumentMatchers.<Specification<AlertEvent>>any(), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of()));
 
-        alertService.queryAlerts(null, null, null, null, 0, 999);
+        alertService.queryAlerts(null, null, null, null, null, 0, 999);
 
         ArgumentCaptor<Pageable> captor = ArgumentCaptor.forClass(Pageable.class);
         verify(alertEventRepository).findAll(ArgumentMatchers.<Specification<AlertEvent>>any(), captor.capture());

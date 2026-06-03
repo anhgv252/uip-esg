@@ -1,0 +1,15 @@
+{
+  "type": "record",
+  "name": "BmsReadingEvent",
+  "namespace": "com.uip.iot.avro",
+  "doc": "BMS device sensor reading — Avro v2 schema. BACKWARD compatible with JSON v1.",
+  "fields": [
+    {"name": "tenantId",    "type": "string",            "doc": "Tenant identifier for RLS"},
+    {"name": "deviceId",    "type": "string",            "doc": "BMS device UUID (string form)"},
+    {"name": "readingType", "type": "string",            "doc": "Metric type, e.g. TEMPERATURE, HUMIDITY"},
+    {"name": "value",       "type": "double",            "doc": "Measured value"},
+    {"name": "unit",        "type": ["null", "string"],  "doc": "Measurement unit, e.g. Celsius", "default": null},
+    {"name": "timestampMs", "type": "long",              "doc": "Event timestamp — epoch millis"},
+    {"name": "source",      "type": ["null", "string"],  "doc": "Data source identifier", "default": null}
+  ]
+}

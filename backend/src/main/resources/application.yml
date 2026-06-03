@@ -274,6 +274,12 @@ uip:
       private-key: ${VAPID_PRIVATE_KEY:}
       subject: ${VAPID_SUBJECT:mailto:admin@uip.vn}
 
+apicurio:
+  registry:
+    url: ${APICURIO_REGISTRY_URL:http://localhost:8087/apis/registry/v2}
+    auto-register: true
+    compatibility: BACKWARD
+
 logging:
   level:
     com.uip: INFO

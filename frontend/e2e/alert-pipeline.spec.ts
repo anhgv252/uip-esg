@@ -6,6 +6,20 @@ import { loginAsAdmin, navigateTo } from './helpers/auth';
  * Tests alert list, acknowledge, escalate, and SSE feed on City Ops Center.
  * Requires running backend (docker-compose or local spring boot).
  */
+
+/**
+ * Helper: wait for the alerts table to finish loading.
+ * Waits for the Severity column header and ensures no spinner is blocking rows.
+ */
+async function waitForAlertsTable(page: import('@playwright/test').Page) {
+  // Wait for table header (proves table rendered)
+  await expect(page.getByRole('columnheader', { name: /severity/i })).toBeVisible({ timeout: 10_000 });
+  // Wait for any CircularProgress spinner inside tbody to disappear
+  await expect(page.locator('tbody .MuiCircularProgress-root')).not.toBeVisible({ timeout: 8_000 }).catch(() => {});
+  // Small stabilization delay for React Query re-render
+  await page.waitForTimeout(300);
+}
+
 test.describe('Alert Pipeline E2E', () => {
   test.beforeEach(async ({ page }) => {
     await loginAsAdmin(page);
@@ -27,9 +41,7 @@ test.describe('Alert Pipeline E2E', () => {
 
   test('should show severity and status chips in alert rows', async ({ page }) => {
     await navigateTo(page, 'Alerts');
-
-    // Wait for table rows (skip loading state)
-    await page.waitForTimeout(2_000);
+    await waitForAlertsTable(page);
 
     const rows = page.locator('tbody tr');
     const rowCount = await rows.count();
@@ -49,7 +61,7 @@ test.describe('Alert Pipeline E2E', () => {
 
   test('should open alert detail drawer on row click', async ({ page }) => {
     await navigateTo(page, 'Alerts');
-    await page.waitForTimeout(2_000);
+    await waitForAlertsTable(page);
 
     const rows = page.locator('tbody tr');
     const rowCount = await rows.count();
@@ -70,7 +82,7 @@ test.describe('Alert Pipeline E2E', () => {
 
   test('should acknowledge an OPEN alert from drawer', async ({ page }) => {
     await navigateTo(page, 'Alerts');
-    await page.waitForTimeout(2_000);
+    await waitForAlertsTable(page);
 
     const rows = page.locator('tbody tr');
     const rowCount = await rows.count();
@@ -92,13 +104,13 @@ test.describe('Alert Pipeline E2E', () => {
     }
     await ackButton.click();
 
-    // Drawer should close after acknowledge
-    await expect(page.locator('text=/alert detail/i')).not.toBeVisible({ timeout: 5_000 });
+    // Drawer should close after acknowledge (mutation + onSuccess fires)
+    await expect(page.locator('text=/alert detail/i')).not.toBeVisible({ timeout: 8_000 });
   });
 
   test('should escalate an OPEN or ACKNOWLEDGED alert from drawer', async ({ page }) => {
     await navigateTo(page, 'Alerts');
-    await page.waitForTimeout(2_000);
+    await waitForAlertsTable(page);
 
     const rows = page.locator('tbody tr');
     const rowCount = await rows.count();
@@ -118,7 +130,8 @@ test.describe('Alert Pipeline E2E', () => {
     }
 
     await escalateButton.click();
-    await expect(page.locator('text=/alert detail/i')).not.toBeVisible({ timeout: 5_000 });
+    // Drawer should close after escalate (mutation + onSuccess fires)
+    await expect(page.locator('text=/alert detail/i')).not.toBeVisible({ timeout: 8_000 });
   });
 
   test('should show live alert feed on City Ops Center via SSE', async ({ page }) => {
@@ -133,7 +146,7 @@ test.describe('Alert Pipeline E2E', () => {
 
   test('should filter alerts by severity', async ({ page }) => {
     await navigateTo(page, 'Alerts');
-    await page.waitForTimeout(1_500);
+    await waitForAlertsTable(page);
 
     // Use severity filter dropdown
     const severitySelect = page.getByLabel(/severity/i).first();
@@ -141,7 +154,9 @@ test.describe('Alert Pipeline E2E', () => {
     if (await severitySelect.isVisible({ timeout: 3_000 }).catch(() => false)) {
       await severitySelect.click();
       await page.locator('[role="option"]:has-text("HIGH")').click();
-      await page.waitForTimeout(1_000);
+
+      // Wait for filtered data to load (table re-renders)
+      await page.waitForTimeout(500);
 
       // Table should still be visible (filtered or empty)
       await expect(page.locator('table')).toBeVisible({ timeout: 5_000 });

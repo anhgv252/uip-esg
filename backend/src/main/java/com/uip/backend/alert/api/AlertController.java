@@ -38,11 +38,12 @@ public class AlertController {
     public ResponseEntity<Page<AlertEventDto>> queryAlerts(
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String severity,
+            @RequestParam(required = false) String module,
             @RequestParam(required = false) Instant from,
             @RequestParam(required = false) Instant to,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        return ResponseEntity.ok(alertService.queryAlerts(status, severity, from, to, page, size));
+        return ResponseEntity.ok(alertService.queryAlerts(status, severity, module, from, to, page, size));
     }
 
     @PutMapping("/{id}/acknowledge")

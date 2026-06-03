@@ -1,0 +1,16 @@
+{
+  "type": "record",
+  "name": "SensorReadingEvent",
+  "namespace": "com.uip.iot.avro",
+  "doc": "IoT sensor reading — Avro v2 schema. Covers air quality, environmental, structural sensors.",
+  "fields": [
+    {"name": "tenantId",    "type": "string",           "doc": "Tenant identifier for RLS"},
+    {"name": "sensorId",    "type": "string",           "doc": "Sensor device ID"},
+    {"name": "sensorType",  "type": "string",           "doc": "Sensor category, e.g. STRUCTURAL_VIBRATION, AIR_QUALITY"},
+    {"name": "value",       "type": "double",           "doc": "Primary measurement value"},
+    {"name": "unit",        "type": ["null", "string"], "doc": "Measurement unit", "default": null},
+    {"name": "district",    "type": ["null", "string"], "doc": "District or location label", "default": null},
+    {"name": "timestampMs", "type": "long",             "doc": "Event timestamp — epoch millis"},
+    {"name": "rawPayload",  "type": ["null", "string"], "doc": "JSON raw payload from device (optional)", "default": null}
+  ]
+}

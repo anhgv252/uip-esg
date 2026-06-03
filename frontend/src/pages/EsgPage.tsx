@@ -10,6 +10,7 @@ import { useAuth } from '../hooks/useAuth';
 import EsgKpiCard from '../components/esg/EsgKpiCard';
 import EsgBarChart from '../components/esg/EsgBarChart';
 import ReportGenerationPanel from '../components/esg/ReportGenerationPanel';
+import { EsgPdfDownloadButton } from '../components/esg/EsgPdfDownloadButton';
 import { ForecastChart } from '../components/forecast/ForecastChart';
 
 type ChartView = 'energy' | 'carbon';
@@ -146,6 +147,9 @@ export default function EsgPage() {
         <Grid item xs={12} md={4}>
           <Paper variant="outlined" sx={{ p: 2, height: '100%' }}>
             <ReportGenerationPanel />
+            <Box sx={{ mt: 2 }}>
+              <EsgPdfDownloadButton year={selectedYear} quarter={Math.ceil(new Date().getMonth() / 3)} />
+            </Box>
           </Paper>
         </Grid>
       </Grid>

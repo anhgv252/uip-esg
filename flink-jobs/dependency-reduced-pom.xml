@@ -102,6 +102,12 @@
       <scope>provided</scope>
     </dependency>
     <dependency>
+      <groupId>org.apache.flink</groupId>
+      <artifactId>flink-cep</artifactId>
+      <version>1.19.0</version>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
       <groupId>org.projectlombok</groupId>
       <artifactId>lombok</artifactId>
       <version>1.18.30</version>
@@ -250,6 +256,7 @@
     <flink.version>1.19.0</flink.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <junit.version>5.10.2</junit.version>
+    <caffeine.version>3.1.8</caffeine.version>
     <hikaricp.version>5.1.0</hikaricp.version>
     <java.version>17</java.version>
     <maven.compiler.source>17</maven.compiler.source>

@@ -1,0 +1,18 @@
+{
+  "type": "record",
+  "name": "HourlyRollupEvent",
+  "namespace": "com.uip.iot.avro",
+  "doc": "Hourly analytics rollup — Avro v2 schema. Published by analytics pipeline per building per metric per hour.",
+  "fields": [
+    {"name": "tenantId",     "type": "string",           "doc": "Tenant identifier for RLS"},
+    {"name": "buildingId",   "type": "string",           "doc": "Building identifier"},
+    {"name": "metricType",   "type": "string",           "doc": "Aggregated metric, e.g. ENERGY_KWH, CO2_KG"},
+    {"name": "hourEpochMs",  "type": "long",             "doc": "Hour bucket start — epoch millis, truncated to hour"},
+    {"name": "sum",          "type": "double",           "doc": "Sum of readings in the hour"},
+    {"name": "avg",          "type": "double",           "doc": "Average of readings in the hour"},
+    {"name": "min",          "type": "double",           "doc": "Minimum reading in the hour"},
+    {"name": "max",          "type": "double",           "doc": "Maximum reading in the hour"},
+    {"name": "count",        "type": "long",             "doc": "Number of readings aggregated"},
+    {"name": "unit",         "type": ["null", "string"], "doc": "Metric unit", "default": null}
+  ]
+}

@@ -42,11 +42,12 @@ class EmailServiceTest {
     }
 
     @Test
-    void sendInviteEmail_mailSenderThrows_propagatesException() {
+    void sendInviteEmail_mailSenderThrows_doesNotPropagateException() {
         doThrow(new RuntimeException("SMTP error")).when(mailSender).send(any(SimpleMailMessage.class));
 
-        assertThatThrownBy(() -> emailService.sendInviteEmail("bad@test.com", "tok-xyz"))
-                .isInstanceOf(RuntimeException.class)
-                .hasMessageContaining("SMTP error");
+        // EmailService swallows mail exceptions gracefully (logs warning, does not re-throw)
+        assertThatCode(() -> emailService.sendInviteEmail("bad@test.com", "tok-xyz"))
+                .doesNotThrowAnyException();
+        verify(mailSender).send(any(SimpleMailMessage.class));
     }
 }

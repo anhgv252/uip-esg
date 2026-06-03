@@ -15,6 +15,7 @@
   "ssoSessionIdleTimeout": 1800,
   "ssoSessionMaxLifespan": 36000,
   "defaultSignatureAlgorithm": "RS256",
+  "passwordPolicy": "length(12) and forceExpiredPasswordChange(365) and notUsername",
 
   "roles": {
     "realm": [
@@ -32,6 +33,16 @@
         "id": "role-viewer",
         "name": "VIEWER",
         "description": "Read-only viewer role"
+      },
+      {
+        "id": "role-citizen",
+        "name": "CITIZEN",
+        "description": "Citizen portal user role (ROLE_CITIZEN in backend)"
+      },
+      {
+        "id": "role-tenant-admin",
+        "name": "TENANT_ADMIN",
+        "description": "Tenant-level administrator role (ROLE_TENANT_ADMIN in backend)"
       }
     ]
   },
@@ -120,6 +131,21 @@
             "claim.name": "parent_tenant_id",
             "jsonType.label": "String"
           }
+        },
+        {
+          "id": "realm-roles-mapper",
+          "name": "realm-roles-mapper",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "consentRequired": false,
+          "config": {
+            "multivalued": "true",
+            "userinfo.token.claim": "true",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "roles",
+            "jsonType.label": "String"
+          }
         }
       ]
     },
@@ -167,6 +193,52 @@
             "claim.name": "tenant_id",
             "jsonType.label": "String"
           }
+        },
+        {
+          "id": "frontend-is-aggregator-mapper",
+          "name": "is-aggregator-mapper",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "is_aggregator",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "is_aggregator",
+            "jsonType.label": "boolean"
+          }
+        },
+        {
+          "id": "frontend-building-ids-mapper",
+          "name": "building-ids-mapper",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "building_ids",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "building_ids",
+            "jsonType.label": "String",
+            "multivalued": "true"
+          }
+        },
+        {
+          "id": "frontend-realm-roles-mapper",
+          "name": "realm-roles-mapper",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "consentRequired": false,
+          "config": {
+            "multivalued": "true",
+            "userinfo.token.claim": "true",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "roles",
+            "jsonType.label": "String"
+          }
         }
       ]
     }
@@ -206,7 +278,7 @@
       "credentials": [
         {
           "type": "password",
-          "value": "Admin#2026!",
+          "value": "AggAdmin#2026!",
           "temporary": false
         }
       ],
@@ -215,6 +287,75 @@
         "tenant_id": [""],
         "is_aggregator": ["true"],
         "parent_tenant_id": ["cluster-mgmt-corp"]
+      }
+    },
+    {
+      "id": "pilot-admin-id",
+      "username": "pilot-admin",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "pilot-admin@hcm.uip.local",
+      "firstName": "Pilot",
+      "lastName": "Admin",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "PilotAdmin#2026!",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["ADMIN"],
+      "attributes": {
+        "tenant_id": ["hcm"],
+        "is_aggregator": ["true"],
+        "building_ids": ["BLD-HCM-001", "BLD-HCM-002", "BLD-HCM-003"],
+        "note": ["DEV/STAGING ONLY — DO NOT USE IN PRODUCTION"]
+      }
+    },
+    {
+      "id": "pilot-operator-id",
+      "username": "pilot-operator",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "pilot-operator@hcm.uip.local",
+      "firstName": "Pilot",
+      "lastName": "Operator",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "PilotOp#2026!",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["OPERATOR"],
+      "attributes": {
+        "tenant_id": ["hcm"],
+        "is_aggregator": ["false"],
+        "building_ids": ["BLD-HCM-001", "BLD-HCM-002"],
+        "note": ["DEV/STAGING ONLY — DO NOT USE IN PRODUCTION"]
+      }
+    },
+    {
+      "id": "pilot-viewer-id",
+      "username": "pilot-viewer",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "pilot-viewer@hcm.uip.local",
+      "firstName": "Pilot",
+      "lastName": "Viewer",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "PilotView#2026!",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["VIEWER"],
+      "attributes": {
+        "tenant_id": ["hcm"],
+        "is_aggregator": ["false"],
+        "building_ids": ["BLD-HCM-001"],
+        "note": ["DEV/STAGING ONLY — DO NOT USE IN PRODUCTION"]
       }
     }
   ]

@@ -14,6 +14,9 @@ RUN chmod +x ./gradlew && ./gradlew bootJar -x test --no-daemon
 FROM eclipse-temurin:17-jre
 WORKDIR /app
 
+# Install curl for Docker HEALTHCHECK (JRE image has neither curl nor wget)
+RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
+
 RUN groupadd --system uip && useradd --system --gid uip uip
 USER uip
 
