@@ -1,16 +1,17 @@
-# ClickHouse HA Overlay — ADR-036 (S8-OPS01)
+# ClickHouse HA + Kafka 3-broker Overlay — ADR-036 + ADR-037
 #
 # Usage:
 #   docker compose -f docker-compose.yml -f docker-compose.ha.yml up -d
 #
 # This overlay adds:
-#   1. ClickHouse Keeper (coordination service)
-#   2. clickhouse-01 + clickhouse-02 (ReplicatedReplacingMergeTree)
+#   1. ClickHouse Keeper + 2 nodes (ReplicatedReplacingMergeTree) — ADR-036
+#   2. Kafka 3-broker KRaft quorum — ADR-037
 #
-# The single-node "clickhouse" service from docker-compose.yml is stopped.
 # BACKWARD COMPAT: Tier 1 dev continues using docker-compose.yml only (single-node).
 #
-# Migration: run infrastructure/scripts/ch-migrate.sh after starting HA stack.
+# Migration:
+#   make ch-migrate      — ClickHouse data migration
+#   make kafka-rebalance — Kafka partition rebalancing
 
 services:
   # ─── ClickHouse Keeper (coordination, replaces ZooKeeper) ──────────────────
@@ -126,6 +127,81 @@ services:
     environment:
       CLICKHOUSE_URL: jdbc:clickhouse://clickhouse-01:8123,clickhouse-02:8123/${CLICKHOUSE_DB:-analytics}
 
+  # ═══════════════════════════════════════════════════════════════════════════
+  # Kafka 3-broker KRaft Quorum — ADR-037 (S8-OPS02)
+  # ═══════════════════════════════════════════════════════════════════════════
+  # Overrides kafka service from docker-compose.yml with 3-node quorum config.
+  # Adds kafka-2, kafka-3 as additional brokers.
+  # replication.factor=3, min.insync.replicas=2 for all topics.
+  # ═══════════════════════════════════════════════════════════════════════════
+
+  kafka:
+    environment:
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093,2@kafka-2:9093,3@kafka-3:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
+
+  kafka-2:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: uip-kafka-2
+    restart: unless-stopped
+    environment:
+      KAFKA_NODE_ID: 2
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093,2@kafka-2:9093,3@kafka-3:9093
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-2:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
+      KAFKA_LOG_RETENTION_HOURS: 168
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+      CLUSTER_ID: ${KAFKA_CLUSTER_ID:-MkU3OEVBNTcwNTJENDM2Qg}
+    volumes:
+      - kafka-2-data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD", "kafka-topics", "--bootstrap-server", "localhost:9092", "--list"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    networks:
+      - uip-network
+
+  kafka-3:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: uip-kafka-3
+    restart: unless-stopped
+    environment:
+      KAFKA_NODE_ID: 3
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093,2@kafka-2:9093,3@kafka-3:9093
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-3:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
+      KAFKA_LOG_RETENTION_HOURS: 168
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+      CLUSTER_ID: ${KAFKA_CLUSTER_ID:-MkU3OEVBNTcwNTJENDM2Qg}
+    volumes:
+      - kafka-3-data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD", "kafka-topics", "--bootstrap-server", "localhost:9092", "--list"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    networks:
+      - uip-network
+
 volumes:
   clickhouse-keeper-data:
     name: uip-clickhouse-keeper-data
@@ -133,3 +209,7 @@ volumes:
     name: uip-clickhouse-01-data
   clickhouse-02-data:
     name: uip-clickhouse-02-data
+  kafka-2-data:
+    name: uip-kafka-2-data
+  kafka-3-data:
+    name: uip-kafka-3-data

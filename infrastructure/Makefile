@@ -91,6 +91,10 @@ avro-register: ## Register Avro schemas into Apicurio Registry (idempotent)
 ch-migrate: ## Migrate ClickHouse data from single-node to HA cluster (run after up-ha)
 	@bash scripts/ch-migrate.sh
 
+kafka-rebalance: ## Rebalance Kafka partitions across 3 brokers (run after up-ha)
+	@docker compose exec kafka kafka-reassign-partitions --bootstrap-server kafka:9092 --help > /dev/null 2>&1 || true
+	@bash scripts/kafka-rebalance.sh
+
 # ─── UAT Stack ────────────────────────────────────────────────────────────────
 
 uat-up: ## Start UAT stack (uses .env.uat — copy from .env.uat.example first)
