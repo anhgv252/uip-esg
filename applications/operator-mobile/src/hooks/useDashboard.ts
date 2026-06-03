@@ -6,7 +6,7 @@ import { useAuth } from '../context/AuthContext'
 export interface BuildingSafetyScore {
   buildingId: string
   score: number       // 0-100
-  status: 'GOOD' | 'WARNING' | 'CRITICAL' | 'OFFLINE'
+  status: 'SAFE' | 'WARNING' | 'CRITICAL' | 'OFFLINE'
   activeAlerts: number
   lastUpdated: string
 }
@@ -16,7 +16,7 @@ export interface DashboardData {
   energyKwh: number
   energyTrend: 'up' | 'down' | 'stable'
   safetyScore: number        // Average across buildings (0-100)
-  safetyStatus: 'GOOD' | 'WARNING' | 'CRITICAL' | 'OFFLINE'
+  safetyStatus: 'SAFE' | 'WARNING' | 'CRITICAL' | 'OFFLINE'
   aqi: number                // Air Quality Index (0-500)
   aqiLabel: string           // "Good", "Moderate", etc.
   activeAlerts: number

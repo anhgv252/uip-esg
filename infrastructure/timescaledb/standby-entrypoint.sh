@@ -17,7 +17,8 @@ set -euo pipefail
 DATA_DIR="/var/lib/postgresql/data"
 PRIMARY_HOST="${STANDBY_PRIMARY_HOST:-timescaledb}"
 PRIMARY_PORT="${STANDBY_PRIMARY_PORT:-5432}"
-PGUSER="${PGUSER:-${POSTGRES_USER:-uip}}"
+REPL_USER="${REPLICATION_USER:-replicator}"
+REPL_PASS="${REPLICATION_PASSWORD:-${POSTGRES_PASSWORD}}"
 
 echo "=== TimescaleDB Standby Bootstrap ==="
 echo "  Primary: ${PRIMARY_HOST}:${PRIMARY_PORT}"
@@ -30,7 +31,7 @@ if [ -z "$(ls -A "${DATA_DIR}" 2>/dev/null)" ]; then
     # Wait for primary to be ready
     MAX_RETRIES=60
     RETRY=0
-    until pg_isready -h "${PRIMARY_HOST}" -p "${PRIMARY_PORT}" -U "${PGUSER}" -q 2>/dev/null; do
+    until pg_isready -h "${PRIMARY_HOST}" -p "${PRIMARY_PORT}" -U "${REPL_USER}" -q 2>/dev/null; do
         RETRY=$((RETRY + 1))
         if [ $RETRY -ge $MAX_RETRIES ]; then
             echo "[ERROR] Primary not ready after ${MAX_RETRIES} retries"
@@ -41,12 +42,12 @@ if [ -z "$(ls -A "${DATA_DIR}" 2>/dev/null)" ]; then
     done
     echo "[OK] Primary is ready"
 
-    # Run pg_basebackup (-R writes standby.signal + primary_conninfo to postgresql.auto.conf)
-    echo "[INFO] Running pg_basebackup..."
-    PGPASSWORD="${PGPASSWORD}" pg_basebackup \
+    # Run pg_basebackup as dedicated replication role (-R writes standby.signal + primary_conninfo)
+    echo "[INFO] Running pg_basebackup as ${REPL_USER}..."
+    PGPASSWORD="${REPL_PASS}" pg_basebackup \
         -h "${PRIMARY_HOST}" \
         -p "${PRIMARY_PORT}" \
-        -U "${PGUSER}" \
+        -U "${REPL_USER}" \
         -D "${DATA_DIR}" \
         -Fp -Xs -P -R \
         --checkpoint=fast

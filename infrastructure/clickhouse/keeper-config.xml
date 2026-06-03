@@ -11,9 +11,7 @@
     <tcp_port>9181</tcp_port>
 
     <keeper_server>
-        <tip>
-            <enable>true</enable>
-        </tip>
+        <server_id>1</server_id>
         <storage_dir>/keeper/data</storage_dir>
         <log_storage_dir>/keeper/txn-log</log_storage_dir>
 

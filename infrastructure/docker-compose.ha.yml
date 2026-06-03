@@ -210,12 +210,17 @@ services:
 
   # ─── Override: primary uses replication config ──────────────────────────────
   timescaledb:
+    environment:
+      REPLICATION_USER: ${REPLICATION_USER:-replicator}
+      REPLICATION_PASSWORD: ${REPLICATION_PASSWORD:-${POSTGRES_PASSWORD}}
     command: >
       postgres
       -c wal_level=replica
       -c max_wal_senders=3
       -c wal_keep_size=256MB
       -c hot_standby=on
+    volumes:
+      - ./timescaledb/create-replication-role.sh:/docker-entrypoint-initdb.d/01-create-replication-role.sh:ro
 
   # ─── Standby replica (read-only) ──────────────────────────────────────────
   timescaledb-standby:
@@ -227,8 +232,8 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-uip}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB:-uip_smartcity}
-      PGUSER: ${POSTGRES_USER:-uip}
-      PGPASSWORD: ${POSTGRES_PASSWORD}
+      REPLICATION_USER: ${REPLICATION_USER:-replicator}
+      REPLICATION_PASSWORD: ${REPLICATION_PASSWORD:-${POSTGRES_PASSWORD}}
       STANDBY_PRIMARY_HOST: timescaledb
       STANDBY_PRIMARY_PORT: "5432"
     volumes:

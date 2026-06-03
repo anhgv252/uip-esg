@@ -82,7 +82,7 @@ export default function AlertsScreen() {
         <View style={styles.safetyInfo}>
           <Text style={styles.safetyTitle}>Điểm an toàn</Text>
           <Text style={[styles.safetyStatus, { color: getSafetyColor(safetyScore) }]}>
-            {safetyStatus === 'GOOD' ? 'Tốt' : safetyStatus === 'WARNING' ? 'Cảnh báo' : safetyStatus === 'CRITICAL' ? 'Nguy hiểm' : 'Offline'}
+            {safetyStatus === 'SAFE' ? 'Tốt' : safetyStatus === 'WARNING' ? 'Cảnh báo' : safetyStatus === 'CRITICAL' ? 'Nguy hiểm' : 'Offline'}
           </Text>
         </View>
       </View>

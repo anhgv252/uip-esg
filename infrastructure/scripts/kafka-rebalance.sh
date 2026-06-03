@@ -76,12 +76,13 @@ rebalance_topic() {
     tmpdir=$(mktemp -d)
     local plan="${tmpdir}/reassign-${topic}.json"
 
-    # Generate plan using --generate
+    # Generate plan using --generate; grep for the JSON line (starts with '{')
+    # tail -2|head -1 is fragile: a CLI version change or extra blank line silently yields empty plan.
     kafka-reassign-partitions --bootstrap-server "${BOOTSTRAP}" \
         --topics-to-move-json-file <(echo "{\"topics\":[{\"topic\":\"${topic}\"}],\"version\":1}") \
         --broker-list "1,2,3" \
         --generate 2>/dev/null | \
-        tail -2 | head -1 > "${plan}" 2>/dev/null
+        grep -E '^\{"version"' | tail -1 > "${plan}" 2>/dev/null
 
     if [[ ! -s "$plan" ]]; then
         log_warn "Could not generate plan for ${topic} — manual rebalance needed"
