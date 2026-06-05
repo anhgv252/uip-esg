@@ -30,7 +30,7 @@ từ góc nhìn người dùng cuối trên staging environment.
 □ Postman / curl available cho API testing
 □ kafka-console-consumer available (hoặc dùng docker exec vào uip-kafka)
 □ Test accounts: admin/admin_Dev#2026! đăng nhập được
-□ Pilot accounts: pilot-admin/pilot-operator/pilot-viewer (Keycloak realm: uip-pilot)
+□ Pilot accounts: pilot-admin/pilot-operator/pilot-viewer (Keycloak realm: uip)
 ```
 
 ---

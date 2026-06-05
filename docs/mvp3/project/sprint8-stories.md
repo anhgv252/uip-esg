@@ -213,7 +213,7 @@ applications/operator-mobile/src/hooks/  ← mobile-specific overrides only
 **User Story:** As a city authority admin, I want 3 pilot user accounts (admin, operator, viewer) in Keycloak, so that we can start pilot testing.
 
 **Acceptance Criteria:**
-- AC-1: Realm `uip-pilot` created with 3 users
+- AC-1: Realm `uip` created with 3 users
 - AC-2: Admin: full access all modules; Operator: building + alerts + safety; Viewer: read-only
 - AC-3: PKCE login works on mobile with pilot realm
 
