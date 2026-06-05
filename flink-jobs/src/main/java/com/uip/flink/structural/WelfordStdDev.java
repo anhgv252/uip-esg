@@ -7,7 +7,9 @@ import java.io.Serializable;
  *
  * <p>Used by {@link VibrationAnomalyJob} to maintain per-sensor baseline statistics
  * in Flink keyed state. The 4-sigma rule detects statistical anomalies while
- * the cold-start guard (n &lt; 1000) prevents false alerts during initialization.</p>
+ * the cold-start guard (n &lt; MIN_SAMPLES) prevents false alerts during initialization.</p>
+ *
+ * <p>MIN_SAMPLES is configurable via environment variable WELFORD_MIN_SAMPLES (default 1000).</p>
  *
  * @see <a href="https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Welford's_online_algorithm">Welford's algorithm</a>
  */
@@ -16,11 +18,38 @@ public class WelfordStdDev implements Serializable {
     private static final long serialVersionUID = 1L;
 
     /** Minimum samples before anomaly detection is active (cold-start protection). */
-    static final long MIN_SAMPLES = 1000;
+    private final long minSamples;
 
     private long n = 0;
     private double mean = 0.0;
     private double m2 = 0.0;
+
+    /**
+     * Creates a WelfordStdDev with configurable MIN_SAMPLES.
+     * @param minSamples minimum samples before anomaly detection is active
+     */
+    public WelfordStdDev(long minSamples) {
+        this.minSamples = minSamples;
+    }
+
+    /**
+     * Creates a WelfordStdDev with default MIN_SAMPLES=1000.
+     */
+    public WelfordStdDev() {
+        this(getMinSamplesFromEnv());
+    }
+
+    private static long getMinSamplesFromEnv() {
+        String env = System.getenv("WELFORD_MIN_SAMPLES");
+        if (env != null && !env.isEmpty()) {
+            try {
+                return Long.parseLong(env);
+            } catch (NumberFormatException e) {
+                // fall through to default
+            }
+        }
+        return 1000L;  // default
+    }
 
     /** Update the running statistics with a new observation. */
     public void update(double x) {
@@ -62,7 +91,7 @@ public class WelfordStdDev implements Serializable {
      * @return true if the value is considered anomalous
      */
     public boolean isAnomaly(double x, double absoluteFloor) {
-        if (n < MIN_SAMPLES) return false;
+        if (n < minSamples) return false;
         double sigma = getStdDev();
         if (sigma < 1e-10) return false;
         return Math.abs(x - mean) > 4 * sigma && x > absoluteFloor;

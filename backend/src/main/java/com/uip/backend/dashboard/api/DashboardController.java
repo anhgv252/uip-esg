@@ -75,17 +75,24 @@ public class DashboardController {
                 "SELECT COUNT(*) FROM alerts.alert_events WHERE status = 'OPEN'",
                 Long.class
         );
+        Long totalBuildings = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM public.buildings WHERE is_active = true",
+                Long.class
+        );
 
         return ResponseEntity.ok(Map.of(
-                "energyKwh", curr,
-                "energyTrend", energyTrend,
+                "buildingsCount", totalBuildings != null ? totalBuildings : 0L,
+                "activeSensors", onlineSensors != null ? onlineSensors : 0L,
+                "openAlerts", openAlerts != null ? openAlerts : 0L,
+                "esgSnapshot", Map.of(
+                        "energyKwh", curr,
+                        "energyTrend", energyTrend,
+                        "aqi", aqi,
+                        "aqiLabel", aqiLabel
+                ),
                 "safetyScore", safetyScore,
                 "safetyStatus", safetyStatus,
-                "aqi", aqi,
-                "aqiLabel", aqiLabel,
-                "activeAlerts", openAlerts != null ? openAlerts : 0L,
-                "onlineSensors", onlineSensors != null ? onlineSensors : 0L,
-                "totalSensors", totalSensors != null ? totalSensors : 0L
+                "generatedAt", Instant.now().toString()
         ));
     }
 

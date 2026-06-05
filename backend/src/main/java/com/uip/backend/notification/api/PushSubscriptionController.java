@@ -5,14 +5,11 @@ import com.uip.backend.notification.api.dto.PushSubscribeRequest;
 import com.uip.backend.notification.api.dto.PushSubscriptionResponse;
 import com.uip.backend.notification.api.dto.VapidKeyResponse;
 import com.uip.backend.notification.config.VapidConfig;
-import com.uip.backend.notification.service.AlertNotification;
-import com.uip.backend.notification.service.NotificationRouter;
 import com.uip.backend.notification.service.PushSubscriptionService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -31,7 +28,6 @@ import java.util.UUID;
 public class PushSubscriptionController {
 
     private final PushSubscriptionService subscriptionService;
-    private final NotificationRouter notificationRouter;
     private final VapidConfig vapidConfig;
     private final AppUserRepository appUserRepository;
 
@@ -69,25 +65,6 @@ public class PushSubscriptionController {
     public ResponseEntity<List<PushSubscriptionResponse>> listSubscriptions(Authentication auth) {
         UUID userId = resolveUserId(auth);
         return ResponseEntity.ok(subscriptionService.listSubscriptions(userId));
-    }
-
-    @PostMapping("/test")
-    @Operation(summary = "Send a test push notification (non-production only)")
-    @Profile("!prod")
-    @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<Void> testPush(Authentication auth) {
-        UUID userId = resolveUserId(auth);
-        AlertNotification testNotification = new AlertNotification(
-                "test-sensor-001",
-                "test",
-                "INFO",
-                "Test push notification from UIP platform",
-                "default",
-                null
-        );
-        notificationRouter.route(testNotification);
-        log.info("Test push notification triggered by user={}", auth.getName());
-        return ResponseEntity.ok().build();
     }
 
     /**

@@ -13,6 +13,7 @@ import com.uip.backend.esg.repository.EsgMetricRepository;
 import com.uip.backend.esg.repository.EsgReportRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
@@ -30,6 +31,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -209,9 +211,15 @@ public class EsgService {
      * has no materialized data yet for the range (cagg refresh lag ≤ 1 hour).
      */
     private Double sumWithCaggFallback(String tenantId, String metricType, Instant from, Instant to) {
-        Double result = metricRepository.sumByTypeAndRangeFast(tenantId, metricType, from, to);
-        if (result != null) return result;
-        return metricRepository.sumByTypeAndRange(tenantId, metricType, from, to);
+        try {
+            Double result = metricRepository.sumByTypeAndRangeFast(tenantId, metricType, from, to);
+            if (result != null) return result;
+            return metricRepository.sumByTypeAndRange(tenantId, metricType, from, to);
+        } catch (Exception e) {
+            log.warn("Failed to query ESG metric summary for tenant={} type={}: {} — returning null (data not seeded?)",
+                    tenantId, metricType, e.getMessage());
+            return null;
+        }
     }
 
     /** ISO 37120: water intensity = total water / population. Population from raw_payload or config. */

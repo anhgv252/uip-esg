@@ -21,7 +21,7 @@ import java.util.Set;
  */
 @RestController
 @RequestMapping("/api/v1/test")
-@Profile("test")
+@Profile("!production")
 @ConditionalOnProperty(name = "features.test.flood-controller.enabled", havingValue = "true")
 @RequiredArgsConstructor
 @Slf4j
