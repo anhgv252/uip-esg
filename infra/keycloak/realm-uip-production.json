@@ -3,20 +3,19 @@
   "realm": "uip",
   "displayName": "UIP Smart City",
   "enabled": true,
-  "sslRequired": "none",
+  "sslRequired": "external",
   "registrationAllowed": false,
   "loginWithEmailAllowed": false,
   "duplicateEmailsAllowed": false,
   "resetPasswordAllowed": false,
   "editUsernameAllowed": false,
-  "bruteForceProtected": false,
+  "bruteForceProtected": true,
   "accessTokenLifespan": 3600,
   "accessTokenLifespanForImplicitFlow": 900,
   "ssoSessionIdleTimeout": 1800,
   "ssoSessionMaxLifespan": 36000,
   "defaultSignatureAlgorithm": "RS256",
   "passwordPolicy": "length(12) and forceExpiredPasswordChange(365) and notUsername",
-
   "roles": {
     "realm": [
       {
@@ -46,7 +45,6 @@
       }
     ]
   },
-
   "clients": [
     {
       "id": "uip-api",
@@ -55,7 +53,7 @@
       "description": "UIP Smart City backend API client",
       "enabled": true,
       "publicClient": false,
-      "secret": "uip-api-secret-dev",
+      "secret": "ROTATE_BEFORE_DEPLOY",
       "bearerOnly": false,
       "consentRequired": false,
       "standardFlowEnabled": false,
@@ -165,12 +163,12 @@
       "serviceAccountsEnabled": false,
       "authorizationServicesEnabled": false,
       "redirectUris": [
-        "http://localhost:3000/*",
-        "http://localhost:8080/*"
+        "https://smartcity.hcmc.gov.vn/*",
+        "https://api.smartcity.hcmc.gov.vn/*"
       ],
       "webOrigins": [
-        "http://localhost:3000",
-        "http://localhost:8080"
+        "https://smartcity.hcmc.gov.vn",
+        "https://api.smartcity.hcmc.gov.vn"
       ],
       "protocol": "openid-connect",
       "attributes": {
@@ -259,12 +257,9 @@
       "authorizationServicesEnabled": false,
       "redirectUris": [
         "uipmobile://*",
-        "exp+operator-mobile://*",
-        "http://localhost:8081/*"
+        "exp+operator-mobile://*"
       ],
-      "webOrigins": [
-        "http://localhost:8081"
-      ],
+      "webOrigins": [],
       "protocol": "openid-connect",
       "attributes": {
         "access.token.signed.response.alg": "RS256",
@@ -336,7 +331,6 @@
       ]
     }
   ],
-
   "users": [
     {
       "id": "operator-hcm-id",
@@ -353,11 +347,20 @@
           "temporary": false
         }
       ],
-      "realmRoles": ["OPERATOR"],
+      "realmRoles": [
+        "OPERATOR"
+      ],
       "attributes": {
-        "tenant_id": ["hcm"],
-        "is_aggregator": ["false"],
-        "building_ids": ["BLD-HCM-001", "BLD-HCM-002"]
+        "tenant_id": [
+          "hcm"
+        ],
+        "is_aggregator": [
+          "false"
+        ],
+        "building_ids": [
+          "BLD-HCM-001",
+          "BLD-HCM-002"
+        ]
       }
     },
     {
@@ -375,11 +378,19 @@
           "temporary": false
         }
       ],
-      "realmRoles": ["ADMIN"],
+      "realmRoles": [
+        "ADMIN"
+      ],
       "attributes": {
-        "tenant_id": [""],
-        "is_aggregator": ["true"],
-        "parent_tenant_id": ["cluster-mgmt-corp"]
+        "tenant_id": [
+          ""
+        ],
+        "is_aggregator": [
+          "true"
+        ],
+        "parent_tenant_id": [
+          "cluster-mgmt-corp"
+        ]
       }
     },
     {
@@ -397,12 +408,24 @@
           "temporary": false
         }
       ],
-      "realmRoles": ["ADMIN"],
+      "realmRoles": [
+        "ADMIN"
+      ],
       "attributes": {
-        "tenant_id": ["hcm"],
-        "is_aggregator": ["true"],
-        "building_ids": ["BLD-HCM-001", "BLD-HCM-002", "BLD-HCM-003"],
-        "note": ["DEV/STAGING ONLY — DO NOT USE IN PRODUCTION"]
+        "tenant_id": [
+          "hcm"
+        ],
+        "is_aggregator": [
+          "true"
+        ],
+        "building_ids": [
+          "BLD-HCM-001",
+          "BLD-HCM-002",
+          "BLD-HCM-003"
+        ],
+        "note": [
+          "DEV/STAGING ONLY \u2014 DO NOT USE IN PRODUCTION"
+        ]
       }
     },
     {
@@ -420,12 +443,23 @@
           "temporary": false
         }
       ],
-      "realmRoles": ["OPERATOR"],
+      "realmRoles": [
+        "OPERATOR"
+      ],
       "attributes": {
-        "tenant_id": ["hcm"],
-        "is_aggregator": ["false"],
-        "building_ids": ["BLD-HCM-001", "BLD-HCM-002"],
-        "note": ["DEV/STAGING ONLY — DO NOT USE IN PRODUCTION"]
+        "tenant_id": [
+          "hcm"
+        ],
+        "is_aggregator": [
+          "false"
+        ],
+        "building_ids": [
+          "BLD-HCM-001",
+          "BLD-HCM-002"
+        ],
+        "note": [
+          "DEV/STAGING ONLY \u2014 DO NOT USE IN PRODUCTION"
+        ]
       }
     },
     {
@@ -443,13 +477,30 @@
           "temporary": false
         }
       ],
-      "realmRoles": ["VIEWER"],
+      "realmRoles": [
+        "VIEWER"
+      ],
       "attributes": {
-        "tenant_id": ["hcm"],
-        "is_aggregator": ["false"],
-        "building_ids": ["BLD-HCM-001"],
-        "note": ["DEV/STAGING ONLY — DO NOT USE IN PRODUCTION"]
+        "tenant_id": [
+          "hcm"
+        ],
+        "is_aggregator": [
+          "false"
+        ],
+        "building_ids": [
+          "BLD-HCM-001"
+        ],
+        "note": [
+          "DEV/STAGING ONLY \u2014 DO NOT USE IN PRODUCTION"
+        ]
       }
     }
-  ]
+  ],
+  "permanentLockout": false,
+  "maxFailureWaitSeconds": 900,
+  "minimumQuickLoginWaitSeconds": 60,
+  "waitIncrementSeconds": 60,
+  "quickLoginCheckMilliSeconds": 1000,
+  "maxDeltaTimeSeconds": 43200,
+  "failureFactor": 10
 }
