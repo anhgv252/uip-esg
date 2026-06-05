@@ -18,7 +18,7 @@
     "demo:ui": "playwright test e2e/sprint1-demo.spec.ts --ui",
     "lint": "eslint src --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "type-check": "tsc --noEmit",
-    "generate:types": "openapi-typescript ../docs/api/openapi.json -o src/generated/api-types.ts",
+    "generate:types": "openapi-typescript ../docs/api/openapi.json -o src/generated/api-types.ts && cd ../packages/api-types && npm run gen-api-types",
     "generate:types:remote": "openapi-typescript http://localhost:8080/v3/api-docs -o src/generated/api-types.ts",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
@@ -44,7 +44,8 @@
     "recharts": "^2.12.2",
     "vite-plugin-pwa": "^1.3.0",
     "zod": "^3.22.4",
-    "zustand": "^4.5.2"
+    "zustand": "^4.5.2",
+    "@uip/api-types": "*"
   },
   "devDependencies": {
     "@playwright/test": "^1.43.0",

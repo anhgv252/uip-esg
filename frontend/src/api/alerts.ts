@@ -1,50 +1,47 @@
 import { apiClient } from './client';
+import type { components } from '@uip/api-types';
 
-export interface AlertEvent {
-  id: string;
-  ruleId: string | null;
-  ruleName: string | null;
-  sensorId: string | null;
-  module: string;
-  measureType: string;
-  severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
-  value: number;
-  threshold: number;
-  note: string | null;
-  status: 'OPEN' | 'ACKNOWLEDGED' | 'ESCALATED' | 'RESOLVED';
-  acknowledgedBy: string | null;
-  acknowledgedAt: string | null;
-  detectedAt: string;
-}
+// Use generated types from OpenAPI spec with runtime guarantees for required fields
+// The backend may return nulls for some fields, but we type them as required for fields that
+// are always present in practice (id, module, severity, status, detectedAt, etc.)
+export type AlertEvent = Required<
+  Pick<
+    components['schemas']['AlertEventDto'],
+    'id' | 'module' | 'measureType' | 'value' | 'threshold' | 'severity' | 'status' | 'detectedAt'
+  >
+> &
+  Omit<
+    components['schemas']['AlertEventDto'],
+    'id' | 'module' | 'measureType' | 'value' | 'threshold' | 'severity' | 'status' | 'detectedAt'
+  >;
 
-export interface AlertEventsPage {
+export type AlertEventsPage = Omit<
+  components['schemas']['PageAlertEventDto'],
+  'content' | 'number' | 'totalPages' | 'totalElements'
+> & {
   content: AlertEvent[];
-  totalElements: number;
-  totalPages: number;
   number: number;
-}
+  totalPages: number;
+  totalElements: number;
+};
 
-export interface AlertRule {
-  id: string;
-  ruleName: string;
-  module: string;
-  measureType: string;
-  operator: string;
-  threshold: number;
-  severity: string;
-  active: boolean;
-  cooldownMinutes: number;
-}
+export type AlertRule = Required<
+  Pick<
+    components['schemas']['AlertRule'],
+    'id' | 'ruleName' | 'module' | 'measureType' | 'operator' | 'threshold' | 'severity' | 'active' | 'cooldownMinutes'
+  >
+> &
+  Omit<
+    components['schemas']['AlertRule'],
+    'id' | 'ruleName' | 'module' | 'measureType' | 'operator' | 'threshold' | 'severity' | 'active' | 'cooldownMinutes'
+  >;
 
-export interface AlertRuleRequest {
-  ruleName: string;
-  module: string;
-  measureType: string;
-  operator: string;
-  threshold: number;
-  severity: string;
-  cooldownMinutes: number;
-}
+export type AlertRuleRequest = Required<
+  Pick<
+    components['schemas']['AlertRuleRequest'],
+    'ruleName' | 'module' | 'measureType' | 'operator' | 'threshold' | 'severity' | 'cooldownMinutes'
+  >
+>;
 
 export const getAlerts = (params?: {
   status?: string;

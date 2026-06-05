@@ -69,7 +69,9 @@ export default function AlertFeedPanel({ alerts, loading }: AlertFeedPanelProps)
                       <Chip
                         label={alert.severity}
                         size="small"
-                        color={SEVERITY_COLORS[alert.severity] ?? 'default'}
+                        color={
+                          SEVERITY_COLORS[alert.severity as keyof typeof SEVERITY_COLORS] ?? 'default'
+                        }
                         sx={{ fontSize: 10, height: 20 }}
                       />
                       <Typography variant="body2" fontWeight={500} noWrap>

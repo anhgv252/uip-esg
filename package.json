@@ -1,0 +1,14 @@
+{
+  "name": "uip-smart-city",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "frontend",
+    "applications/operator-mobile"
+  ],
+  "scripts": {
+    "gen-api-types": "npm run gen-api-types --workspace=packages/api-types",
+    "type-check": "npm run type-check --workspace=frontend --workspace=packages/api-types"
+  }
+}

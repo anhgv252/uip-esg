@@ -1,0 +1,15 @@
+{
+  "name": "@uip/api-types",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "gen-api-types": "openapi-typescript ../../docs/api/openapi.json -o src/generated.ts",
+    "type-check": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "openapi-typescript": "^7.13.0",
+    "typescript": "^5.3.3"
+  }
+}

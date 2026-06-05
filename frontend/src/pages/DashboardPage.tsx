@@ -28,7 +28,7 @@ export default function DashboardPage() {
     { label: 'Active Sensors', stat: toStat(!!sensors, sensorsError, sensors ? String(sensors.length) : null), color: '#1976D2' },
     { label: 'AQI Current',    stat: toStat(!!aqi && aqi.length > 0, aqiError, aqi && aqi.length > 0 ? String(Math.round(aqi[0].aqi)) : null), color: '#2E7D32' },
     { label: 'Open Alerts',    stat: toStat(!!openAlerts, alertsError, openAlerts ? String(openAlerts.totalElements) : null), color: '#D32F2F' },
-    { label: 'Carbon (tCO₂e)', stat: toStat(!!esg, esgError, esg ? String(Math.round(esg.totalCarbonTco2e)) + ' t' : null), color: '#009688' },
+    { label: 'Carbon (tCO₂e)', stat: toStat(!!esg, esgError, esg && esg.totalCarbonTco2e != null ? String(Math.round(esg.totalCarbonTco2e)) + ' t' : null), color: '#009688' },
   ]
 
   return (

@@ -72,7 +72,7 @@ apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
 apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   const tid = tenantStore.get()
   if (tid && tid !== 'default') {
-    config.headers['X-Tenant-Id'] = tid
+    config.headers['X-Tenant-ID'] = tid
   }
   return config
 })
