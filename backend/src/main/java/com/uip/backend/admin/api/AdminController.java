@@ -9,6 +9,9 @@ import com.uip.backend.auth.repository.AppUserRepository;
 import com.uip.backend.environment.api.dto.SensorDto;
 import com.uip.backend.environment.service.EnvironmentService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +31,7 @@ import java.util.UUID;
 @PreAuthorize("hasRole('ADMIN')")
 @RequiredArgsConstructor
 @Tag(name = "Admin — Management", description = "User management and sensor registry (ADMIN only)")
+@SecurityRequirement(name = "Bearer Authentication")
 public class AdminController {
 
     private final AppUserRepository userRepository;
@@ -50,6 +54,13 @@ public class AdminController {
     @PutMapping("/users/{username}/role")
     @Transactional
     @Operation(summary = "Change a user's role")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "User role updated"),
+        @ApiResponse(responseCode = "400", description = "Invalid role value"),
+        @ApiResponse(responseCode = "401", description = "Authentication required"),
+        @ApiResponse(responseCode = "403", description = "Requires ADMIN role"),
+        @ApiResponse(responseCode = "404", description = "User not found")
+    })
     public ResponseEntity<UserSummaryDto> changeRole(
             @PathVariable String username,
             @RequestParam String role) {
@@ -71,6 +82,12 @@ public class AdminController {
     @PutMapping("/users/{username}/deactivate")
     @Transactional
     @Operation(summary = "Deactivate a user account")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "User deactivated"),
+        @ApiResponse(responseCode = "401", description = "Authentication required"),
+        @ApiResponse(responseCode = "403", description = "Requires ADMIN role"),
+        @ApiResponse(responseCode = "404", description = "User not found")
+    })
     public ResponseEntity<UserSummaryDto> deactivateUser(@PathVariable String username) {
         AppUser user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new EntityNotFoundException("User not found: " + username));
@@ -99,6 +116,12 @@ public class AdminController {
 
     @PostMapping("/sensors")
     @Operation(summary = "Create a new sensor")
+    @ApiResponses({
+        @ApiResponse(responseCode = "201", description = "Sensor created"),
+        @ApiResponse(responseCode = "400", description = "Invalid request body"),
+        @ApiResponse(responseCode = "401", description = "Authentication required"),
+        @ApiResponse(responseCode = "403", description = "Requires ADMIN role")
+    })
     public ResponseEntity<SensorRegistryDto> createSensor(
             @RequestBody @jakarta.validation.Valid CreateSensorRequest request) {
         return ResponseEntity.status(201).body(

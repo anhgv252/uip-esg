@@ -3,6 +3,11 @@ package com.uip.backend.building.api;
 import com.uip.backend.building.api.dto.BuildingCreateRequest;
 import com.uip.backend.building.api.dto.BuildingResponse;
 import com.uip.backend.building.service.BuildingClusterService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -13,11 +18,14 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/buildings")
 @RequiredArgsConstructor
+@Tag(name = "Buildings", description = "Building cluster management and safety queries")
+@SecurityRequirement(name = "Bearer Authentication")
 public class BuildingClusterController {
 
     private final BuildingClusterService service;
 
     @GetMapping
+    @Operation(summary = "List buildings for current tenant")
     public List<BuildingResponse> list(
             @RequestHeader("X-Tenant-ID") String tenantId) {
         return service.findByTenant(tenantId)
@@ -27,6 +35,7 @@ public class BuildingClusterController {
     }
 
     @GetMapping("/{buildingCode}")
+    @Operation(summary = "Get building by code")
     public BuildingResponse getByCode(
             @RequestHeader("X-Tenant-ID") String tenantId,
             @PathVariable String buildingCode) {
@@ -35,6 +44,13 @@ public class BuildingClusterController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
+    @Operation(summary = "Create a new building")
+    @ApiResponses({
+        @ApiResponse(responseCode = "201", description = "Building created"),
+        @ApiResponse(responseCode = "400", description = "Invalid request body"),
+        @ApiResponse(responseCode = "401", description = "Authentication required"),
+        @ApiResponse(responseCode = "403", description = "Insufficient permissions")
+    })
     public BuildingResponse create(
             @RequestHeader("X-Tenant-ID") String tenantId,
             @Valid @RequestBody BuildingCreateRequest request) {
@@ -42,6 +58,7 @@ public class BuildingClusterController {
     }
 
     @GetMapping("/clusters/{clusterId}")
+    @Operation(summary = "List buildings by cluster ID")
     public List<BuildingResponse> listByCluster(@PathVariable String clusterId) {
         return service.findByCluster(clusterId)
             .stream()

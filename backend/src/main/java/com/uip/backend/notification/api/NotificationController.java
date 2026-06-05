@@ -24,9 +24,14 @@ public class NotificationController {
      * Event name: "alert", data: AlertEventDto JSON.
      *
      * Client reconnect: use EventSource with retry logic on error.
+     *
+     * @deprecated Use {@link AlertStreamController#streamAlerts()} instead —
+     *             canonical URL is GET /api/v1/alerts/stream.
+     *             This endpoint is kept for backward compatibility and will be removed in v3.1.
      */
+    @Deprecated
     @GetMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    @Operation(summary = "Subscribe to real-time alert notifications via SSE")
+    @Operation(summary = "Subscribe to real-time alert notifications via SSE (DEPRECATED — use /api/v1/alerts/stream)")
     @PreAuthorize("isAuthenticated()")
     public SseEmitter stream() {
         return sseEmitterRegistry.register();

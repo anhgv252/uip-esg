@@ -5,9 +5,11 @@ import com.uip.backend.environment.api.dto.SensorDto;
 import com.uip.backend.environment.api.dto.SensorReadingDto;
 import com.uip.backend.environment.service.EnvironmentService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
-import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -20,6 +22,7 @@ import java.util.List;
 @RequestMapping("/api/v1/environment")
 @RequiredArgsConstructor
 @Tag(name = "Environment", description = "Sensor readings, AQI data and environmental metrics")
+@SecurityRequirement(name = "Bearer Authentication")
 public class EnvironmentController {
 
     private final EnvironmentService environmentService;
@@ -34,6 +37,11 @@ public class EnvironmentController {
     @GetMapping("/sensors/{sensorId}/readings")
     @Operation(summary = "Time-series readings for a sensor")
     @PreAuthorize("isAuthenticated()")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Sensor readings returned"),
+        @ApiResponse(responseCode = "401", description = "Authentication required"),
+        @ApiResponse(responseCode = "404", description = "Sensor not found")
+    })
     public ResponseEntity<List<SensorReadingDto>> getReadings(
             @PathVariable String sensorId,
             @RequestParam(required = false) Instant from,

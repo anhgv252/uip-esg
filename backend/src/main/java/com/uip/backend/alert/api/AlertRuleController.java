@@ -4,6 +4,7 @@ import com.uip.backend.alert.api.dto.AlertRuleRequest;
 import com.uip.backend.alert.domain.AlertRule;
 import com.uip.backend.alert.service.AlertService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -19,6 +20,7 @@ import java.util.UUID;
 @RequestMapping("/api/v1/admin/alert-rules")
 @RequiredArgsConstructor
 @Tag(name = "Admin — Alert Rules", description = "CRUD for alert rule configuration (ADMIN only)")
+@SecurityRequirement(name = "Bearer Authentication")
 public class AlertRuleController {
 
     private final AlertService alertService;

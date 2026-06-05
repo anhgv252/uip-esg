@@ -1,5 +1,10 @@
 package com.uip.backend.dashboard.api;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -20,12 +25,19 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/v1/dashboard")
 @RequiredArgsConstructor
+@Tag(name = "Dashboard", description = "Dashboard aggregation stats")
+@SecurityRequirement(name = "Bearer Authentication")
 public class DashboardController {
 
     private final JdbcTemplate jdbcTemplate;
 
     @GetMapping
     @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Get full dashboard with ESG snapshot, safety score, and sensor stats")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Dashboard data returned"),
+        @ApiResponse(responseCode = "401", description = "Authentication required")
+    })
     public ResponseEntity<Map<String, Object>> getDashboard() {
         Double energyKwh = jdbcTemplate.queryForObject(
                 "SELECT COALESCE(SUM(value), 0) FROM esg.clean_metrics WHERE metric_type = 'ENERGY'" +
@@ -98,6 +110,11 @@ public class DashboardController {
 
     @GetMapping("/stats")
     @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Get lightweight stats summary (sensors, alerts, buildings)")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Stats returned"),
+        @ApiResponse(responseCode = "401", description = "Authentication required")
+    })
     public ResponseEntity<Map<String, Object>> getStats() {
         Long activeSensors = jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM environment.sensors WHERE is_active = true",

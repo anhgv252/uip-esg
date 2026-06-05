@@ -5,6 +5,7 @@ import com.uip.backend.traffic.api.dto.TrafficCountDto;
 import com.uip.backend.traffic.api.dto.TrafficIncidentDto;
 import com.uip.backend.traffic.service.TrafficService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -25,6 +26,7 @@ import java.util.UUID;
 @RequestMapping("/api/v1/traffic")
 @Tag(name = "Traffic", description = "Traffic counts, incidents, and real-time congestion mapping")
 @RequiredArgsConstructor
+@SecurityRequirement(name = "Bearer Authentication")
 public class TrafficController {
     
     private final TrafficService trafficService;

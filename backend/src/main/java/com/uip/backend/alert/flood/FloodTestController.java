@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.uip.backend.tenant.context.TenantContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import io.swagger.v3.oas.annotations.Hidden;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Profile;
 import org.springframework.http.ResponseEntity;
@@ -26,6 +27,7 @@ import java.util.Set;
 @RequiredArgsConstructor
 @Slf4j
 @PreAuthorize("hasRole('ADMIN')")
+@Hidden
 public class FloodTestController {
 
     private static final Set<String> VALID_SEVERITIES = Set.of(

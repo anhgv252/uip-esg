@@ -3,6 +3,9 @@ package com.uip.backend.esg.api;
 import com.uip.backend.esg.service.EsgPdfService;
 import com.uip.backend.tenant.context.TenantContext;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
@@ -24,6 +27,7 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/v1/esg/reports")
 @RequiredArgsConstructor
 @Tag(name = "ESG Reports", description = "ESG PDF report generation")
+@SecurityRequirement(name = "Bearer Authentication")
 public class EsgReportController {
 
     private final EsgPdfService esgPdfService;
@@ -37,6 +41,11 @@ public class EsgReportController {
     @PostMapping(value = "/pdf", produces = MediaType.APPLICATION_PDF_VALUE)
     @Operation(summary = "Generate GRI 302-1/305-4 ESG PDF report — synchronous, <30s SLA")
     @PreAuthorize("hasAnyRole('ADMIN') and hasAuthority('esg:write')")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "PDF generated successfully"),
+        @ApiResponse(responseCode = "400", description = "Invalid year/quarter parameters"),
+        @ApiResponse(responseCode = "403", description = "Requires ADMIN role and esg:write authority")
+    })
     public ResponseEntity<byte[]> generatePdf(
             @RequestParam(defaultValue = "#{T(java.time.LocalDate).now().getYear()}") int year,
             @RequestParam(defaultValue = "#{T(java.time.LocalDate).now().get(T(java.time.temporal.IsoFields).QUARTER_OF_YEAR)}") int quarter) {

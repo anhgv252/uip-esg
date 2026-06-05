@@ -7,6 +7,9 @@ import com.uip.backend.workflow.config.TriggerConfigCacheInvalidator;
 import com.uip.backend.workflow.config.TriggerConfigRepository;
 import com.uip.backend.workflow.config.VariableMapper;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +28,7 @@ import java.util.Map;
 @Tag(name = "Workflow Config", description = "Admin CRUD for workflow trigger configuration")
 @RequiredArgsConstructor
 @PreAuthorize("hasRole('ADMIN')")
+@SecurityRequirement(name = "Bearer Authentication")
 @Slf4j
 public class WorkflowConfigController {
 
@@ -50,6 +54,12 @@ public class WorkflowConfigController {
 
     @PostMapping
     @Operation(summary = "Create a new trigger configuration")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Configuration created"),
+        @ApiResponse(responseCode = "400", description = "Invalid request body"),
+        @ApiResponse(responseCode = "401", description = "Authentication required"),
+        @ApiResponse(responseCode = "403", description = "Requires ADMIN role")
+    })
     public TriggerConfig createConfig(@Valid @RequestBody TriggerConfig config, Authentication auth) {
         TriggerConfig saved = configRepo.save(config);
         auditService.record(saved, "CREATE", auth.getName());
@@ -59,6 +69,13 @@ public class WorkflowConfigController {
 
     @PutMapping("/{id}")
     @Operation(summary = "Update trigger configuration")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Configuration updated"),
+        @ApiResponse(responseCode = "400", description = "Invalid request body"),
+        @ApiResponse(responseCode = "401", description = "Authentication required"),
+        @ApiResponse(responseCode = "403", description = "Requires ADMIN role"),
+        @ApiResponse(responseCode = "404", description = "Configuration not found")
+    })
     public ResponseEntity<TriggerConfig> updateConfig(
             @PathVariable Long id, @RequestBody TriggerConfig updates, Authentication auth) {
         return configRepo.findById(id)
@@ -74,6 +91,12 @@ public class WorkflowConfigController {
 
     @DeleteMapping("/{id}")
     @Operation(summary = "Disable trigger configuration (soft delete)")
+    @ApiResponses({
+        @ApiResponse(responseCode = "204", description = "Configuration disabled"),
+        @ApiResponse(responseCode = "401", description = "Authentication required"),
+        @ApiResponse(responseCode = "403", description = "Requires ADMIN role"),
+        @ApiResponse(responseCode = "404", description = "Configuration not found")
+    })
     public ResponseEntity<Void> disableConfig(@PathVariable Long id, Authentication auth) {
         return configRepo.findById(id)
             .map(config -> {
@@ -97,6 +120,12 @@ public class WorkflowConfigController {
 
     @PostMapping("/{id}/test")
     @Operation(summary = "Test trigger with sample payload — dry run, no process started")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Dry-run result returned"),
+        @ApiResponse(responseCode = "401", description = "Authentication required"),
+        @ApiResponse(responseCode = "403", description = "Requires ADMIN role"),
+        @ApiResponse(responseCode = "404", description = "Configuration not found")
+    })
     public ResponseEntity<Map<String, Object>> testTrigger(
             @PathVariable Long id, @RequestBody Map<String, Object> samplePayload) {
         return configRepo.findById(id)

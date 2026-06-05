@@ -7,6 +7,9 @@ import com.uip.backend.notification.api.dto.VapidKeyResponse;
 import com.uip.backend.notification.config.VapidConfig;
 import com.uip.backend.notification.service.PushSubscriptionService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,6 +28,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 @Slf4j
 @Tag(name = "Push Notifications", description = "Web Push subscription management")
+@SecurityRequirement(name = "Bearer Authentication")
 public class PushSubscriptionController {
 
     private final PushSubscriptionService subscriptionService;
@@ -40,6 +44,11 @@ public class PushSubscriptionController {
     @PostMapping("/subscribe")
     @Operation(summary = "Register a push notification subscription")
     @PreAuthorize("isAuthenticated()")
+    @ApiResponses({
+        @ApiResponse(responseCode = "201", description = "Subscription created"),
+        @ApiResponse(responseCode = "400", description = "Invalid subscription payload"),
+        @ApiResponse(responseCode = "401", description = "Authentication required")
+    })
     public ResponseEntity<PushSubscriptionResponse> subscribe(
             @RequestBody @Valid PushSubscribeRequest request,
             Authentication auth) {

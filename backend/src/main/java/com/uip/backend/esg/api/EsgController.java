@@ -7,6 +7,9 @@ import com.uip.backend.esg.domain.EsgReport;
 import com.uip.backend.esg.service.EsgService;
 import com.uip.backend.tenant.context.TenantContext;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -35,6 +38,7 @@ import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 @RequiredArgsConstructor
 @Validated
 @Tag(name = "ESG", description = "Environmental, Social, and Governance metrics and reports")
+@SecurityRequirement(name = "Bearer Authentication")
 public class EsgController {
 
     private final EsgService esgService;
@@ -78,6 +82,11 @@ public class EsgController {
     @PostMapping("/reports/generate")
     @Operation(summary = "Trigger async ESG report generation")
     @PreAuthorize("hasAnyRole('OPERATOR', 'ADMIN') and hasAuthority('esg:write')")
+    @ApiResponses({
+        @ApiResponse(responseCode = "202", description = "Report generation started"),
+        @ApiResponse(responseCode = "400", description = "Invalid year/quarter parameters"),
+        @ApiResponse(responseCode = "403", description = "Requires esg:write authority")
+    })
     public ResponseEntity<EsgReportDto> generateReport(
             @RequestParam(defaultValue = "quarterly") String period,
             @RequestParam(defaultValue = "2026") @Min(value = 2020, message = "year must be 2020 or later") int year,

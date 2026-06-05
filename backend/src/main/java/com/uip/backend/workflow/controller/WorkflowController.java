@@ -4,6 +4,8 @@ import com.uip.backend.workflow.dto.ProcessDefinitionDto;
 import com.uip.backend.workflow.dto.ProcessInstanceDto;
 import com.uip.backend.workflow.service.WorkflowService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -61,6 +63,12 @@ public class WorkflowController {
     @PostMapping("/start/{processKey}")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Start a new process", description = "Starts a new instance of the specified process with given variables")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Process started successfully"),
+        @ApiResponse(responseCode = "400", description = "Invalid process key or variables"),
+        @ApiResponse(responseCode = "401", description = "Authentication required"),
+        @ApiResponse(responseCode = "403", description = "Requires ADMIN role")
+    })
     public ResponseEntity<ProcessInstanceDto> startProcess(
             @PathVariable String processKey,
             @RequestBody Map<String, Object> variables) {

@@ -8,6 +8,8 @@ import com.uip.backend.auth.service.LoginRateLimitService;
 import com.uip.backend.auth.service.JwtTokenProvider;
 import com.uip.backend.auth.service.TokenBlacklistService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
@@ -35,6 +37,11 @@ public class AuthController {
 
     @PostMapping("/login")
     @Operation(summary = "Login and receive JWT tokens")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Login successful, JWT tokens returned"),
+        @ApiResponse(responseCode = "401", description = "Invalid credentials"),
+        @ApiResponse(responseCode = "429", description = "Too many login attempts — rate limited")
+    })
     public ResponseEntity<?> login(
             @Valid @RequestBody LoginRequest request,
             HttpServletRequest httpRequest,
@@ -59,6 +66,10 @@ public class AuthController {
 
     @PostMapping("/refresh")
     @Operation(summary = "Refresh access token using refresh token")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Token refreshed successfully"),
+        @ApiResponse(responseCode = "401", description = "Invalid or expired refresh token")
+    })
     public ResponseEntity<AuthResponse> refresh(
             @Valid @RequestBody RefreshRequest request,
             HttpServletResponse response
@@ -77,6 +88,10 @@ public class AuthController {
 
     @PostMapping("/logout")
     @Operation(summary = "Logout — clear httpOnly cookie and invalidate token")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Logged out successfully"),
+        @ApiResponse(responseCode = "401", description = "No active session")
+    })
     public ResponseEntity<Void> logout(HttpServletRequest request, HttpServletResponse response) {
         // Invalidate the current token by adding it to the blacklist
         String jwt = extractToken(request);

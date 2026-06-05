@@ -2,6 +2,7 @@ package com.uip.backend.notification.api;
 
 import com.uip.backend.notification.service.SseEmitterRegistry;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
@@ -15,6 +16,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 @RequestMapping("/api/v1/alerts")
 @RequiredArgsConstructor
 @Tag(name = "Alerts SSE", description = "Real-time alert streaming via Server-Sent Events")
+@SecurityRequirement(name = "Bearer Authentication")
 public class AlertStreamController {
 
     private final SseEmitterRegistry sseEmitterRegistry;

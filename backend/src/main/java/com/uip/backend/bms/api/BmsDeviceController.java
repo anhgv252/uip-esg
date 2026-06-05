@@ -7,6 +7,9 @@ import com.uip.backend.bms.domain.BmsDevice;
 import com.uip.backend.bms.service.BmsDeviceService;
 import com.uip.backend.tenant.context.TenantContext;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +26,7 @@ import java.util.UUID;
 @RequestMapping("/api/v1/bms/devices")
 @RequiredArgsConstructor
 @Tag(name = "BMS Devices", description = "Building Management System device management")
+@SecurityRequirement(name = "Bearer Authentication")
 public class BmsDeviceController {
 
     private final BmsDeviceService bmsDeviceService;
@@ -52,6 +56,12 @@ public class BmsDeviceController {
 
     @PostMapping
     @Operation(summary = "Create or update a BMS device (idempotent upsert)")
+    @ApiResponses({
+        @ApiResponse(responseCode = "201", description = "Device created"),
+        @ApiResponse(responseCode = "200", description = "Device updated (already existed)"),
+        @ApiResponse(responseCode = "400", description = "Invalid request body"),
+        @ApiResponse(responseCode = "403", description = "Tenant context required")
+    })
     public ResponseEntity<BmsDeviceResponse> createDevice(@Valid @RequestBody BmsDeviceRequest request) {
         String tenantId = TenantContext.getCurrentTenant();
         if (tenantId == null || tenantId.isBlank()) {

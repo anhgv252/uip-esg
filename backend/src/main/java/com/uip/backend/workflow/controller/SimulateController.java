@@ -3,6 +3,7 @@ package com.uip.backend.workflow.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.uip.backend.workflow.dto.ProcessInstanceDto;
 import com.uip.backend.workflow.service.WorkflowService;
+import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -23,6 +24,7 @@ import java.util.Map;
 @Slf4j
 @Tag(name = "Simulate", description = "IoT event simulation for demo/testing")
 @SecurityRequirement(name = "Bearer Authentication")
+@Hidden
 public class SimulateController {
 
     private static final double AQI_ALERT_THRESHOLD = 150.0;
