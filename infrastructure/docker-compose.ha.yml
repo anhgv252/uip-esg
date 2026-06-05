@@ -15,17 +15,55 @@
 
 services:
   # ─── ClickHouse Keeper (coordination, replaces ZooKeeper) ──────────────────
+  # 3-node quorum for HA — ADR-036 S9-TD-KEEPER
+  # Quorum survives 1 keeper failure (majority = 2/3 nodes)
   clickhouse-keeper:
     image: clickhouse/clickhouse-keeper:23.8-alpine
     container_name: uip-clickhouse-keeper
     restart: unless-stopped
     volumes:
-      - clickhouse-keeper-data:/keeper
-      - ./clickhouse/keeper-config.xml:/etc/clickhouse-keeper/keeper_config.xml:ro
+      - clickhouse-keeper-data:/var/lib/clickhouse-keeper
+      - ./clickhouse/keeper-config-01.xml:/etc/clickhouse-keeper/keeper_config.xml:ro
     ports:
       - "9181:9181"  # Keeper client port
     healthcheck:
-      test: ["CMD-SHELL", "echo ruok | nc localhost 9181 | grep -q imok || exit 1"]
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 9181 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    networks:
+      - uip-network
+
+  clickhouse-keeper-02:
+    image: clickhouse/clickhouse-keeper:23.8-alpine
+    container_name: uip-clickhouse-keeper-02
+    restart: unless-stopped
+    volumes:
+      - clickhouse-keeper-02-data:/var/lib/clickhouse-keeper
+      - ./clickhouse/keeper-config-02.xml:/etc/clickhouse-keeper/keeper_config.xml:ro
+    ports:
+      - "9182:9181"  # Keeper client port (offset)
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 9181 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    networks:
+      - uip-network
+
+  clickhouse-keeper-03:
+    image: clickhouse/clickhouse-keeper:23.8-alpine
+    container_name: uip-clickhouse-keeper-03
+    restart: unless-stopped
+    volumes:
+      - clickhouse-keeper-03-data:/var/lib/clickhouse-keeper
+      - ./clickhouse/keeper-config-03.xml:/etc/clickhouse-keeper/keeper_config.xml:ro
+    ports:
+      - "9183:9181"  # Keeper client port (offset)
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 9181 || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -49,14 +87,18 @@ services:
       - ./clickhouse/node-config.xml:/etc/clickhouse-server/config.d/cluster-config.xml:ro
       - ./clickhouse/init-replicated.sql:/docker-entrypoint-initdb.d/init.sql:ro
     ports:
-      - "8123:8123"   # HTTP API
-      - "9000:9000"   # Native protocol
+      - "8125:8123"   # HTTP API (HA node-01, offset from single-node :8123)
+      - "9002:9000"   # Native protocol (offset)
     ulimits:
       nofile:
         soft: 262144
         hard: 262144
     depends_on:
       clickhouse-keeper:
+        condition: service_healthy
+      clickhouse-keeper-02:
+        condition: service_healthy
+      clickhouse-keeper-03:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:8123/ping | grep -q Ok. || exit 1"]
@@ -84,13 +126,17 @@ services:
       - ./clickhouse/init-replicated.sql:/docker-entrypoint-initdb.d/init.sql:ro
     ports:
       - "8124:8123"   # HTTP API (offset port)
-      - "9001:9000"   # Native protocol (offset port)
+      - "9003:9000"   # Native protocol (offset port)
     ulimits:
       nofile:
         soft: 262144
         hard: 262144
     depends_on:
       clickhouse-keeper:
+        condition: service_healthy
+      clickhouse-keeper-02:
+        condition: service_healthy
+      clickhouse-keeper-03:
         condition: service_healthy
       clickhouse-01:
         condition: service_healthy
@@ -117,15 +163,18 @@ services:
   backend:
     environment:
       CLICKHOUSE_URL: jdbc:clickhouse://clickhouse-01:8123,clickhouse-02:8123/${CLICKHOUSE_DB:-analytics}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092,kafka-2:9092,kafka-3:9092
 
   # ─── Override: Flink submitters → HA cluster ─────────────────────────────
   flink-esg-job-submitter:
     environment:
       CLICKHOUSE_URL: jdbc:clickhouse://clickhouse-01:8123,clickhouse-02:8123/${CLICKHOUSE_DB:-analytics}
+      KAFKA_BOOTSTRAP: kafka:9092,kafka-2:9092,kafka-3:9092
 
   flink-structural-job-submitter:
     environment:
       CLICKHOUSE_URL: jdbc:clickhouse://clickhouse-01:8123,clickhouse-02:8123/${CLICKHOUSE_DB:-analytics}
+      KAFKA_BOOTSTRAP: kafka:9092,kafka-2:9092,kafka-3:9092
 
   # ═══════════════════════════════════════════════════════════════════════════
   # Kafka 3-broker KRaft Quorum — ADR-037 (S8-OPS02)
@@ -219,8 +268,10 @@ services:
       -c max_wal_senders=3
       -c wal_keep_size=256MB
       -c hot_standby=on
+      -c hba_file=/etc/postgresql/pg_hba.conf
     volumes:
-      - ./timescaledb/create-replication-role.sh:/docker-entrypoint-initdb.d/01-create-replication-role.sh:ro
+      - ./timescaledb/pg_hba.conf:/etc/postgresql/pg_hba.conf:ro
+    # NOTE: create-replication-role.sh is in timescaledb/migrations/ (mounted by base compose as /docker-entrypoint-initdb.d)
 
   # ─── Standby replica (read-only) ──────────────────────────────────────────
   timescaledb-standby:
@@ -256,6 +307,10 @@ services:
 volumes:
   clickhouse-keeper-data:
     name: uip-clickhouse-keeper-data
+  clickhouse-keeper-02-data:
+    name: uip-clickhouse-keeper-02-data
+  clickhouse-keeper-03-data:
+    name: uip-clickhouse-keeper-03-data
   clickhouse-01-data:
     name: uip-clickhouse-01-data
   clickhouse-02-data:

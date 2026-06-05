@@ -67,7 +67,7 @@ class ForecastHealthCheckerTest {
     @Test
     @DisplayName("checkHealth — UP with no prior DOWN → no cache clear")
     void checkHealth_upNoPriorDown_noCacheClear() {
-        mockServer.expect(requestTo(containsString("/actuator/health")))
+        mockServer.expect(requestTo(containsString("/api/v1/forecast/health")))
                 .andExpect(method(HttpMethod.GET))
                 .andRespond(withSuccess("{\"status\":\"UP\"}", MediaType.APPLICATION_JSON));
 
@@ -82,7 +82,7 @@ class ForecastHealthCheckerTest {
     @Test
     @DisplayName("checkHealth — DOWN → sets previouslyDown, no cache clear")
     void checkHealth_down_setsPreviouslyDown() {
-        mockServer.expect(requestTo(containsString("/actuator/health")))
+        mockServer.expect(requestTo(containsString("/api/v1/forecast/health")))
                 .andExpect(method(HttpMethod.GET))
                 .andRespond(withServerError());
 
@@ -98,7 +98,7 @@ class ForecastHealthCheckerTest {
     void checkHealth_upAfterDown_clearsForecastCache() {
         healthChecker.setPreviouslyDown(true);
 
-        mockServer.expect(requestTo(containsString("/actuator/health")))
+        mockServer.expect(requestTo(containsString("/api/v1/forecast/health")))
                 .andExpect(method(HttpMethod.GET))
                 .andRespond(withSuccess("{\"status\":\"UP\"}", MediaType.APPLICATION_JSON));
 
@@ -123,11 +123,11 @@ class ForecastHealthCheckerTest {
     @Test
     @DisplayName("checkHealth — continuous UP → no cache clear on subsequent checks")
     void checkHealth_continuousUp_noCacheClear() {
-        mockServer.expect(requestTo(containsString("/actuator/health")))
+        mockServer.expect(requestTo(containsString("/api/v1/forecast/health")))
                 .andExpect(method(HttpMethod.GET))
                 .andRespond(withSuccess("{\"status\":\"UP\"}", MediaType.APPLICATION_JSON));
 
-        mockServer.expect(requestTo(containsString("/actuator/health")))
+        mockServer.expect(requestTo(containsString("/api/v1/forecast/health")))
                 .andExpect(method(HttpMethod.GET))
                 .andRespond(withSuccess("{\"status\":\"UP\"}", MediaType.APPLICATION_JSON));
 
@@ -147,11 +147,11 @@ class ForecastHealthCheckerTest {
     void checkHealth_downAfterRecovery_tracksNewDown() {
         healthChecker.setPreviouslyDown(true);
 
-        mockServer.expect(requestTo(containsString("/actuator/health")))
+        mockServer.expect(requestTo(containsString("/api/v1/forecast/health")))
                 .andExpect(method(HttpMethod.GET))
                 .andRespond(withSuccess("{\"status\":\"UP\"}", MediaType.APPLICATION_JSON));
 
-        mockServer.expect(requestTo(containsString("/actuator/health")))
+        mockServer.expect(requestTo(containsString("/api/v1/forecast/health")))
                 .andExpect(method(HttpMethod.GET))
                 .andRespond(withServerError());
 

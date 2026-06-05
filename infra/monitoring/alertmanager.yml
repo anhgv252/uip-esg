@@ -1,5 +1,6 @@
 global:
-  slack_api_url: "${SLACK_WEBHOOK_URL}"
+  # Set SLACK_WEBHOOK_URL env var to enable Slack alerts. Placeholder keeps alertmanager running without it.
+  slack_api_url: "http://localhost"
   resolve_timeout: 5m
 
 route:

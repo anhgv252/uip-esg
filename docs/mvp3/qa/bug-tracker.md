@@ -33,9 +33,9 @@
 
 | ID | Title | Status | Assignee | Found | Resolution / Risk Accept |
 |----|-------|--------|----------|-------|------------------------|
-| BUG-S4-T04 | Forecast 503 when Python down (no NAIVE_ROLLING fallback wired) | OPEN — P2 DEFERRED | Backend Team | 2026-05-27 | `ForecastController` catches `ForecastServiceUnavailableException` → 503; `NaiveForecastAdapter` bean exists but not wired as fallback. Service healthy in prod. Deferred Sprint 5. **PM risk-acceptance required.** |
+| BUG-S4-T04 | Forecast 503 when Python down (no NAIVE_ROLLING fallback wired) | RESOLVED | Backend Team | 2026-05-27 | Fixed in Sprint 5/6: `ForecastService.java` catches `ForecastServiceUnavailableException` and delegates to `naiveFallback.forecast()`. Controller 503 only fires if naive adapter also fails (DB down). |
 
-**P2 count:** 1 — deferred, non-blocking for demo ✅
+**P2 count:** 0 ✅
 
 ---
 
@@ -43,7 +43,7 @@
 
 | ID | Priority | Title | Resolution | Closed |
 |----|----------|-------|------------|--------|
-| — | — | — | — | — |
+| BUG-S4-T04 | P2 | Forecast 503 when Python down | `ForecastService` wires naive fallback via try-catch; `ForecastHealthChecker` fixed to call `/api/v1/forecast/health` | 2026-06-17 |
 
 ---
 

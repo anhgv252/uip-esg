@@ -25,7 +25,7 @@ import java.util.Set;
  * instead of serving stale naive-fallback results.
  *
  * ADR-032 D6: runs only when uip.capabilities.forecast-engine=python.
- * Health endpoint: /actuator/health (Spring Boot Actuator on Python side).
+ * Health endpoint: /api/v1/forecast/health (FastAPI endpoint on Python side).
  */
 @Slf4j
 @Component
@@ -93,7 +93,7 @@ public class ForecastHealthChecker {
     private boolean pingHealthEndpoint() {
         try {
             String response = restClient.get()
-                    .uri("/actuator/health")
+                    .uri("/api/v1/forecast/health")
                     .retrieve()
                     .body(String.class);
 

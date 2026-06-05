@@ -10,9 +10,18 @@
     <tcp_port>9000</tcp_port>
 
     <!-- Keeper connection for ReplicatedMergeTree coordination -->
+    <!-- 3-node quorum — ADR-036 S9-TD-KEEPER -->
     <zookeeper>
         <node>
             <host>clickhouse-keeper</host>
+            <port>9181</port>
+        </node>
+        <node>
+            <host>clickhouse-keeper-02</host>
+            <port>9181</port>
+        </node>
+        <node>
+            <host>clickhouse-keeper-03</host>
             <port>9181</port>
         </node>
     </zookeeper>
