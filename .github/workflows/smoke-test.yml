@@ -1,0 +1,132 @@
+name: Config Smoke Tests
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: false
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+  workflow_call:
+    inputs:
+      environment:
+        type: string
+        default: staging
+  push:
+    branches:
+      - main
+      - develop
+    paths:
+      - 'infrastructure/docker-compose*.yml'
+      - 'infrastructure/scripts/**'
+      - '.github/workflows/smoke-test.yml'
+
+jobs:
+  smoke-test:
+    name: Config Smoke Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      KEYCLOAK_URL: ${{ vars.KEYCLOAK_URL || 'http://localhost:8180' }}
+      KC_ADMIN_USER: ${{ vars.KC_ADMIN_USER || 'admin' }}
+      KC_ADMIN_PASSWORD: ${{ secrets.KC_ADMIN_PASSWORD || 'admin' }}
+      CH_HOST: ${{ vars.CH_HOST || 'localhost' }}
+      CH_HTTP_PORT: ${{ vars.CH_HTTP_PORT || '8123' }}
+      CH_USER: ${{ vars.CH_USER || 'default' }}
+      CH_PASSWORD: ${{ secrets.CH_PASSWORD || '' }}
+      KAFKA_BOOTSTRAP_SERVERS: ${{ vars.KAFKA_BOOTSTRAP_SERVERS || 'localhost:9092' }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Start infrastructure services
+        working-directory: infrastructure
+        run: |
+          cp .env.example .env 2>/dev/null || true
+          docker compose up -d keycloak clickhouse kafka redis timescaledb
+          echo "Waiting for services to be healthy..."
+          sleep 30
+      
+      - name: Wait for Keycloak
+        run: |
+          timeout 60 bash -c 'until curl -sf http://localhost:8180/health/ready >/dev/null 2>&1; do sleep 2; done' || true
+      
+      - name: Wait for ClickHouse
+        run: |
+          timeout 60 bash -c 'until curl -sf http://localhost:8123/ping >/dev/null 2>&1; do sleep 2; done' || true
+      
+      - name: Initialize ClickHouse schema
+        working-directory: infrastructure
+        run: |
+          # Run minimal schema setup for smoke tests
+          docker compose exec -T clickhouse clickhouse-client --query "CREATE DATABASE IF NOT EXISTS analytics"
+          docker compose exec -T clickhouse clickhouse-client --database analytics --query "
+            CREATE TABLE IF NOT EXISTS sensor_reading_hourly (
+              timestamp DateTime,
+              sensor_id String,
+              metric_value Float64
+            ) ENGINE = MergeTree()
+            ORDER BY (timestamp, sensor_id);
+            
+            CREATE TABLE IF NOT EXISTS esg_metric_monthly (
+              month Date,
+              metric_name String,
+              value Float64
+            ) ENGINE = MergeTree()
+            ORDER BY (month, metric_name);
+          "
+      
+      - name: Initialize Kafka topics
+        working-directory: infrastructure
+        run: |
+          docker compose exec -T kafka kafka-topics.sh \
+            --bootstrap-server localhost:9092 \
+            --create --if-not-exists --topic sensor-events --partitions 3 --replication-factor 1
+          docker compose exec -T kafka kafka-topics.sh \
+            --bootstrap-server localhost:9092 \
+            --create --if-not-exists --topic alert-events --partitions 3 --replication-factor 1
+          docker compose exec -T kafka kafka-topics.sh \
+            --bootstrap-server localhost:9092 \
+            --create --if-not-exists --topic esg-metrics --partitions 3 --replication-factor 1
+      
+      - name: Import Keycloak realm
+        working-directory: infrastructure
+        run: |
+          # Wait for Keycloak to be fully ready
+          sleep 10
+          # Import realm (assumes realm export exists)
+          if [ -f keycloak/realm-export.json ]; then
+            docker compose exec -T keycloak /opt/keycloak/bin/kc.sh import \
+              --file /opt/keycloak/data/import/realm-export.json || true
+          else
+            echo "Warning: keycloak/realm-export.json not found, skipping realm import"
+          fi
+      
+      - name: Run config smoke tests
+        working-directory: infrastructure
+        run: |
+          chmod +x scripts/smoke-test-config.sh
+          scripts/smoke-test-config.sh
+      
+      - name: Show service logs on failure
+        if: failure()
+        working-directory: infrastructure
+        run: |
+          echo "=== Keycloak logs ==="
+          docker compose logs --tail=50 keycloak || true
+          echo ""
+          echo "=== ClickHouse logs ==="
+          docker compose logs --tail=50 clickhouse || true
+          echo ""
+          echo "=== Kafka logs ==="
+          docker compose logs --tail=50 kafka || true
+      
+      - name: Cleanup
+        if: always()
+        working-directory: infrastructure
+        run: docker compose down -v

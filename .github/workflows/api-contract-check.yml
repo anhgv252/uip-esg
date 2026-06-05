@@ -1,0 +1,53 @@
+name: API Contract Check
+
+on:
+  push:
+    branches: [main, develop, "release/*"]
+    paths:
+      - "docs/api/openapi.json"
+      - "packages/api-types/**"
+      - "backend/src/main/java/**"
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - "docs/api/openapi.json"
+      - "packages/api-types/**"
+      - "backend/src/main/java/**"
+
+jobs:
+  contract-check:
+    name: OpenAPI Contract Drift Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Regenerate API types
+        run: npm run gen-api-types --workspace=packages/api-types
+
+      - name: Check for type drift
+        run: |
+          if ! git diff --exit-code packages/api-types/src/generated.ts; then
+            echo "::error::API type drift detected! Run 'npm run gen-api-types' locally and commit the updated packages/api-types/src/generated.ts"
+            echo "Diff:"
+            git diff packages/api-types/src/generated.ts
+            exit 1
+          fi
+          echo "✓ API types are in sync with openapi.json"
+
+      - name: Upload drift diff (on failure)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-types-drift
+          path: packages/api-types/src/generated.ts
+          retention-days: 7
