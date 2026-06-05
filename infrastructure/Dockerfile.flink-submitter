@@ -1,0 +1,4 @@
+FROM flink:1.19-java17
+USER root
+RUN apt-get update -qq && apt-get install -y --no-install-recommends jq && rm -rf /var/lib/apt/lists/*
+USER flink

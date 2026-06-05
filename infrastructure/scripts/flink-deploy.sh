@@ -75,7 +75,24 @@ try:
     data = json.load(sys.stdin)
     for job in data.get('jobs', []):
         if job.get('state') == 'RUNNING':
-            print(f\"{job['id']}\t{job['name']}\")
+            print(f\"{job['jid']}\t{job['name']}\")
+except: pass
+" 2>/dev/null || true
+}
+
+# Get jobs that need cleanup (non-terminal states: RUNNING, CREATED, RESTARTING, FAILING, CANCELLING)
+get_stale_jobs() {
+    curl -sf "${FLINK_URL}/jobs/overview" 2>/dev/null | \
+        python3 -c "
+import sys, json
+try:
+    data = json.load(sys.stdin)
+    # Include all non-terminal states that should be cleaned up before deploy
+    active_states = ['RUNNING', 'CREATED', 'RESTARTING', 'FAILING', 'CANCELLING', 'SUSPENDED']
+    for job in data.get('jobs', []):
+        state = job.get('state', '')
+        if state in active_states:
+            print(f"{job['jid']}\t{job['name']}\t{state}")
 except: pass
 " 2>/dev/null || true
 }
@@ -154,15 +171,23 @@ cmd_savepoint() {
 
 cmd_cancel() {
     check_flink_health
-    log_info "Cancelling running jobs..."
+    log_info "Cancelling active and stale jobs..."
 
-    while IFS=$'\t' read -r job_id job_name; do
+    local job_count=0
+    while IFS=$'\t' read -r job_id job_name job_state; do
         [[ -z "$job_id" ]] && continue
-        log_info "Cancelling: ${job_name} (${job_id})..."
+        job_count=$((job_count + 1))
+        log_info "Cancelling: ${job_name} (${job_id}, state: ${job_state})..."
         curl -sf -X PATCH "${FLINK_URL}/jobs/${job_id}?mode=cancel" > /dev/null 2>&1 && \
             log_ok "Cancelled: ${job_name}" || \
             log_warn "Failed to cancel: ${job_name}"
-    done <<< "$(get_running_jobs)"
+    done <<< "$(get_stale_jobs)"
+
+    if [[ $job_count -eq 0 ]]; then
+        log_info "No jobs to cancel"
+    else
+        log_info "Cancelled ${job_count} job(s)"
+    fi
 }
 
 cmd_submit() {

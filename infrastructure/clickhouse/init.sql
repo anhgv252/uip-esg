@@ -21,3 +21,24 @@ PARTITION BY toYYYYMM(recorded_at)
 ORDER BY (tenant_id, building_id, source_id, metric_type, recorded_at)
 TTL recorded_at + toIntervalYear(2)
 SETTINGS index_granularity = 8192;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Hourly rollup table for sensor readings (Sprint 8 — BUG-006 fix)
+-- Pre-aggregated hourly metrics to reduce query load on raw sensor data
+-- ─────────────────────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS analytics.sensor_reading_hourly
+(
+    tenant_id       String,
+    sensor_id       String,
+    sensor_type     LowCardinality(String),
+    hour_bucket     DateTime,
+    avg_value       Float64,
+    min_value       Float64,
+    max_value       Float64,
+    reading_count   UInt32,
+    ingested_at     DateTime DEFAULT now()
+) ENGINE = ReplacingMergeTree(ingested_at)
+PARTITION BY toYYYYMM(hour_bucket)
+ORDER BY (tenant_id, sensor_id, sensor_type, hour_bucket)
+TTL hour_bucket + toIntervalMonth(6)
+SETTINGS index_granularity = 8192;

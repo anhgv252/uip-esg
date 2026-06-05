@@ -5,7 +5,7 @@ COMPOSE_UAT      = docker compose --env-file .env.uat
 COMPOSE_FILE     = -f docker-compose.yml
 COMPOSE_UAT_FILE = -f docker-compose.yml -f docker-compose.uat.yml
 
-.PHONY: help up up-ha down logs ps migrate test-mqtt test-pipeline \
+.PHONY: help up up-ha ha-health-check down logs ps migrate test-mqtt test-pipeline check-contract-drift \
         uat-up uat-down uat-logs uat-ps uat-test uat-clean seed-uat clean \
         regression-test regression-test-group \
         flink-list flink-build flink-submit flink-cancel flink-savepoint flink-deploy flink-status \
@@ -34,6 +34,9 @@ up-ha: ## Start HA stack (ClickHouse 2-node + Kafka 3-broker — Tier 2 pilot)
 	@echo ""
 	@echo "Run 'make ch-migrate' after stack is healthy."
 
+ha-health-check: ## Check health of all HA environment containers (use --wait to retry for 5min)
+	@./scripts/ha-health-check.sh $(ARGS)
+
 down: ## Stop dev stack
 	$(COMPOSE) $(COMPOSE_FILE) down
 
@@ -58,6 +61,22 @@ test-mqtt: ## Send 10 MQTT test messages
 
 test-pipeline: ## Run integration test suite
 	@cd .. && python3 poc/scripts/integration_tests.py
+
+smoke-test: ## Run config smoke tests (Keycloak + ClickHouse + Kafka)
+	@bash scripts/smoke-test-config.sh
+
+# ─── API Contract ─────────────────────────────────────────────────────────────
+
+check-contract-drift: ## Check API contract drift (runs gen-api-types and verifies git clean)
+	@cd .. && npm run gen-api-types --workspace=packages/api-types
+	@cd .. && git diff --exit-code packages/api-types/src/generated.ts || { \
+		echo ""; \
+		echo "ERROR: API type drift detected!"; \
+		echo "  Run 'npm run gen-api-types' and commit packages/api-types/src/generated.ts"; \
+		echo ""; \
+		exit 1; \
+	}
+	@echo "✓ API types are in sync with openapi.json"
 
 # ─── Flink Jobs (ADR-038, S8-OPS03) ────────────────────────────────────────────
 
@@ -90,6 +109,15 @@ avro-register: ## Register Avro schemas into Apicurio Registry (idempotent)
 
 ch-migrate: ## Migrate ClickHouse data from single-node to HA cluster (run after up-ha)
 	@bash scripts/ch-migrate.sh
+
+ch-cluster-init: ## Run ClickHouse ON CLUSTER DDL migration (idempotent)
+	@bash scripts/ch-cluster-init.sh
+
+keycloak-realm-patch: ## Parameterize Keycloak realm localhost URIs for UAT/production (S9-SEC-01)
+	@bash scripts/keycloak-realm-patch.sh
+
+keycloak-realm-patch-dry: ## Preview Keycloak realm localhost URI changes (dry run)
+	@bash scripts/keycloak-realm-patch.sh --dry-run
 
 kafka-rebalance: ## Rebalance Kafka partitions across 3 brokers (run after up-ha)
 	@docker compose exec kafka kafka-reassign-partitions --bootstrap-server kafka:9092 --help > /dev/null 2>&1 || true

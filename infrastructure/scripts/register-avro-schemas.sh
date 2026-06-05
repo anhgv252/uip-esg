@@ -8,14 +8,15 @@
 #
 # Environment:
 #   APICURIO_URL  Apicurio Registry URL (default: http://localhost:8087/apis/registry/v2)
-#   SCHEMA_DIR    Avro schema directory (default: ../backend/src/main/resources/avro)
+#   SCHEMA_DIR    Avro schema directory (default: auto-detected from script location)
 #
 # Part of Sprint 8 — Avro auto-registration (EA P1 automation gap fix)
 set -euo pipefail
 
 # ─── Configuration ────────────────────────────────────────────────────────────
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 APICURIO_URL="${1:-${APICURIO_URL:-http://localhost:8087/apis/registry/v2}}"
-SCHEMA_DIR="${SCHEMA_DIR:-../backend/src/main/resources/avro}"
+SCHEMA_DIR="${SCHEMA_DIR:-${SCRIPT_DIR}/../../backend/src/main/resources/avro}"
 
 # Schema definitions: artifactId → filename
 declare -A SCHEMAS=(
