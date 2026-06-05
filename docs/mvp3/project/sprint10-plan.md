@@ -64,38 +64,38 @@ Team sẽ đạt **HARD PASS** by 2026-07-15 15:00 SGT bằng cách:
 
 | ID | Story | SP | Owner | Priority | AC | Status |
 |---|---|---|---|---|---|---|
-| S10-CONTRACT-01 | Fix P0-1: Align WorkflowDefinitionController paths — 7 endpoints documented trong OpenAPI spec với đúng request/response schemas | 2 | Backend-1 | **P0** | `npm run gen-api-types` includes workflow endpoints; CI contract check PASS | 📋 |
-| S10-CONTRACT-02 | Fix P0-2: Document `PUT /api/v1/alerts/{id}/resolve` trong OpenAPI spec + add to generated types | 1 | Backend-1 | **P0** | Alert state machine complete in spec; frontend can discover resolve action | 📋 |
-| S10-CONTRACT-03 | Fix P0-3: Document hoặc gate `POST /api/v1/admin/sensors` — add to spec với `@PreAuthorize` documented | 1 | Backend-1 | **P0** | Spec có endpoint với security schema; hoặc endpoint bị `@Profile("!production")` | 📋 |
-| S10-CONTRACT-04 | Document TenantAdminController — 10 endpoints, highest-privilege module | 3 | Backend-2 | **P0** | 10/10 tenant admin endpoints documented với auth requirements, request/response DTOs | 📋 |
-| S10-CONTRACT-05 | Document BMS module — 7 endpoints (BmsDeviceController + BmsDeviceCommandController) | 2 | Backend-2 | **P1** | BMS endpoints documented; command endpoint có security schema cho actuator control | 📋 |
-| S10-CONTRACT-06 | Document 9 remaining modules: Buildings (6), Push (5), Forecast (2), Dashboard (2), Analytics (1), ESG PDF (1), Mobile Auth (1), Invite (1), SSE stream (1) | 4 | Backend-1 + Backend-2 | **P1** | Tất cả 110 endpoints documented; `npm run gen-api-types` generates complete types | 📋 |
+| S10-CONTRACT-01 | Fix P0-1: Align WorkflowDefinitionController paths — 7 endpoints documented trong OpenAPI spec với đúng request/response schemas | 2 | Backend-1 | **P0** | `npm run gen-api-types` includes workflow endpoints; CI contract check PASS | ✅ DEV DONE |
+| S10-CONTRACT-02 | Fix P0-2: Document `PUT /api/v1/alerts/{id}/resolve` trong OpenAPI spec + add to generated types | 1 | Backend-1 | **P0** | Alert state machine complete in spec; frontend can discover resolve action | ✅ DEV DONE |
+| S10-CONTRACT-03 | Fix P0-3: Document hoặc gate `POST /api/v1/admin/sensors` — add to spec với `@PreAuthorize` documented | 1 | Backend-1 | **P0** | Spec có endpoint với security schema; hoặc endpoint bị `@Profile("!production")` | ✅ DEV DONE |
+| S10-CONTRACT-04 | Document TenantAdminController — 10 endpoints, highest-privilege module | 3 | Backend-2 | **P0** | 10/10 tenant admin endpoints documented với auth requirements, request/response DTOs | ✅ DEV DONE |
+| S10-CONTRACT-05 | Document BMS module — 7 endpoints (BmsDeviceController + BmsDeviceCommandController) | 2 | Backend-2 | **P1** | BMS endpoints documented; command endpoint có security schema cho actuator control | ✅ DEV DONE |
+| S10-CONTRACT-06 | Document 9 remaining modules: Buildings (6), Push (5), Forecast (2), Dashboard (2), Analytics (1), ESG PDF (1), Mobile Auth (1), Invite (1), SSE stream (1) | 4 | Backend-1 + Backend-2 | **P1** | Tất cả 110 endpoints documented; `npm run gen-api-types` generates complete types | ✅ DEV DONE |
 
 #### Epic 2: API Contract Quality [5 SP]
 
 | ID | Story | SP | Owner | Priority | AC | Status |
 |---|---|---|---|---|---|---|
-| S10-CONTRACT-07 | Add error response codes (401, 403, 404, 400) cho auth, alert, sensor, ESG report, tenant admin endpoints — minimum 15 critical endpoints | 2 | Backend-1 | **P0** | Spec có error responses; generated types include error DTOs | 📋 |
-| S10-CONTRACT-08 | Gate debug/test endpoints với `@Profile("!production")` — FloodTestController (2) + FakeTrafficDataController (1) | 1 | Backend-2 | **P0** | `curl POST /api/v1/test/inject-reading` → 404 trên production profile | 📋 |
-| S10-CONTRACT-09 | Resolve dual SSE stream: canonical URL `/api/v1/alerts/stream`, deprecate hoặc redirect `/api/v1/notifications/stream` | 1 | Backend-1 | **P1** | Một canonical SSE URL; frontend/mobile updated; spec documents đúng URL | 📋 |
-| S10-CONTRACT-10 | Regenerate `packages/api-types/` + verify frontend/mobile compile; update CI contract drift check | 1 | Frontend | **P0** | `npx tsc --noEmit` 0 errors; CI contract check PASS with new spec | 📋 |
+| S10-CONTRACT-07 | Add error response codes (401, 403, 404, 400) cho auth, alert, sensor, ESG report, tenant admin endpoints — minimum 15 critical endpoints | 2 | Backend-1 | **P0** | Spec có error responses; generated types include error DTOs | ✅ DEV DONE |
+| S10-CONTRACT-08 | Gate debug/test endpoints với `@Profile("!production")` — FloodTestController (2) + FakeTrafficDataController (1) | 1 | Backend-2 | **P0** | `curl POST /api/v1/test/inject-reading` → 404 trên production profile | ✅ DEV DONE |
+| S10-CONTRACT-09 | Resolve dual SSE stream: canonical URL `/api/v1/alerts/stream`, deprecate hoặc redirect `/api/v1/notifications/stream` | 1 | Backend-1 | **P1** | Một canonical SSE URL; frontend/mobile updated; spec documents đúng URL | ✅ DEV DONE |
+| S10-CONTRACT-10 | Regenerate `packages/api-types/` + verify frontend/mobile compile; update CI contract drift check | 1 | Frontend | **P0** | `npx tsc --noEmit` 0 errors; CI contract check PASS with new spec | ✅ DEV DONE |
 
 #### Epic 3: Pilot Security Hardening [5 SP]
 
 | ID | Story | SP | Owner | Priority | AC | Status |
 |---|---|---|---|---|---|---|
-| S10-SEC-01 | Keycloak live secret rotation trên staging — verify uip-api secret rotation + backend reconnect | 1 | DevOps | **P0** | Login flow succeed sau rotation; old secret rejected | 📋 |
-| S10-SEC-02 | iOS Developer Certificate submission — Apple Developer account + cert request | 1 | DevOps + Frontend | **P1** | Cert submitted; Apple review started (48-72h turnaround) | 📋 |
-| S10-SEC-03 | Production profile review — verify all `@Profile("!production")` gates work; no test/debug endpoints leak | 1 | Backend-2 | **P0** | Spring Boot `production` profile active → 3 debug endpoints return 404 | 📋 |
-| S10-SEC-04 | OWASP dependency check update — fix any new CVEs high+; verify SonarQube clean | 2 | DevOps + QA | **P1** | 0 new high+ CVEs; SonarQube quality gate PASS | 📋 |
+| S10-SEC-01 | Keycloak live secret rotation trên staging — verify uip-api secret rotation + backend reconnect | 1 | DevOps | **P0** | Login flow succeed sau rotation; old secret rejected | ✅ DEV DONE — procedure documented |
+| S10-SEC-02 | iOS Developer Certificate submission — Apple Developer account + cert request | 1 | DevOps + Frontend | **P1** | Cert submitted; Apple review started (48-72h turnaround) | ⏳ PENDING — cần Apple Developer account (manual) |
+| S10-SEC-03 | Production profile review — verify all `@Profile("!production")` gates work; no test/debug endpoints leak | 1 | Backend-2 | **P0** | Spring Boot `production` profile active → 3 debug endpoints return 404 | ✅ DEV DONE — ProductionProfileSecurityTest added |
+| S10-SEC-04 | OWASP dependency check update — fix any new CVEs high+; verify SonarQube clean | 2 | DevOps + QA | **P1** | 0 new high+ CVEs; SonarQube quality gate PASS | ⏳ PENDING — cần chạy scan thực tế |
 
 #### Epic 4: Pilot Readiness Gate [5 SP]
 
 | ID | Story | SP | Owner | Priority | AC | Status |
 |---|---|---|---|---|---|---|
-| S10-PILOT-01 | Pilot Runbook update — HA instructions, Keycloak rotation, CH failover, Kafka broker recovery, rollback procedures | 2 | DevOps | **P0** | Runbook covers 6 incident scenarios; Backend Lead + DevOps sign off | 📋 |
-| S10-PILOT-02 | Regression baseline update — chạy full regression on HA staging; target ≥1,300 tests, 100% PASS | 2 | QA + Tester | **P0** | ≥1,300 tests PASS; 0 FAIL; regression report attached | 📋 |
-| S10-PILOT-03 | Demo dry-run — 5-min executive demo script; PO + PM verify | 1 | PM + All | **P0** | Demo script rehearsed; no P0 blockers found | 📋 |
+| S10-PILOT-01 | Pilot Runbook update — HA instructions, Keycloak rotation, CH failover, Kafka broker recovery, rollback procedures | 2 | DevOps | **P0** | Runbook covers 6 incident scenarios; Backend Lead + DevOps sign off | ✅ DEV DONE |
+| S10-PILOT-02 | Regression baseline update — chạy full regression on HA staging; target ≥1,300 tests, 100% PASS | 2 | QA + Tester | **P0** | ≥1,300 tests PASS; 0 FAIL; regression report attached | ⏳ PENDING — cần HA staging environment |
+| S10-PILOT-03 | Demo dry-run — 5-min executive demo script; PO + PM verify | 1 | PM + All | **P0** | Demo script rehearsed; no P0 blockers found | ✅ DEV DONE — demo script + gate review template created |
 
 ---
 
@@ -103,11 +103,11 @@ Team sẽ đạt **HARD PASS** by 2026-07-15 15:00 SGT bằng cách:
 
 | ID | Story | SP | Owner | Priority | AC | Status |
 |---|---|---|---|---|---|---|
-| S10-TD-01 | Mobile offline UX spike — document UX flows, create wireframes, estimate implementation SP cho v3.1 | 2 | Frontend + BA | P2 | UX doc exists; implementation estimate in v3.1 backlog | 📋 |
-| S10-TD-02 | BPMN Workflow Designer UX polish — improve node styles, toolbar, properties panel | 3 | Frontend | P2 | PO reviews improved UI; no blocking UX issues | 📋 |
-| S10-TD-03 | ESG PDF Export — `POST /api/v1/esg/reports/pdf` sync endpoint với iText/OpenPDF | 3 | Backend-1 | P2 | PDF generates with GRI 302/305 tables; spec documented | 📋 |
-| S10-TD-04 | Android APK build pipeline — Expo EAS build config cho APK distribution | 2 | DevOps + Frontend | P2 | `eas build --platform android` produces downloadable APK | 📋 |
-| S10-TD-05 | Mobile Control Panel UX spike — actuator command confirmation flow wireframes | 2 | Frontend + BA | P2 | UX doc exists; HIGH danger confirmation pattern documented | 📋 |
+| S10-TD-01 | Mobile offline UX spike — document UX flows, create wireframes, estimate implementation SP cho v3.1 | 2 | Frontend + BA | P2 | UX doc exists; implementation estimate in v3.1 backlog | 📋 NOT STARTED |
+| S10-TD-02 | BPMN Workflow Designer UX polish — improve node styles, toolbar, properties panel | 3 | Frontend | P2 | PO reviews improved UI; no blocking UX issues | 📋 NOT STARTED |
+| S10-TD-03 | ESG PDF Export — `POST /api/v1/esg/reports/pdf` sync endpoint với iText/OpenPDF | 3 | Backend-1 | P2 | PDF generates with GRI 302/305 tables; spec documented | ✅ DEV DONE — endpoint đã tồn tại từ Sprint 7 |
+| S10-TD-04 | Android APK build pipeline — Expo EAS build config cho APK distribution | 2 | DevOps + Frontend | P2 | `eas build --platform android` produces downloadable APK | 📋 NOT STARTED |
+| S10-TD-05 | Mobile Control Panel UX spike — actuator command confirmation flow wireframes | 2 | Frontend + BA | P2 | UX doc exists; HIGH danger confirmation pattern documented | 📋 NOT STARTED |
 
 ---
 

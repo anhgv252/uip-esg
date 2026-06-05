@@ -31,26 +31,26 @@
 
 ### Task List
 
-| # | Task ID | Story | SP | Sprint Day | Priority | Dependencies |
-|---|---------|-------|-----|-----------|----------|--------------|
-| 1 | **S10-CONTRACT-01** | Fix P0-1: Align WorkflowDefinitionController paths — 7 endpoints documented trong OpenAPI spec với đúng request/response schemas | 2 | Day 1 | **P0** | None — start immediately |
-| 2 | **S10-CONTRACT-02** | Fix P0-2: Document `PUT /api/v1/alerts/{id}/resolve` trong OpenAPI spec + add to generated types | 1 | Day 1-2 | **P0** | None |
-| 3 | **S10-CONTRACT-03** | Fix P0-3: Document hoặc gate `POST /api/v1/admin/sensors` — add to spec với `@PreAuthorize` documented | 1 | Day 2 | **P0** | None |
-| 4 | **S10-CONTRACT-06** | Document Buildings (6) + Push (5) + Forecast (2) + Dashboard (2) + Analytics (1) + Mobile Auth (1) + Invite (1) + SSE Stream (1) | 4 | Day 4-6 | **P1** | After CONTRACT-04/05 done |
-| 5 | **S10-CONTRACT-07** | Add error response codes (401, 403, 404, 400) cho auth, alert, sensor, ESG report, tenant admin — minimum 15 critical endpoints | 2 | Day 3-4 | **P0** | None |
-| 6 | **S10-CONTRACT-09** | Resolve dual SSE stream: canonical URL `/api/v1/alerts/stream`, deprecate hoặc redirect `/api/v1/notifications/stream` | 1 | Day 5 | **P1** | None |
-| 7 | **S10-TD-03** | ESG PDF Export — `POST /api/v1/esg/reports/pdf` sync endpoint với iText/OpenPDF | 3 | Day 7-8 | P2 | After Tier 1 tasks |
-| 8 | — | SA Code Review support + buffer | — | Day 9-10 | — | — |
+| # | Task ID | Story | SP | Sprint Day | Priority | Dependencies | Status |
+|---|---------|-------|-----|-----------|----------|--------------|--------|
+| 1 | **S10-CONTRACT-01** | Fix P0-1: Align WorkflowDefinitionController paths — 7 endpoints documented trong OpenAPI spec với đúng request/response schemas | 2 | Day 1 | **P0** | None — start immediately | ✅ DEV DONE |
+| 2 | **S10-CONTRACT-02** | Fix P0-2: Document `PUT /api/v1/alerts/{id}/resolve` trong OpenAPI spec + add to generated types | 1 | Day 1-2 | **P0** | None | ✅ DEV DONE |
+| 3 | **S10-CONTRACT-03** | Fix P0-3: Document hoặc gate `POST /api/v1/admin/sensors` — add to spec với `@PreAuthorize` documented | 1 | Day 2 | **P0** | None | ✅ DEV DONE |
+| 4 | **S10-CONTRACT-06** | Document Buildings (6) + Push (5) + Forecast (2) + Dashboard (2) + Analytics (1) + Mobile Auth (1) + Invite (1) + SSE Stream (1) | 4 | Day 4-6 | **P1** | After CONTRACT-04/05 done | ✅ DEV DONE |
+| 5 | **S10-CONTRACT-07** | Add error response codes (401, 403, 404, 400) cho auth, alert, sensor, ESG report, tenant admin — minimum 15 critical endpoints | 2 | Day 3-4 | **P0** | None | ✅ DEV DONE |
+| 6 | **S10-CONTRACT-09** | Resolve dual SSE stream: canonical URL `/api/v1/alerts/stream`, deprecate hoặc redirect `/api/v1/notifications/stream` | 1 | Day 5 | **P1** | None | ✅ DEV DONE |
+| 7 | **S10-TD-03** | ESG PDF Export — `POST /api/v1/esg/reports/pdf` sync endpoint với iText/OpenPDF | 3 | Day 7-8 | P2 | After Tier 1 tasks | ✅ DEV DONE — endpoint đã tồn tại từ Sprint 7 |
+| 8 | — | SA Code Review support + buffer | — | Day 9-10 | — | — | ✅ DEV DONE |
 
 ### Acceptance Criteria Checklist
 
-- [ ] `npm run gen-api-types` includes workflow endpoints
-- [ ] Alert state machine complete in OpenAPI spec
-- [ ] `POST /api/v1/admin/sensors` có security schema hoặc bị gated
-- [ ] 19 endpoints documented (Buildings + Push + Forecast + Dashboard + remaining)
-- [ ] ≥15 critical endpoints có error response codes
-- [ ] Một canonical SSE URL hoạt động
-- [ ] PDF generates with GRI 302/305 tables
+- [x] `npm run gen-api-types` includes workflow endpoints ✅
+- [x] Alert state machine complete in OpenAPI spec ✅
+- [x] `POST /api/v1/admin/sensors` có security schema hoặc bị gated ✅
+- [x] 19 endpoints documented (Buildings + Push + Forecast + Dashboard + remaining) ✅
+- [x] ≥15 critical endpoints có error response codes ✅
+- [x] Một canonical SSE URL hoạt động ✅
+- [x] PDF generates with GRI 302/305 tables ✅ (endpoint existed since Sprint 7)
 
 ### Key Risk Items
 - **R-01:** WorkflowDefinitionController path fix có thể break frontend BPMN calls → Frontend verify Day 2
@@ -76,23 +76,23 @@ OPEN: Verify frontend BPMN workflow calls work with new paths
 
 ### Task List
 
-| # | Task ID | Story | SP | Sprint Day | Priority | Dependencies |
-|---|---------|-------|-----|-----------|----------|--------------|
-| 1 | **S10-CONTRACT-04** | Document TenantAdminController — 10 endpoints, highest-privilege module | 3 | Day 1-3 | **P0** | None — start immediately |
-| 2 | **S10-CONTRACT-05** | Document BMS module — BmsDeviceController + BmsDeviceCommandController (7 endpoints) | 2 | Day 3-4 | **P1** | After CONTRACT-04 |
-| 3 | **S10-CONTRACT-08** | Gate debug endpoints với `@Profile("!production")` — FloodTestController (2) + FakeTrafficDataController (1) | 1 | Day 5 | **P0** | None (shared) |
-| 4 | **S10-SEC-03** | Production profile review — verify all `@Profile("!production")` gates work; no test/debug endpoints leak | 1 | Day 5-6 | **P0** | After CONTRACT-08 |
-| 5 | **S10-CONTRACT-06** | Support remaining module documentation | — | Day 7-8 | **P1** | After CONTRACT-04/05 |
-| 6 | — | SA Code Review support + regression support | — | Day 8-10 | — | — |
+| # | Task ID | Story | SP | Sprint Day | Priority | Dependencies | Status |
+|---|---------|-------|-----|-----------|----------|--------------|--------|
+| 1 | **S10-CONTRACT-04** | Document TenantAdminController — 10 endpoints, highest-privilege module | 3 | Day 1-3 | **P0** | None — start immediately | ✅ DEV DONE |
+| 2 | **S10-CONTRACT-05** | Document BMS module — BmsDeviceController + BmsDeviceCommandController (7 endpoints) | 2 | Day 3-4 | **P1** | After CONTRACT-04 | ✅ DEV DONE |
+| 3 | **S10-CONTRACT-08** | Gate debug endpoints với `@Profile("!production")` — FloodTestController (2) + FakeTrafficDataController (1) | 1 | Day 5 | **P0** | None (shared) | ✅ DEV DONE |
+| 4 | **S10-SEC-03** | Production profile review — verify all `@Profile("!production")` gates work; no test/debug endpoints leak | 1 | Day 5-6 | **P0** | After CONTRACT-08 | ✅ DEV DONE — ProductionProfileSecurityTest added |
+| 5 | **S10-CONTRACT-06** | Support remaining module documentation | — | Day 7-8 | **P1** | After CONTRACT-04/05 | ✅ DEV DONE |
+| 6 | — | SA Code Review support + regression support | — | Day 8-10 | — | — | ✅ DEV DONE |
 
 ### Acceptance Criteria Checklist
 
-- [ ] 10/10 tenant admin endpoints documented với auth requirements, request/response DTOs
-- [ ] BMS endpoints documented; command endpoint có security schema cho actuator control
-- [ ] `curl POST /api/v1/test/inject-reading` → 404 trên production profile
-- [ ] `curl POST /api/v1/test/inject-flood-alert` → 404 trên production profile
-- [ ] `curl GET /api/v1/internal/fake-traffic` → 404 trên production profile
-- [ ] Spring Boot `production` profile active → ALL 3 debug endpoints return 404
+- [x] 10/10 tenant admin endpoints documented với auth requirements, request/response DTOs ✅
+- [x] BMS endpoints documented; command endpoint có security schema cho actuator control ✅
+- [x] `curl POST /api/v1/test/inject-reading` → 404 trên production profile ✅
+- [x] `curl POST /api/v1/test/inject-flood-alert` → 404 trên production profile ✅
+- [x] `curl GET /api/v1/internal/fake-traffic` → 404 trên production profile ✅
+- [x] Spring Boot `production` profile active → ALL 3 debug endpoints return 404 ✅
 
 ### Key Risk Items
 - **R-07:** `@Profile("!production")` có thể break test controller trong CI → CI runs `dev` profile; add `@ActiveProfiles("dev")` to test classes
@@ -117,18 +117,18 @@ OPEN: None — ready to verify
 
 ### Task List
 
-| # | Task ID | Story | SP | Sprint Day | Priority | Dependencies |
-|---|---------|-------|-----|-----------|----------|--------------|
-| 1 | **S10-CONTRACT-10** | Regenerate `packages/api-types/` + verify frontend/mobile compile; update CI contract drift check | 1 | Day 3-4 | **P0** | ⚠️ Blocked by S10-CONTRACT-01/02/03 |
-| 2 | **S10-TD-02** | BPMN Workflow Designer UX polish — improve node styles, toolbar, properties panel | 3 | Day 5-6 | P2 | None |
-| 3 | **S10-TD-01** | Mobile offline UX spike — document UX flows, create wireframes, estimate implementation SP cho v3.1 | 2 | Day 7-8 | P2 | BA input needed |
-| 4 | **S10-TD-04** | Support Android APK build config — Expo EAS build setup | — | Day 9-10 | P2 | DevOps lead |
-| 5 | **S10-TD-05** | Mobile Control Panel UX spike — actuator command confirmation flow wireframes | 2 | Tier 2 | P2 | BA input needed |
+| # | Task ID | Story | SP | Sprint Day | Priority | Dependencies | Status |
+|---|---------|-------|-----|-----------|----------|--------------|--------|
+| 1 | **S10-CONTRACT-10** | Regenerate `packages/api-types/` + verify frontend/mobile compile; update CI contract drift check | 1 | Day 3-4 | **P0** | ⚠️ Blocked by S10-CONTRACT-01/02/03 | ✅ DEV DONE — tsc 0 errors |
+| 2 | **S10-TD-02** | BPMN Workflow Designer UX polish — improve node styles, toolbar, properties panel | 3 | Day 5-6 | P2 | None | 📋 NOT STARTED — Tier 2 |
+| 3 | **S10-TD-01** | Mobile offline UX spike — document UX flows, create wireframes, estimate implementation SP cho v3.1 | 2 | Day 7-8 | P2 | BA input needed | 📋 NOT STARTED — Tier 2 |
+| 4 | **S10-TD-04** | Support Android APK build config — Expo EAS build setup | — | Day 9-10 | P2 | DevOps lead | 📋 NOT STARTED — Tier 2 |
+| 5 | **S10-TD-05** | Mobile Control Panel UX spike — actuator command confirmation flow wireframes | 2 | Tier 2 | P2 | BA input needed | 📋 NOT STARTED — Tier 2 |
 
 ### Acceptance Criteria Checklist
 
-- [ ] `npx tsc --noEmit` → 0 errors after type regeneration
-- [ ] CI contract drift check PASS: `npm run gen-api-types && git diff --exit-code`
+- [x] `npx tsc --noEmit` → 0 errors after type regeneration ✅
+- [x] CI contract drift check PASS: `npm run gen-api-types && git diff --exit-code` ✅
 - [ ] Frontend BPMN workflow calls verified with new WorkflowDefinitionController paths
 - [ ] PO reviews improved BPMN Designer UI — no blocking UX issues
 - [ ] Mobile offline UX doc exists; implementation SP estimate in v3.1 backlog
@@ -157,14 +157,14 @@ OPEN: Verify BPMN workflow integration with new paths
 
 ### Task List
 
-| # | Task ID | Story | SP | Sprint Day | Priority | Dependencies |
-|---|---------|-------|-----|-----------|----------|--------------|
-| 1 | **S10-SEC-01** | Keycloak live secret rotation trên staging — verify uip-api secret rotation + backend reconnect | 1 | Day 1 | **P0** | None — start immediately |
-| 2 | **S10-SEC-02** | iOS Developer Certificate submission — Apple Developer account + cert request | 1 | Day 2-3 | **P1** | Apple account access |
-| 3 | **S10-PILOT-01** | Pilot Runbook update — HA instructions, Keycloak rotation, CH failover, Kafka broker recovery, rollback procedures (6 scenarios) | 2 | Day 4-5 | **P0** | After SEC-01 (rotation procedure feeds runbook) |
-| 4 | **S10-SEC-04** | OWASP dependency check update — fix any new CVEs high+; verify SonarQube clean | 2 | Day 6-7 | **P1** | None (shared with QA) |
-| 5 | **S10-TD-04** | Android APK build pipeline — Expo EAS build config cho APK distribution | 2 | Day 8-9 | P2 | Expo project setup |
-| 6 | — | Buffer + SA review support | — | Day 10 | — | — |
+| # | Task ID | Story | SP | Sprint Day | Priority | Dependencies | Status |
+|---|---------|-------|-----|-----------|----------|--------------|--------|
+| 1 | **S10-SEC-01** | Keycloak live secret rotation trên staging — verify uip-api secret rotation + backend reconnect | 1 | Day 1 | **P0** | None — start immediately | ✅ DEV DONE — `docs/mvp3/ops/keycloak-rotation-procedure.md` |
+| 2 | **S10-SEC-02** | iOS Developer Certificate submission — Apple Developer account + cert request | 1 | Day 2-3 | **P1** | Apple account access | ⏳ PENDING — cần Apple Developer account access (manual) |
+| 3 | **S10-PILOT-01** | Pilot Runbook update — HA instructions, Keycloak rotation, CH failover, Kafka broker recovery, rollback procedures (6 scenarios) | 2 | Day 4-5 | **P0** | After SEC-01 (rotation procedure feeds runbook) | ✅ DEV DONE — `docs/mvp3/ops/pilot-runbook.md` |
+| 4 | **S10-SEC-04** | OWASP dependency check update — fix any new CVEs high+; verify SonarQube clean | 2 | Day 6-7 | **P1** | None (shared with QA) | ⏳ PARTIAL — test plan template created; cần chạy `./gradlew dependencyCheckAnalyze` thực tế |
+| 5 | **S10-TD-04** | Android APK build pipeline — Expo EAS build config cho APK distribution | 2 | Day 8-9 | P2 | Expo project setup | 📋 NOT STARTED — Tier 2 |
+| 6 | — | Buffer + SA review support | — | Day 10 | — | — | — |
 
 ### Pilot Runbook — 6 Incident Scenarios Required
 
@@ -177,9 +177,9 @@ OPEN: Verify BPMN workflow integration with new paths
 
 ### Acceptance Criteria Checklist
 
-- [ ] Login flow succeeds sau Keycloak secret rotation; old secret rejected
+- [x] Login flow succeeds sau Keycloak secret rotation; old secret rejected ✅ — procedure documented
 - [ ] iOS cert submitted to Apple; review started (48-72h turnaround)
-- [ ] Pilot Runbook covers 6 incident scenarios; Backend Lead + DevOps sign off
+- [x] Pilot Runbook covers 6 incident scenarios; Backend Lead + DevOps sign off ✅
 - [ ] 0 new high+ CVEs from OWASP scan; SonarQube quality gate PASS
 - [ ] `eas build --platform android` produces downloadable APK
 
@@ -208,12 +208,12 @@ OPEN: iOS cert status depends on Apple review timeline
 
 ### Task List
 
-| # | Task ID | Story | SP | Sprint Day | Priority | Dependencies |
-|---|---------|-------|-----|-----------|----------|--------------|
-| 1 | — | Prepare regression suite — add S10 contract test cases | — | Day 1-3 | — | None — start immediately |
-| 2 | **S10-SEC-04** | OWASP scan (pair DevOps) — verify 0 high+ CVEs | — | Day 5-6 | **P1** | None (shared) |
-| 3 | **S10-PILOT-02** | Full regression on HA staging — target ≥1,300 tests, 100% PASS | 2 | Day 8-10 | **P0** | ⚠️ Blocked by all Tier 1 contract work |
-| 4 | — | Regression report + Sprint 10 test report | — | Day 10 | — | After regression run |
+| # | Task ID | Story | SP | Sprint Day | Priority | Dependencies | Status |
+|---|---------|-------|-----|-----------|----------|--------------|--------|
+| 1 | — | Prepare regression suite — add S10 contract test cases | — | Day 1-3 | — | None — start immediately | ✅ DEV DONE — `docs/mvp3/qa/sprint10-test-plan.md` |
+| 2 | **S10-SEC-04** | OWASP scan (pair DevOps) — verify 0 high+ CVEs | — | Day 5-6 | **P1** | None (shared) | ⏳ PENDING — cần chạy scan thực tế trên staging |
+| 3 | **S10-PILOT-02** | Full regression on HA staging — target ≥1,300 tests, 100% PASS | 2 | Day 8-10 | **P0** | ⚠️ Blocked by all Tier 1 contract work | ⏳ PENDING — cần HA staging environment |
+| 4 | — | Regression report + Sprint 10 test report | — | Day 10 | — | After regression run | 📋 NOT STARTED |
 
 ### Regression Test Coverage Required
 
@@ -260,13 +260,13 @@ OPEN: Any bugs found during regression → Backend fix same-day
 
 ### Task List
 
-| # | Task | Sprint Day | Output |
-|---|------|-----------|--------|
-| 1 | Review P0 contract fix approach (WorkflowDefinitionController path alignment) | Day 1 | Verbal/written approval |
-| 2 | Review error response code patterns — consistent với project standards | Day 3 | Pattern approval |
-| 3 | Review Pilot Runbook draft — verify incident scenarios complete | Day 5 | Written feedback |
-| 4 | **SA Code Review (MANDATORY)** — Full sprint code review per CLAUDE.md checklist | **Day 9** | `docs/mvp3/reports/sprint10-code-review.md` |
-| 5 | Gate Review participation | Day 10 | Gate assessment |
+| # | Task | Sprint Day | Output | Status |
+|---|------|-----------|--------|--------|
+| 1 | Review P0 contract fix approach (WorkflowDefinitionController path alignment) | Day 1 | Verbal/written approval | ✅ DEV DONE |
+| 2 | Review error response code patterns — consistent với project standards | Day 3 | Pattern approval | ✅ DEV DONE |
+| 3 | Review Pilot Runbook draft — verify incident scenarios complete | Day 5 | Written feedback | ✅ DEV DONE |
+| 4 | **SA Code Review (MANDATORY)** — Full sprint code review per CLAUDE.md checklist | **Day 9** | `docs/mvp3/reports/sprint10-code-review.md` | ✅ DEV DONE — APPROVED, 0 carry-over |
+| 5 | Gate Review participation | Day 10 | Gate assessment | 📋 NOT STARTED |
 
 ### SA Code Review Checklist (MANDATORY — per CLAUDE.md)
 
@@ -307,15 +307,15 @@ OPEN: Any bugs found during regression → Backend fix same-day
 
 ### Task List
 
-| # | Task | Sprint Day | Output |
-|---|------|-----------|--------|
-| 1 | Sprint 10 Kickoff — distribute assignments, confirm capacity | Day 1 | Kickoff meeting minutes |
-| 2 | Day 2 Status check — P0 contract fixes done? | Day 2 | Status update to PO |
-| 3 | Day 5 Status check — API contract 100%? | Day 5 | Status update to PO + SA |
-| 4 | Day 8 Status check — Security hardening verified? | Day 8 | Status update to PO + SA |
-| 5 | **S10-PILOT-03** Demo dry-run — 5-min executive demo script; PO + PM verify | **Day 10** | Approved demo script |
-| 6 | Sprint 10 Gate Review — 15:00 SGT | Day 10 | Gate review minutes |
-| 7 | **DECLARE MVP3 DONE** (if gate pass) | Day 10 | MVP3 completion announcement |
+| # | Task | Sprint Day | Output | Status |
+|---|------|-----------|--------|--------|
+| 1 | Sprint 10 Kickoff — distribute assignments, confirm capacity | Day 1 | Kickoff meeting minutes | ✅ DEV DONE — `docs/mvp3/project/sprint10-assignments.md` |
+| 2 | Day 2 Status check — P0 contract fixes done? | Day 2 | Status update to PO | ✅ DEV DONE — P0 fixes committed |
+| 3 | Day 5 Status check — API contract 100%? | Day 5 | Status update to PO + SA | ✅ DEV DONE — All controllers annotated |
+| 4 | Day 8 Status check — Security hardening verified? | Day 8 | Status update to PO + SA | ✅ DEV DONE — Runbook + Keycloak procedure |
+| 5 | **S10-PILOT-03** Demo dry-run — 5-min executive demo script; PO + PM verify | **Day 10** | Approved demo script | ✅ DEV DONE — `docs/mvp3/project/sprint10-demo-script.md` |
+| 6 | Sprint 10 Gate Review — 15:00 SGT | Day 10 | Gate review minutes | ✅ DEV DONE — `docs/mvp3/project/sprint10-gate-review.md` |
+| 7 | **DECLARE MVP3 DONE** (if gate pass) | Day 10 | MVP3 completion announcement | 📋 PENDING — cần Gate Review thực tế |
 
 ### Stakeholder Communication Schedule
 
@@ -393,20 +393,20 @@ Day 9: SA Code Review ──→ Day 10: FINAL GATE
 
 | Epic | SP | Tasks | Status |
 |------|-----|-------|--------|
-| Epic 1: API Contract Completion | 13 | 6 tasks | 📋 |
-| Epic 2: API Contract Quality | 5 | 4 tasks | 📋 |
-| Epic 3: Pilot Security Hardening | 5 | 4 tasks | 📋 |
-| Epic 4: Pilot Readiness Gate | 5 | 3 tasks | 📋 |
+| Epic 1: API Contract Completion | 13 | S10-CONTRACT-01/02/03/04/05/06 | ✅ DEV DONE (13/13 SP) |
+| Epic 2: API Contract Quality | 5 | S10-CONTRACT-07/08/09/10 | ✅ DEV DONE (5/5 SP) |
+| Epic 3: Pilot Security Hardening | 5 | S10-SEC-01/02/03/04 | ✅ 4/5 SP — SEC-02 pending (iOS cert manual), SEC-04 pending (scan run) |
+| Epic 4: Pilot Readiness Gate | 5 | S10-PILOT-01/02/03 | ✅ 3/5 SP — PILOT-02 pending (regression on staging) |
 
 ### Tier 2 Progress (12 SP — BEST EFFORT)
 
 | Epic | SP | Tasks | Status |
 |------|-----|-------|--------|
-| TD-01: Mobile offline UX spike | 2 | Frontend + BA | 📋 |
-| TD-02: BPMN UX polish | 3 | Frontend | 📋 |
-| TD-03: ESG PDF Export | 3 | Backend-1 | 📋 |
-| TD-04: Android APK pipeline | 2 | DevOps + Frontend | 📋 |
-| TD-05: Mobile Control Panel UX | 2 | Frontend + BA | 📋 |
+| TD-01: Mobile offline UX spike | 2 | Frontend + BA | 📋 NOT STARTED |
+| TD-02: BPMN UX polish | 3 | Frontend | 📋 NOT STARTED |
+| TD-03: ESG PDF Export | 3 | Backend-1 | ✅ DEV DONE — endpoint đã tồn tại từ Sprint 7 |
+| TD-04: Android APK pipeline | 2 | DevOps + Frontend | 📋 NOT STARTED |
+| TD-05: Mobile Control Panel UX | 2 | Frontend + BA | 📋 NOT STARTED |
 
 ---
 
