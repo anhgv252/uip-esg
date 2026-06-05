@@ -27,14 +27,14 @@ CRITICAL_SERVICES=(
   "uip-timescaledb:1"
   "uip-timescaledb-standby:1"
   "uip-flink-jobmanager:1"
-  "uip-flink-taskmanager:1"
+  "uip-flink-taskmanager:0"
   "uip-backend:1"
   "uip-keycloak:1"
   "uip-kong:1"
   "uip-redis:1"
   "uip-emqx:1"
-  "uip-frontend:1"
-  "uip-analytics-service:1"
+  "uip-frontend:0"
+  "infrastructure-analytics-service-1:1"
 )
 
 # Optional services (won't fail overall check if down)

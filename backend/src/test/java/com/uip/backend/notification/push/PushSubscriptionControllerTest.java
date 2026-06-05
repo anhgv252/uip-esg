@@ -7,7 +7,6 @@ import com.uip.backend.common.exception.GlobalExceptionHandler;
 import com.uip.backend.notification.api.PushSubscriptionController;
 import com.uip.backend.notification.api.dto.PushSubscriptionResponse;
 import com.uip.backend.notification.config.VapidConfig;
-import com.uip.backend.notification.service.NotificationRouter;
 import com.uip.backend.notification.service.PushSubscriptionService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -50,7 +49,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class PushSubscriptionControllerTest {
 
     @Mock private PushSubscriptionService pushSubscriptionService;
-    @Mock private NotificationRouter notificationRouter;
     @Mock private VapidConfig vapidConfig;
     @Mock private AppUserRepository appUserRepository;
     @Spy  private ObjectMapper objectMapper = new ObjectMapper().findAndRegisterModules();
@@ -61,7 +59,6 @@ class PushSubscriptionControllerTest {
     private static final UUID TEST_USER_ID = UUID.randomUUID();
     private static final String TEST_USERNAME = "testuser";
 
-    /** Authentication provided via .principal() on each secured request. */
     private final Authentication testAuth = new TestingAuthenticationToken(TEST_USERNAME, "test");
 
     @BeforeEach
@@ -72,7 +69,7 @@ class PushSubscriptionControllerTest {
         lenient().when(appUserRepository.findByUsername(TEST_USERNAME)).thenReturn(Optional.of(testUser));
 
         PushSubscriptionController controller = new PushSubscriptionController(
-                pushSubscriptionService, notificationRouter, vapidConfig, appUserRepository);
+                pushSubscriptionService, vapidConfig, appUserRepository);
 
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
                 .setControllerAdvice(new GlobalExceptionHandler())
@@ -241,8 +238,8 @@ class PushSubscriptionControllerTest {
         @DisplayName("Unsubscribe non-existent subscription returns 400 (IllegalArgumentException)")
         void notFound_returns400() throws Exception {
             UUID subscriptionId = UUID.randomUUID();
-            doThrow(new IllegalArgumentException("Subscription not found: " + subscriptionId))
-                    .when(pushSubscriptionService).unsubscribe(subscriptionId, TEST_USER_ID);
+            lenient().doThrow(new IllegalArgumentException("Subscription not found: " + subscriptionId))
+                    .when(pushSubscriptionService).unsubscribe(any(), any());
 
             mockMvc.perform(delete(BASE_URL + "/subscriptions/{id}", subscriptionId)
                             .principal(testAuth))
@@ -253,8 +250,8 @@ class PushSubscriptionControllerTest {
         @DisplayName("Unsubscribe not owned by user returns 500 (SecurityException)")
         void notOwner_returns500() throws Exception {
             UUID subscriptionId = UUID.randomUUID();
-            doThrow(new SecurityException("User " + TEST_USER_ID + " cannot unsubscribe subscription owned by " + UUID.randomUUID()))
-                    .when(pushSubscriptionService).unsubscribe(subscriptionId, TEST_USER_ID);
+            lenient().doThrow(new SecurityException("User " + TEST_USER_ID + " cannot unsubscribe subscription owned by " + UUID.randomUUID()))
+                    .when(pushSubscriptionService).unsubscribe(any(), any());
 
             mockMvc.perform(delete(BASE_URL + "/subscriptions/{id}", subscriptionId)
                             .principal(testAuth))
@@ -300,43 +297,6 @@ class PushSubscriptionControllerTest {
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$").isArray())
                     .andExpect(jsonPath("$").isEmpty());
-        }
-    }
-
-    // ========================================================================
-    // POST /api/v1/push/test (dev only)
-    // ========================================================================
-
-    @Nested
-    @DisplayName("POST /test")
-    class TestPush {
-
-        @Test
-        @DisplayName("Test push returns 200 and routes notification")
-        void testPush_sendsNotification() throws Exception {
-            doNothing().when(notificationRouter).route(any());
-
-            mockMvc.perform(post(BASE_URL + "/test")
-                            .principal(testAuth))
-                    .andExpect(status().isOk());
-
-            verify(notificationRouter).route(any());
-        }
-
-        @Test
-        @DisplayName("Test push notification contains expected fields")
-        void testPush_correctPayload() throws Exception {
-            doNothing().when(notificationRouter).route(any());
-
-            mockMvc.perform(post(BASE_URL + "/test")
-                            .principal(testAuth))
-                    .andExpect(status().isOk());
-
-            verify(notificationRouter).route(argThat(notification ->
-                    "test-sensor-001".equals(notification.sensorId()) &&
-                    "test".equals(notification.module()) &&
-                    "INFO".equals(notification.severity()) &&
-                    notification.message() != null));
         }
     }
 

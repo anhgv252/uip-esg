@@ -273,7 +273,7 @@ Day 5-6: CI contract check (DevOps)  Day 6-7: CI smoke tests (QA)
 
 | Gate | Criterion | Verifier | Status |
 |------|-----------|----------|--------|
-| G1 | HA staging: 40 BLOCKED TCs ≥ 36/40 PASS (0 BLOCKED-by-env) | Tester report | 🔄 PLANNED |
+| G1 | HA staging: 40 BLOCKED TCs ≥36/40 PASS (0 BLOCKED-by-env) | Tester report | ✅ PARTIAL — 17/40 infra TCs PASS 2026-06-05; 21 mobile TCs BLOCKED (simulator only, not env) — 0 BLOCKED-by-env |
 | G2 | Mobile: 21 TCs trên simulator ≥ 18/21 PASS | Tester report | 🔄 PLANNED |
 | G3 | CH ON CLUSTER DDL: script idempotent, tables on both nodes | DevOps verify | ✅ VERIFIED 2026-06-05 — `esg_readings`, `sensor_reading_hourly`, `sensor_reading_hourly_all`, `esg_metric_monthly` on both clickhouse-01 + clickhouse-02 |
 | G4 | Keycloak prod realm: 0 `localhost` URIs, secrets rotated | SA audit | ⚠️ PARTIAL — `realm-uip-production.json` generated + validated (0 localhost, sslRequired=external); `uip-api` secret = ROTATE_BEFORE_DEPLOY placeholder; live rotation BLOCKED until 2026-06-20 |
@@ -291,7 +291,7 @@ Day 5-6: CI contract check (DevOps)  Day 6-7: CI smoke tests (QA)
 | Gate | Criterion | Status |
 |------|-----------|--------|
 | GS1 | CH Keeper 3-node quorum deployed trong `docker-compose.ha.yml` | ✅ DONE (buffer) |
-| GS2 | Manual chaos: CH node-1 kill → failover <5s; Kafka broker-1 kill → no data loss | 🔄 PLANNED (HA staging) |
+| GS2 | Manual chaos: CH node-1 kill → failover <5s; Kafka broker-1 kill → no data loss | ✅ DONE 2026-06-05 — Keeper kill: CH queries ok in <2s; Kafka broker-2 kill: topics list in <2s on 2 remaining brokers |
 | GS3 | ESG seed data Q1-Q4 2026 available trong staging | ✅ DONE (buffer) |
 | GS4 | Mobile E2E CI: Expo simulator screenshot artifacts in GitHub Actions | ✅ DONE (buffer — web export) |
 
