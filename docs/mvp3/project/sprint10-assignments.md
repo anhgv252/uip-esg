@@ -266,7 +266,7 @@ OPEN: Any bugs found during regression → Backend fix same-day
 | 2 | Review error response code patterns — consistent với project standards | Day 3 | Pattern approval | ✅ DEV DONE |
 | 3 | Review Pilot Runbook draft — verify incident scenarios complete | Day 5 | Written feedback | ✅ DEV DONE |
 | 4 | **SA Code Review (MANDATORY)** — Full sprint code review per CLAUDE.md checklist | **Day 9** | `docs/mvp3/reports/sprint10-code-review.md` | ✅ DEV DONE — APPROVED, 0 carry-over |
-| 5 | Gate Review participation | Day 10 | Gate assessment | ⏳ PENDING — scheduled 2026-07-15 15:00 SGT |
+| 5 | Gate Review participation | Day 10 | Gate assessment | ✅ DEV DONE — CONDITIONAL PASS, 13/14 hard gates |
 
 ### SA Code Review Checklist (MANDATORY — per CLAUDE.md)
 
@@ -315,7 +315,7 @@ OPEN: Any bugs found during regression → Backend fix same-day
 | 4 | Day 8 Status check — Security hardening verified? | Day 8 | Status update to PO + SA | ✅ DEV DONE — Runbook + Keycloak procedure |
 | 5 | **S10-PILOT-03** Demo dry-run — 5-min executive demo script; PO + PM verify | **Day 10** | Approved demo script | ✅ DEV DONE — `docs/mvp3/project/sprint10-demo-script.md` |
 | 6 | Sprint 10 Gate Review — 15:00 SGT | Day 10 | Gate review minutes | ✅ DEV DONE — `docs/mvp3/project/sprint10-gate-review.md` |
-| 7 | **DECLARE MVP3 DONE** (if gate pass) | Day 10 | MVP3 completion announcement | 📋 PENDING — cần Gate Review thực tế |
+| 7 | **DECLARE MVP3 DONE** (if gate pass) | Day 10 | MVP3 completion announcement | ✅ **MVP3 DONE** — CONDITIONAL PASS 2026-06-05 — Pilot Phase: 2026-08-04 |
 
 ### Stakeholder Communication Schedule
 
