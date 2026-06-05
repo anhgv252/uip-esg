@@ -1,8 +1,8 @@
 # MVP3 — Building Cluster + Advanced AI (v3.0)
 
-**Trạng thái:** 🟢 Sprint 5 COMPLETE — Sprint 6 IN PLANNING
+**Trạng thái:** 🟢 Sprint 9 BUFFER COMPLETE — Sprint 10 PLANNED (API Contract + Pilot Readiness)
 **Ngày lập kế hoạch:** 2026-05-10
-**Last updated:** 2026-05-29 (Sprint 5 closed, Sprint 6 planned)
+**Last updated:** 2026-06-05 (Sprint 9 complete, Sprint 10 planned)
 **Sprint start:** 2026-05-12
 **Target:** Tier 2 pilot signed bởi 2026-08-10
 **Goal:** UIP sẵn sàng phục vụ Building Cluster (5–20 tòa nhà)
@@ -13,11 +13,13 @@
 
 | Mục tiêu | Target | Confidence |
 |-----------|--------|------------|
-| Tier 2 Pilot signed (1 city pilot) | 2026-08-10 | 85% |
-| Cross-building analytics foundation | Live + tested Sprint 2 | 90% |
-| Kong + Keycloak IAM gateway | Production Sprint 4 | 85% |
-| ClickHouse OLAP layer | <5s aggregation p95 | 75% |
-| Predictive AI (energy + maintenance) | Metrics in production | 70% |
+| Tier 2 Pilot signed (1 city pilot) | 2026-08-10 | 90% |
+| Cross-building analytics foundation | ✅ Live + tested Sprint 2 | 100% |
+| Kong + Keycloak IAM gateway | ✅ Production Sprint 1 | 100% |
+| ClickHouse OLAP layer | ✅ <5s aggregation p95 | 100% |
+| Predictive AI (energy + maintenance) | ✅ ARIMA MAPE 3.54% in production | 100% |
+| Infrastructure HA (CH 2-node + Kafka 3-broker) | ✅ Live Sprint 8-9 | 100% |
+| API Contract 100% documented | Sprint 10 | 80% |
 
 **5 Critical Success Factors:**
 1. Multi-building RLS correctness — SA spike phải pass trước Sprint 2
@@ -39,12 +41,16 @@
 | v3-02 | Advanced ESG: GRI Standards + carbon credit | 21 | P1 | Sprint 3 | ✅ DONE |
 | v3-03 | Predictive AI: energy forecasting ARIMA/LSTM | 13 | P1 | Sprint 4 | ✅ DONE |
 | v3-04 | Predictive maintenance: sensor anomaly detection | 13 | P2 | Sprint 4 | ✅ DONE |
-| v3-AI | AI Workflow Designer + Flood Alert Pipeline | ~26 | **P0** | Sprint 6 | 📋 Planned |
-| v3-06 | Mobile operator app (iOS/Android) | 21 | P1 | Sprint 6-7 | 📋 Planned |
-| v3-09 | Building safety: structural monitoring | 13 | P1 | Sprint 7 | 📋 Planned |
+| v3-AI | AI Workflow Designer + Flood Alert Pipeline | ~26 | **P0** | Sprint 6 | ✅ DONE |
+| v3-06 | Mobile operator app (iOS/Android) | 21 | P1 | Sprint 6-8 | ✅ DONE |
+| v3-09 | Building safety: structural monitoring | 13 | P1 | Sprint 7 | ✅ DONE |
+| — | ClickHouse 2-node HA + Kafka 3-broker KRaft | 13 | **P0** | Sprint 8 | ✅ DONE |
+| — | Flink CI/CD + BMS Simulator + Avro Auto-reg | 11 | P1 | Sprint 8 | ✅ DONE |
+| — | API Contract Discipline + CI Smoke Tests | 13 | **P0** | Sprint 9 | ✅ DONE |
+| — | HA Validation + Keeper 3-node + Keycloak Hardening | 16 | **P0** | Sprint 9 | ✅ DONE |
 | v3-10 | Schema Registry (Apicurio) + Avro migration | 8 | P1 | Post-pilot | 📋 Deferred |
 
-**Total: ~149 SP / 7 sprints (Sprint 1-5 DONE = ~111 SP delivered, Sprint 6-7 remaining = ~60 SP)**
+**Total: ~220 SP / 10 sprints (Sprint 1-9 DONE = ~220 SP delivered, Sprint 10 remaining = ~40 SP)**
 
 ### Sprint thực tế vs Plan gốc
 
@@ -58,11 +64,14 @@ PO đã điều chỉnh thứ tự ưu tiên dựa trên business value:
 | Sprint 3 | **Sprint 3** (05-19 → 05-25) | ESG GRI + Keycloak RSA + Flink Enrichment | 5/6 AC PASS ✅ |
 | Sprint 4 | **Sprint 4** (05-25 → 05-27) | Observability + Predictive AI (ARIMA MAPE 3.54%) | 19/19 PASS ✅ |
 | — | **Sprint 5** (05-27 → 05-29) | BMS Full Integration + Alerts SSE + Forecast Fallback | 21/21 DONE ✅ |
-| — | **Sprint 6** (planned) | AI Workflow + Flood Alert + Mobile Foundation + Push | 📋 Planned |
-| — | **Sprint 7** (planned) | Building Safety + Mobile Full + Pilot Prep | 📋 Planned |
+| — | **Sprint 6** (~05-30 → 06-01) | AI Workflow + Flood Alert + Mobile Tier 1+2 + Push | GO ✅ |
+| — | **Sprint 7** (~06-01 → 06-03) | Building Safety + Avro + Pilot Readiness | GO FOR PILOT ✅ |
+| — | **Sprint 8** (06-04 → 06-17) | Mobile + Infra HA (CH 2-node + Kafka 3-broker) + Flink CI/CD | CONDITIONAL GO ✅ |
+| — | **Sprint 9** (buffer 06-04 → 06-17) | API Contract + HA Validation + CI Smoke + Security | BUFFER COMPLETE ✅ |
+| — | **Sprint 10** (07-02 → 07-15) | API Contract 100% + Pilot Security + Readiness Gate | 📋 PLANNED |
 | Sprint 6 | **Post-pilot** | Avro Schema Registry + gRPC migration | 📋 Deferred |
 
-> **PO điều chỉnh rationale:** AI Workflow + Flood Alert được ưu tiên lên Sprint 6 vì demo PO Sprint 5 đã promise. Mobile app được đẩy lên Sprint 6-7 song song. Building Safety Sprint 7 trước pilot. Avro + Schema Registry deferred post-pilot.
+> **PO điều chỉnh rationale:** AI Workflow + Flood Alert được ưu tiên lên Sprint 6. Mobile app song song Sprint 6-8. Building Safety Sprint 7. Infrastructure HA Sprint 8-9. Sprint 10 là sprint hoàn thiện cuối cùng trước Pilot Phase.
 
 ---
 
@@ -312,9 +321,9 @@ class ArimaForecastAdapter implements ForecastPort { ... }  // smile-core, MAPE 
 
 ---
 
-## 5. Sprint Plan (7 Sprints — 5 DONE + 2 Planned)
+## 5. Sprint Plan (10 Sprints — 9 DONE + 1 Planned)
 
-> **Lưu ý:** Thứ tự sprint đã được PO điều chỉnh so với plan gốc (detail-plan.md) để ưu tiên business value. BMS được đẩy lên sớm (Sprint 5), AI Innovation được ưu tiên Sprint 6. Mobile và Building Safety song song Sprint 6-7.
+> **Lưu ý:** Thứ tự sprint đã được PO điều chỉnh so với plan gốc (detail-plan.md) để ưu tiên business value. BMS được đẩy lên sớm (Sprint 5), AI Innovation được ưu tiên Sprint 6. Mobile và Building Safety song song Sprint 6-8. Infrastructure HA Sprint 8-9. Sprint 10 là sprint hoàn thiện cuối cùng.
 
 ### Sprint 1 (2026-05-12 → 2026-05-13): Foundation + Multi-Building Core — ✅ COMPLETE
 
@@ -407,65 +416,105 @@ class ArimaForecastAdapter implements ForecastPort { ... }  // smile-core, MAPE 
 
 ---
 
-### Sprint 6 (planned): AI Innovation + Mobile Foundation — 📋 PLANNED
+### Sprint 6 (~2026-05-30 → 2026-06-01): AI Innovation + Mobile Foundation — ✅ COMPLETE
 
-**Sprint Goal:** AI Workflow Designer (BPMN) + Flood Alert Pipeline E2E + React Native scaffold + Push backend + EMQX production + Blue-green deploy
+**Key deliverables:**
+- AI Workflow Designer (BPMN) + Flood Alert Pipeline E2E
+- React Native + Expo scaffold + PKCE login + Push backend (FCM/APNs)
+- Mobile Tier 1+2 implementation — Dashboard, Alerts, Push Settings
+- SA code review + QA regression gate
+- PO demo verified
 
-**PO decisions (2026-05-29):**
-- Focus: AI Innovation (AI Workflow + Flood Alert) — P0
-- Mobile: Sprint 6 song song — React Native scaffold + PKCE + Push
-- Building Safety: Sprint 7 (trước pilot)
-- Avro/Schema Registry: Deferred post-pilot
+**Gate:** GO ✅
 
-| Tier | Story | SP | Owner | Priority |
+---
+
+### Sprint 7 (~2026-06-01 → 2026-06-03): Building Safety + Avro + Pilot Readiness — ✅ COMPLETE
+
+**Key deliverables:**
+- Building Safety structural monitoring — Flink CEP + Welford stddev (ADR-034)
+- Avro Schema Registry — 4 schemas registered (Apicurio)
+- SLA-001 fix — VibrationAnomalyJob RUNNING
+- 1,178 backend tests + 375 Playwright E2E tests
+- EA Assessment: 4.73/5.0 — GO FOR PILOT
+
+**Gate:** GO FOR PILOT ✅ (UNCONDITIONAL)
+
+---
+
+### Sprint 8 (2026-06-04 → 2026-06-17): Mobile + Infrastructure HA — ✅ CONDITIONAL GO
+
+**Key deliverables:**
+- Mobile Dashboard (4 KPI cards + bottom tabs) + Mobile Alerts + Safety Score
+- ClickHouse 2-node HA — ReplicatedReplacingMergeTree + Keeper (ADR-036)
+- Kafka 3-broker KRaft quorum (ADR-037)
+- Flink CI/CD automated submission (ADR-038)
+- PG Streaming Replication — lag 0.3s avg
+- k6 Load Test — 500 VU / 200 VU sustained 30 min
+- BMS Hardware Simulator — Modbus TCP slave + 12 IT tests
+- Keycloak pilot realm — 3/3 users verified
+- Avro auto-registration — 4 schemas on deploy
+- 1,221 tests PASS, 285/285 regression PASS
+
+**Gate:** CONDITIONAL GO ✅ — 40 TCs BLOCKED (HA env + mobile simulator), all bugs fixed same-day
+
+---
+
+### Sprint 9 (buffer 2026-06-04 → 2026-06-17): API Contract + HA Validation — ✅ BUFFER COMPLETE
+
+**Key deliverables:**
+- HA stack LIVE (21 healthy containers) — 14 ngày sớm
+- CH Keeper 3-node quorum — kill 1 keeper → queries OK
+- Kafka broker kill test — 2 remaining brokers handle traffic
+- `packages/api-types/` generated từ OpenAPI spec
+- CI contract drift check deployed (GitHub Actions)
+- Config smoke tests — Keycloak + CH + Kafka verified per CI run
+- Keycloak production realm hardening — brute-force protection, localhost URIs removed
+- `packages/hooks/` monorepo boundary for web + mobile
+- ADR-039 (OpenAPI-First) + ADR-040 (Monorepo Boundary)
+- API Contract Audit — 49 undocumented endpoints identified
+- SA Code Review APPROVED (1 MAJOR + 1 MINOR fixed)
+
+**Gate:** BUFFER COMPLETE ✅ — remaining: 49 undocumented endpoints + Keycloak live rotation
+
+---
+
+### Sprint 10 (2026-07-02 → 2026-07-15): API Contract Completion + Pilot Readiness — 📋 PLANNED
+
+**Sprint Goal:** 110/110 API endpoints documented + Pilot security hardening + Declare MVP3 DONE
+
+**Tier 1 (28 SP — MUST DONE):**
+
+| Epic | Story | SP | Owner | Priority |
 |------|-------|----|-------|----------|
-| **Tier 1 (MUST)** | | | | |
-| | AI Workflow Designer — BPMN visual editor + AI decision nodes | 13 | FE + BE | **P0** |
-| | Flood Alert Pipeline — Sensor → Kafka → Flink CEP → Alert → SSE | 13 | Backend | **P0** |
-| | EMQX MQTT Production — BMS commands (carry-over S5) | 5 | DevOps | P1 |
-| | Blue-green deploy + rollback <30s | 3 | DevOps | P0 |
-| | Regression gate 1,500+ tests | 3 | QA | P0 |
-| | Demo script + PO dry-run | 2 | PM | P0 |
-| | Python forecast auto-retry 5 min | 2 | Backend | P2 |
-| | Push Subscription FE page (carry-over S5) | 2 | Frontend | P2 |
-| | SA: ADR-030 Mobile Stack + ADR-034 prep | 2 | SA | P1 |
-| **Tier 1 subtotal** | | **45 SP** | | |
-| **Tier 2 (BEST EFFORT)** | | | | |
-| | React Native + Expo scaffold | 13 | Frontend | P1 |
-| | Keycloak PKCE login + tenant selection | 5 | FE + BE | P1 |
-| | FCM + APNs push notification backend | 8 | Backend | P1 |
-| | BMS Testcontainers ITs 10 scenarios (carry-over S5) | 3 | QA | P1 |
-| **Tier 2 subtotal** | | **29 SP** | | |
-| **Total committed** | | **74 SP** | | |
+| API Contract | Fix P0 paths (Workflow + Alert resolve + Admin sensors) | 4 | Backend-1 | **P0** |
+| API Contract | Document Tenant Admin (10 endpoints) | 3 | Backend-2 | **P0** |
+| API Contract | Document BMS module (7 endpoints) | 2 | Backend-2 | **P1** |
+| API Contract | Document 9 remaining modules (34 endpoints) | 4 | Backend-1+2 | **P1** |
+| API Contract | Error response codes (15 critical endpoints) | 2 | Backend-1 | **P0** |
+| API Contract | Gate debug endpoints `@Profile("!production")` | 1 | Backend-2 | **P0** |
+| API Contract | Resolve dual SSE + Regenerate types | 2 | Backend-1 + FE | **P1** |
+| Pilot Security | Keycloak live secret rotation | 1 | DevOps | **P0** |
+| Pilot Security | iOS cert + Production profile review + OWASP | 4 | DevOps + BE | **P1** |
+| Pilot Readiness | Runbook + Regression ≥1,300 + Demo dry-run | 5 | DevOps+QA+PM | **P0** |
 
-**Risks:**
-- bpmn-js learning curve → SA spike Day 1-2; fallback static workflow templates
-- Mobile + AI song song kéo Frontend → nếu Tier 2 không fit → Mobile defer Sprint 7
-- 74 SP vs 47 SP capacity → Sprint 5 đã proof: 50/47 delivered
+**Tier 2 (12 SP — BEST EFFORT):**
 
----
+| Story | SP | Owner |
+|-------|----|-------|
+| Mobile offline UX spike (wireframes) | 2 | Frontend + BA |
+| BPMN Workflow Designer UX polish | 3 | Frontend |
+| ESG PDF Export (sync endpoint) | 3 | Backend-1 |
+| Android APK build pipeline | 2 | DevOps + Frontend |
+| Mobile Control Panel UX spike | 2 | Frontend + BA |
 
-### Sprint 7 (planned): Building Safety + Mobile Full + Pilot Prep — 📋 PLANNED
+**Plan chi tiết:** → [sprint10-plan.md](project/sprint10-plan.md)
 
-**Sprint Goal:** Building Safety structural monitoring + Mobile app full features + Pilot readiness gate
-
-| Story | SP | Owner | Priority |
-|-------|----|-------|----------|
-| Building Safety Backend — Flink CEP + Welford stddev | 13 | Backend | P1 |
-| Building Safety UI — sensor grid + alert banner | 8 | Frontend | P1 |
-| Mobile Dashboard + Alerts (React Native) | 13 | Frontend | P1 |
-| Mobile Control Panel (actuator commands) | 5 | Frontend | P2 |
-| BMS Command ACK + SSE feedback | 3 | Backend | P2 |
-| ESG PDF Export (GRI 302/305) | 5 | Backend | P2 |
-| Pilot regression 100+ scenarios | 5 | QA | P0 |
-| Pilot readiness gate + demo | 3 | All | P0 |
-| **Total** | **~55 SP** | | |
-
-**Target:** Pilot soft launch 2026-08-04 → Tier 2 Pilot SIGNED 2026-08-10
+**Gate criteria:** 110/110 endpoints documented | CI contract check PASS | Keycloak rotation verified | Regression ≥1,300 PASS | SA APPROVED | **DECLARE MVP3 DONE**
 
 ---
 
-## 5. Milestone Map (Updated 2026-05-29)
+## 5. Milestone Map (Updated 2026-06-05)
 
 ```
 ✅ Sprint 1 (05-12 → 05-13): Foundation + Multi-Building + ClickHouse + Kong/Keycloak
@@ -484,19 +533,31 @@ class ArimaForecastAdapter implements ForecastPort { ... }  // smile-core, MAPE 
 ✅ Sprint 5 (05-27 → 05-29): BMS Full Integration + Alerts SSE + Forecast Fallback
    GATE: 21/21 DONE, zero carry-over. 1,224 total tests. PO demo 16/16 PASS.
    15 deliverables: BMS CRUD, Modbus, BACnet, SSE Alerts, RFC 7807, nginx DNS fix.
+
+✅ Sprint 6 (~05-30 → 06-01): AI Workflow + Flood Alert + Mobile Foundation + Push
+   GATE: GO. AI Workflow Designer + Flood Alert Pipeline + Mobile Tier 1+2.
+
+✅ Sprint 7 (~06-01 → 06-03): Building Safety + Avro + Pilot Readiness
+   GATE: GO FOR PILOT (UNCONDITIONAL). 1,178 tests. EA Score 4.73/5.0.
+
+✅ Sprint 8 (06-04 → 06-17): Mobile + Infrastructure HA
+   GATE: CONDITIONAL GO. CH 2-node + Kafka 3-broker + PG replication. 1,221 tests.
+
+✅ Sprint 9 (buffer 06-04 → 06-17): API Contract + HA Validation
+   GATE: BUFFER COMPLETE. HA live 14 days early. 49 endpoints identified.
    ─── CURRENT POSITION ───
 
-📋 Sprint 6 (planned): AI Innovation + Mobile Foundation (~74 SP)
-   Tier 1 (45 SP): AI Workflow Designer + Flood Alert + EMQX + Blue-green
-   Tier 2 (29 SP): React Native + PKCE + Push Backend + BMS ITs
+📋 Sprint 10 (07-02 → 07-15): API Contract 100% + Pilot Security + Readiness Gate
+   Tier 1 (28 SP): API Contract completion + Security hardening + Runbook + Regression
+   Tier 2 (12 SP): UX spikes + ESG PDF + APK build
+   → DECLARE MVP3 DONE
 
-📋 Sprint 7 (planned): Building Safety + Mobile Full + Pilot Prep (~55 SP)
-   Building Safety (Flink CEP + Welford) + Mobile Dashboard + Pilot readiness
-
-🎯 2026-08-04: Pilot soft launch (5 buildings, 2 tenants)
+🎯 2026-07-16 → 07-31: Pilot Preparation (env setup + data migration + training)
+🎯 2026-08-01 → 08-03: Pilot Soft Launch (internal)
+🎯 2026-08-04: Pilot Soft Launch (5 buildings, 2 tenants)
 🎯 2026-08-10: Tier 2 Pilot SIGNED
 
-   Post-pilot (v3.1): Avro Schema Registry + gRPC migration + Building Safety refinements
+   Post-pilot (v3.1): Avro full migration + gRPC + Mobile offline + Control Panel + ESG PDF
 ```
 
 **Deployed images tại Pilot (cùng version tag — bắt buộc theo ADR-011):**
@@ -541,28 +602,33 @@ class ArimaForecastAdapter implements ForecastPort { ... }  // smile-core, MAPE 
 
 ## 7. Risk Register MVP3
 
-### Resolved Risks (Sprint 1-5)
+### Resolved Risks (Sprint 1-9)
 
 | ID | Risk | Resolution |
 |----|------|-----------|
 | ~~R1~~ | Multi-building RLS query >2s (N+1) | ✅ Resolved — p95=2.3ms via materialized view (Sprint 1) |
 | ~~R2~~ | Tier 1 regression từ multi-building | ✅ Resolved — zero regression through all sprints |
 | ~~R3~~ | LSTM model MAPE >15% | ✅ Resolved — LSTM NO-GO, ARIMA only (Sprint 4, MAPE 3.54%) |
-| ~~R4~~ | ClickHouse cluster HA delays | ✅ Resolved — single-node sufficient, CH HA descoped (Sprint 3) |
+| ~~R4~~ | ClickHouse cluster HA delays | ✅ Resolved — CH 2-node HA deployed Sprint 8, Keeper 3-node Sprint 9 |
 | ~~R5~~ | City Authority ESG spec changes | ✅ Resolved — GRI 302/305 finalized Sprint 3 |
+| ~~R6~~ | iOS cert + Apple review delays | ⚠️ Partial — still pending, Android APK ready, Sprint 10 submit |
 | ~~R7~~ | Kong plugin priority error | ✅ Resolved — alg=none blocked, plugin order verified (Sprint 1) |
 | ~~R8~~ | Extraction code break Tier 1 | ✅ Resolved — `matchIfMissing=true` pattern proven (Sprint 1-2) |
+| ~~R9~~ | bpmn-js learning curve | ✅ Resolved — AI Workflow Designer functional Sprint 6 |
+| ~~R10~~ | Mobile + AI song song kéo Frontend | ✅ Resolved — Mobile delivered Sprint 6-8 |
+| ~~R11~~ | Sprint 6 over-commit | ✅ Resolved — 74 SP delivered across S6-S7 |
+| ~~R12~~ | Building Safety Flink CEP complex | ✅ Resolved — Delivered Sprint 7, VibrationAnomalyJob RUNNING |
+| ~~R14~~ | 40 TCs BLOCKED từ Sprint 8 | ✅ Resolved — HA stack live Sprint 9, infra TCs PASS |
 
-### Active Risks (Sprint 6-7)
+### Active Risks (Sprint 10)
 
 | ID | Risk | Severity | Prob | Mitigation | Owner |
 |----|------|---------|------|-----------|-------|
-| R6 | iOS cert + Apple review delays | MEDIUM | 55% | Submit cert Day 1 Sprint 6; Android APK demo-ready first | Frontend Eng |
-| R9 | bpmn-js learning curve — AI Workflow complex | HIGH | 40% | SA spike Day 1-2; fallback static workflow templates | SA + Frontend |
-| R10 | Mobile + AI song song kéo Frontend quá mỏng | HIGH | 50% | Tier 2 best-effort; Mobile defer Sprint 7 nếu cần | PM |
-| R11 | Sprint 6 over-commit (74 SP vs 47 SP capacity) | MEDIUM | 35% | Sprint 5 precedent: 50/47 delivered; Tier 1 locked | PM |
-| R12 | Building Safety Flink CEP complex | MEDIUM | 30% | Defer post-pilot nếu Sprint 7 overloaded | Backend Lead |
-| R13 | Pilot target 2026-08-10 bị delay | HIGH | 25% | 2 sprint buffer; descope Mobile/Safety nếu cần | PM + PO |
+| R15 | 49 undocumented endpoints — contract fix breaks frontend | MEDIUM | 30% | Regenerate types + `tsc --noEmit` verify Day 3 | Backend + Frontend |
+| R16 | Keycloak live rotation breaks staging login | LOW | 15% | Test on staging first; have rollback (re-import old realm) | DevOps |
+| R17 | iOS Apple review rejects cert | MEDIUM | 25% | Start Day 2 Sprint 10; Android APK as fallback | DevOps |
+| R18 | Regression reveals new bugs — fix cycle delays gate | MEDIUM | 30% | S8 precedent: 13 bugs fixed same-day; 2-day buffer | QA + Backend |
+| R19 | Pilot target 2026-08-10 bị delay | LOW | 15% | Sprint 10 buffer; worst case delay 1 week (2026-08-17) | PM + PO |
 
 ---
 
@@ -716,16 +782,16 @@ Thresholds:
 
 ## 10. Resource Plan
 
-| Role | Sprint 1-5 (DONE) | Sprint 6 (AI+Mobile) | Sprint 7 (Safety+Pilot) |
-|------|-------------------|----------------------|------------------------|
-| Backend Eng 1 | SA spike + analytics + ESG | Flood Alert Pipeline + Push Backend | Building Safety + Pilot |
-| Backend Eng 2 | aggregation + Flink + BMS | AI Workflow Backend | Building Safety BE |
-| Frontend Eng | Dashboard + Forecast + BMS | AI Workflow Designer + RN scaffold | Safety UI + Mobile Full |
-| DevOps | ClickHouse + Kong + EMQX | EMQX prod + Blue-green | Pilot env + Runbook |
-| QA | Test strategy + BMS ITs | Regression gate + BMS ITs | Pilot regression 100+ |
+| Role | Sprint 1-7 (DONE) | Sprint 8-9 (DONE) | Sprint 10 (Final) |
+|------|-------------------|-------------------|-------------------|
+| Backend Eng 1 | SA spike + analytics + ESG + Flood Alert | Mobile fixes + Dashboard 404 fix | API Contract P0 fixes + Error codes |
+| Backend Eng 2 | Aggregation + FMS + BMS + AI Workflow | BMS Simulator support | Tenant Admin + BMS docs + Profile gating |
+| Frontend Eng | Dashboard + Forecast + BMS + AI Workflow + RN | X-Tenant-Id + Dashboard crash fix | Type regeneration + UX polish + APK |
+| DevOps | ClickHouse + Kong + EMQX + Blue-green | CH HA + Kafka 3-broker + PG replication | Keycloak rotation + Runbook + OWASP |
+| QA | Test strategy + BMS ITs + Regression | k6 500 VU + Pilot regression 285 TCs | Regression ≥1,300 + Smoke tests |
 
 **Total effort:** ~19 person-months | **Team:** 5 FTE + 0.5 PM = 5.5 FTE
-**Delivered (Sprint 1-5):** ~111 SP | **Remaining (Sprint 6-7):** ~129 SP (bao gồm descope candidates)
+**Delivered (Sprint 1-9):** ~220 SP | **Remaining (Sprint 10):** ~40 SP (28 Tier 1 + 12 Tier 2)
 
 ---
 
@@ -770,14 +836,17 @@ Thresholds:
 
 | Thư mục | Nội dung |
 |---------|---------|
-| `project/` | Sprint plans chi tiết, demo scripts, roadmap |
-| `architecture/` | [**System Architecture (Mermaid)**](architecture/system-architecture.md) · ADR-026 đến ADR-034 |
-| `qa/` | Test plans, performance reports |
-| `reports/` | Sprint reviews, UAT sign-off |
-| `deployment/` | Pilot deployment guide, runbook |
+| `project/` | Sprint plans chi tiết (S1-S10), demo scripts, roadmap |
+| `architecture/` | [**System Architecture (Mermaid)**](architecture/system-architecture.md) · ADR-026 đến ADR-040 |
+| `qa/` | Test plans, performance reports, bug tracker |
+| `reports/` | Sprint reviews, code reviews, UAT sign-off |
+| `test/` | Test case execution plans, new TCs |
+| `security/` | OWASP scan checklists, security templates |
+| `infrastructure/` | HA setup, runbooks |
+| `changes/` | Change orders, descope decisions |
 
 ---
 
 *Tổng hợp bởi: SA + BA + PM + QA (4 agents, 2026-05-10)*
-*Sprint alignment updated: 2026-05-29 (Sprint 5 CLOSED, Sprint 6-7 planned)*
-*Next review: End of Sprint 6*
+*Sprint alignment updated: 2026-06-05 (Sprint 9 COMPLETE, Sprint 10 planned)*
+*Next review: Sprint 10 Gate (2026-07-15) — DECLARE MVP3 DONE*
