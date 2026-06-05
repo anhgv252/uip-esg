@@ -11,6 +11,7 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.FilterType;
 import org.springframework.http.MediaType;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -32,6 +33,7 @@ class SimulateControllerTest {
 
     @Autowired MockMvc mockMvc;
     @MockBean WorkflowService workflowService;
+    @MockBean KafkaTemplate<String, String> kafkaTemplate;
 
     @Test
     void simulateSensorReading_belowThreshold_noAlert() throws Exception {

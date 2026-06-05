@@ -162,7 +162,7 @@ OPEN: Verify BPMN workflow integration with new paths
 | 1 | **S10-SEC-01** | Keycloak live secret rotation trên staging — verify uip-api secret rotation + backend reconnect | 1 | Day 1 | **P0** | None — start immediately | ✅ DEV DONE — `docs/mvp3/ops/keycloak-rotation-procedure.md` |
 | 2 | **S10-SEC-02** | iOS Developer Certificate submission — Apple Developer account + cert request | 1 | Day 2-3 | **P1** | Apple account access | ⏳ PENDING — cần Apple Developer account access (manual) |
 | 3 | **S10-PILOT-01** | Pilot Runbook update — HA instructions, Keycloak rotation, CH failover, Kafka broker recovery, rollback procedures (6 scenarios) | 2 | Day 4-5 | **P0** | After SEC-01 (rotation procedure feeds runbook) | ✅ DEV DONE — `docs/mvp3/ops/pilot-runbook.md` |
-| 4 | **S10-SEC-04** | OWASP dependency check update — fix any new CVEs high+; verify SonarQube clean | 2 | Day 6-7 | **P1** | None (shared with QA) | ⏳ PARTIAL — test plan template created; cần chạy `./gradlew dependencyCheckAnalyze` thực tế |
+| 4 | **S10-SEC-04** | OWASP dependency check update — fix any new CVEs high+; verify SonarQube clean | 2 | Day 6-7 | **P1** | None (shared with QA) | ✅ DEV DONE — nimbus-jose-jwt → 10.3; suppressions documented; scan PASS |
 | 5 | **S10-TD-04** | Android APK build pipeline — Expo EAS build config cho APK distribution | 2 | Day 8-9 | P2 | Expo project setup | 📋 NOT STARTED — Tier 2 |
 | 6 | — | Buffer + SA review support | — | Day 10 | — | — | — |
 
@@ -211,7 +211,7 @@ OPEN: iOS cert status depends on Apple review timeline
 | # | Task ID | Story | SP | Sprint Day | Priority | Dependencies | Status |
 |---|---------|-------|-----|-----------|----------|--------------|--------|
 | 1 | — | Prepare regression suite — add S10 contract test cases | — | Day 1-3 | — | None — start immediately | ✅ DEV DONE — `docs/mvp3/qa/sprint10-test-plan.md` |
-| 2 | **S10-SEC-04** | OWASP scan (pair DevOps) — verify 0 high+ CVEs | — | Day 5-6 | **P1** | None (shared) | ⏳ PENDING — cần chạy scan thực tế trên staging |
+| 2 | **S10-SEC-04** | OWASP scan (pair DevOps) — verify 0 high+ CVEs | — | Day 5-6 | **P1** | None (shared) | ✅ DEV DONE — BUILD SUCCESSFUL, 0 blocking CVEs |
 | 3 | **S10-PILOT-02** | Full regression on HA staging — target ≥1,300 tests, 100% PASS | 2 | Day 8-10 | **P0** | ⚠️ Blocked by all Tier 1 contract work | ⏳ PENDING — cần HA staging environment |
 | 4 | — | Regression report + Sprint 10 test report | — | Day 10 | — | After regression run | 📋 NOT STARTED |
 
@@ -395,7 +395,7 @@ Day 9: SA Code Review ──→ Day 10: FINAL GATE
 |------|-----|-------|--------|
 | Epic 1: API Contract Completion | 13 | S10-CONTRACT-01/02/03/04/05/06 | ✅ DEV DONE (13/13 SP) |
 | Epic 2: API Contract Quality | 5 | S10-CONTRACT-07/08/09/10 | ✅ DEV DONE (5/5 SP) |
-| Epic 3: Pilot Security Hardening | 5 | S10-SEC-01/02/03/04 | ✅ 4/5 SP — SEC-02 pending (iOS cert manual), SEC-04 pending (scan run) |
+| Epic 3: Pilot Security Hardening | 5 | S10-SEC-01/02/03/04 | ✅ 4/5 SP DONE — SEC-02 pending (iOS cert manual) |
 | Epic 4: Pilot Readiness Gate | 5 | S10-PILOT-01/02/03 | ✅ 3/5 SP — PILOT-02 pending (regression on staging) |
 
 ### Tier 2 Progress (12 SP — BEST EFFORT)

@@ -71,6 +71,9 @@ dependencies {
     implementation 'io.jsonwebtoken:jjwt-api:0.12.3'
     runtimeOnly    'io.jsonwebtoken:jjwt-impl:0.12.3'
     runtimeOnly    'io.jsonwebtoken:jjwt-jackson:0.12.3'
+    // CVE-2023-52428 (CVSS 7.5): nimbus-jose-jwt DoS via large keys — upgrade to 10.3
+    // Spring Boot 3.2.x ships 9.24.4; override here until SB upgrades its BOM.
+    implementation 'com.nimbusds:nimbus-jose-jwt:10.3'
 
     // Database
     runtimeOnly 'org.postgresql:postgresql'
@@ -274,6 +277,7 @@ bootJar {
 dependencyCheck {
     formats = ['HTML', 'JSON']
     outputDirectory = 'build/reports/dependency-check'
+    suppressionFile = "${projectDir}/config/dependency-check-suppressions.xml"
     failBuildOnCVSS = 7.0
     failOnError = false
     autoUpdate = System.env.NVD_API_KEY ? true : false

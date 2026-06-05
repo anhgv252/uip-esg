@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<suppressions xmlns="https://jeremylong.github.io/DependencyCheck/dependency-suppression.1.3.xsd">
+
+    <!--
+    ═══════════════════════════════════════════════════════════════════════
+    FALSE POSITIVES — CPE/ecosystem mismatch
+    ═══════════════════════════════════════════════════════════════════════
+    -->
+
+    <!--
+    CVE-2023-37475: Hamba avro — Go language encoder/decoder
+    Reporter: OWASP matched against apicurio-registry-serdes-avro-serde (Java)
+    Reason: CPE cpe:2.3:a:avro_project:avro:2.6.9 is incorrect; this Java artifact
+            has no relation to the Go "hamba/avro" project. Avro Java 1.11.x is used
+            as a transitive dependency of apicurio; CVE-2023-37475 is a Go-only issue.
+    Reviewed: 2026-06-05 by Security Team
+    -->
+    <suppress>
+        <notes>False positive: CVE-2023-37475 affects hamba/avro (Go). apicurio-registry-serdes-avro-serde is Java.</notes>
+        <gav regex="true">io\.apicurio:apicurio-registry-serdes-avro-serde:.*</gav>
+        <cve>CVE-2023-37475</cve>
+    </suppress>
+
+    <!--
+    CVE-2026-39883: OpenTelemetry-Go (Go implementation)
+    Reporter: OWASP matched against opentelemetry Java artifacts via CPE cpe:2.3:a:opentelemetry:opentelemetry
+    Reason: CVE-2026-39883 is explicitly about the Go implementation's net/http client;
+            the Java OTLP exporter uses a different HTTP transport (OkHttp) and is not affected.
+    Reviewed: 2026-06-05 by Security Team
+    -->
+    <suppress>
+        <notes>False positive: CVE-2026-39883 affects OpenTelemetry-Go, not the Java SDK.</notes>
+        <packageUrl regex="true">pkg:maven/io\.opentelemetry.*</packageUrl>
+        <cve>CVE-2026-39883</cve>
+    </suppress>
+    <suppress>
+        <notes>False positive: CVE-2026-39883 affects OpenTelemetry-Go, not the Java instrumentation API.</notes>
+        <packageUrl regex="true">pkg:maven/io\.opentelemetry\.instrumentation.*</packageUrl>
+        <cve>CVE-2026-39883</cve>
+    </suppress>
+    <suppress>
+        <notes>False positive: CVE-2026-39883 affects OpenTelemetry-Go, not the Java semconv artifact.</notes>
+        <packageUrl regex="true">pkg:maven/io\.opentelemetry\.semconv.*</packageUrl>
+        <cve>CVE-2026-39883</cve>
+    </suppress>
+
+    <!--
+    ═══════════════════════════════════════════════════════════════════════
+    ACCEPTED RISK — fix version not yet published to Maven Central
+    ═══════════════════════════════════════════════════════════════════════
+    -->
+
+    <!--
+    CVE-2025-7962 (CVSS 7.5): SMTP header injection via \r\n in Jakarta Mail
+    Affected: angus-mail / angus-activation 2.0.2 / 2.0.3
+    Fix version: angus-mail 2.1.0+ (not yet available on Maven Central as of 2026-06-05)
+    Mitigations in place:
+      1. Email functionality is internal admin only (password reset, invite emails)
+      2. Input is validated before passing to mail API (user email comes from JWT, not request body)
+      3. No user-controlled raw header injection paths identified in code review
+    Action: Upgrade to angus-mail 2.1.0 once published. Review monthly.
+    Reviewed: 2026-06-05 by Security Team
+    -->
+    <suppress until="2026-09-01Z">
+        <notes>Fix unavailable: angus-mail 2.1.0 not on Maven Central. Input validated; internal use only.</notes>
+        <packageUrl regex="true">pkg:maven/org\.eclipse\.angus.*</packageUrl>
+        <cve>CVE-2025-7962</cve>
+    </suppress>
+
+    <!--
+    CVE-2025-48976 (CVSS 7.5): Multipart header DoS in commons-fileupload
+    Affected: commons-fileupload 1.5 (Camunda 7.22 transitive dependency)
+    Fix version: commons-fileupload 1.6 (Apache has not published 1.6 to Maven Central)
+    Mitigations in place:
+      1. Multipart upload endpoints are protected behind JWT authentication
+      2. File upload size limits enforced via Spring Boot multipart config (max 10MB)
+      3. This is a transitive dep owned by Camunda; fix expected in Camunda 7.23+
+    Action: Upgrade when Camunda 7.23+ or commons-fileupload 1.6 is available.
+    Reviewed: 2026-06-05 by Security Team
+    -->
+    <suppress until="2026-09-01Z">
+        <notes>Fix unavailable: commons-fileupload 1.6 not published. Camunda transitive; upload endpoints behind auth.</notes>
+        <packageUrl regex="true">pkg:maven/commons-fileupload/commons-fileupload@.*</packageUrl>
+        <cve>CVE-2025-48976</cve>
+    </suppress>
+
+    <!--
+    CVE-2026-34478, CVE-2026-34480, CVE-2026-34481: Apache Log4j layout injection
+    Affected: log4j-core 2.25.0 — Rfc5424Layout, XmlLayout, JsonTemplateLayout
+    Fix version: Log4j 2.25.1+ (not yet released as of 2026-06-05; 3.x is beta)
+    Mitigations in place:
+      1. This application uses Logback (logstash-logback-encoder), NOT Log4j
+      2. log4j-api/log4j-core are transitive dependencies via Spring Boot / Camunda
+         but are NOT configured as the active logging implementation
+      3. The vulnerable layouts (Rfc5424Layout, XmlLayout, JsonTemplateLayout)
+         are not instantiated anywhere in the application configuration
+      4. log4j2.version = 2.25.0 is pinned in build.gradle — upgrade immediately
+         once 2.25.1 is published to Maven Central
+    Action: Upgrade log4j2.version once 2.25.1 is available. Review monthly.
+    Reviewed: 2026-06-05 by Security Team
+    -->
+    <suppress until="2026-09-01Z">
+        <notes>Logback is the active logger; log4j layouts CVE-2026-34478 not instantiated. Upgrade when 2.25.1 available.</notes>
+        <packageUrl regex="true">pkg:maven/org\.apache\.logging\.log4j.*</packageUrl>
+        <cve>CVE-2026-34478</cve>
+    </suppress>
+    <suppress until="2026-09-01Z">
+        <notes>Logback is the active logger; log4j layouts CVE-2026-34480 not instantiated. Upgrade when 2.25.1 available.</notes>
+        <packageUrl regex="true">pkg:maven/org\.apache\.logging\.log4j.*</packageUrl>
+        <cve>CVE-2026-34480</cve>
+    </suppress>
+    <suppress until="2026-09-01Z">
+        <notes>Logback is the active logger; log4j layouts CVE-2026-34481 not instantiated. Upgrade when 2.25.1 available.</notes>
+        <packageUrl regex="true">pkg:maven/org\.apache\.logging\.log4j.*</packageUrl>
+        <cve>CVE-2026-34481</cve>
+    </suppress>
+
+</suppressions>

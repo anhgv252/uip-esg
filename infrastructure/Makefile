@@ -19,13 +19,13 @@ help: ## Show this help
 
 # ─── Dev Stack ────────────────────────────────────────────────────────────────
 
-up: ## Start full dev stack
+up: ## Start full dev stack (standalone — recommended for local dev, low resource usage)
 	@cp -n .env.example .env 2>/dev/null || true
 	$(COMPOSE) $(COMPOSE_FILE) up -d
 	@echo "Waiting for all services to be healthy..."
 	$(COMPOSE) $(COMPOSE_FILE) ps
 
-up-ha: ## Start HA stack (ClickHouse 2-node + Kafka 3-broker — Tier 2 pilot)
+up-ha: ## Start HA stack (ClickHouse 2-node + Kafka 3-broker — staging/pilot only, high resource usage)
 	@cp -n .env.example .env 2>/dev/null || true
 	$(COMPOSE) -f docker-compose.yml -f docker-compose.ha.yml up -d
 	@echo ""

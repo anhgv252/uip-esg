@@ -43,6 +43,7 @@ class ProductionProfileSecurityTest {
     }
 
     @Test
+    @WithMockUser(roles = "ADMIN")
     void fakeTrafficData_notReachableInProduction() throws Exception {
         mockMvc.perform(get("/api/v1/internal/fake-traffic"))
                 .andExpect(status().isNotFound());
