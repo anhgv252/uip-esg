@@ -275,7 +275,7 @@ Day 5-6: CI contract check (DevOps)  Day 6-7: CI smoke tests (QA)
 |------|-----------|----------|--------|
 | G1 | HA staging: 40 BLOCKED TCs ≥ 36/40 PASS (0 BLOCKED-by-env) | Tester report | 🔄 PLANNED |
 | G2 | Mobile: 21 TCs trên simulator ≥ 18/21 PASS | Tester report | 🔄 PLANNED |
-| G3 | CH ON CLUSTER DDL: script idempotent, tables on both nodes | DevOps verify | ✅ DONE (ch-cluster-init.sh) |
+| G3 | CH ON CLUSTER DDL: script idempotent, tables on both nodes | DevOps verify | ✅ VERIFIED 2026-06-05 — `esg_readings`, `sensor_reading_hourly`, `sensor_reading_hourly_all`, `esg_metric_monthly` on both clickhouse-01 + clickhouse-02 |
 | G4 | Keycloak prod realm: 0 `localhost` URIs, secrets rotated | SA audit | ⚠️ PARTIAL — `realm-uip-production.json` generated + validated (0 localhost, sslRequired=external); `uip-api` secret = ROTATE_BEFORE_DEPLOY placeholder; live rotation BLOCKED until 2026-06-20 |
 | G5 | `packages/api-types/` generated + in CI; CI step passing | CI log | ✅ DONE (buffer) |
 | G6 | Frontend/Mobile 0 inline API type defs; `tsc --noEmit` 0 errors | CI log | ✅ DONE (buffer) |

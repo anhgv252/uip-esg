@@ -15,7 +15,8 @@ execute_sql() {
     curl -sf "http://${CH_HOST}:${CH_PORT}/" \
         --user "${CH_USER}:${CH_PASSWORD}" \
         --data-urlencode "query=${sql}" \
-        -o /dev/null
+        | grep -v "^$" || true
+    # Check HTTP error separately (curl -f exits non-zero on 4xx/5xx)
 }
 
 log() { echo "[$(date '+%H:%M:%S')] $*"; }

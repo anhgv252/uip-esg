@@ -14,11 +14,11 @@ PASS_COUNT=0
 FAIL_COUNT=0
 
 # Config
-KC_URL="${KEYCLOAK_URL:-http://localhost:8180}"
+KC_URL="${KEYCLOAK_URL:-http://localhost:8085}"
 KC_ADMIN="${KC_ADMIN_USER:-admin}"
-KC_PASS="${KC_ADMIN_PASSWORD:-admin}"
+KC_PASS="${KC_ADMIN_PASSWORD:-admin_Dev#2026!}"
 CH_HOST="${CH_HOST:-localhost}"
-CH_HTTP_PORT="${CH_HTTP_PORT:-8123}"
+CH_HTTP_PORT="${CH_HTTP_PORT:-8125}"  # HA mode: node-01 on 8125; single-node: 8123
 CH_USER="${CH_USER:-default}"
 CH_PASSWORD="${CH_PASSWORD:-}"
 KAFKA_BOOTSTRAP="${KAFKA_BOOTSTRAP_SERVERS:-localhost:9092}"
@@ -96,7 +96,7 @@ check_keycloak() {
   clients=$(timeout 10 curl -sf -H "Authorization: Bearer $token" \
     "${KC_URL}/admin/realms/uip/clients" 2>/dev/null) || true
   
-  for client_id in "uip-frontend" "uip-mobile" "pilot-operator" "pilot-viewer"; do
+  for client_id in "uip-frontend" "uip-mobile" "uip-api"; do
     if echo "$clients" | python3 -c "import sys,json; clients=[c['clientId'] for c in json.load(sys.stdin) if 'clientId' in c]; print('$client_id' in clients)" 2>/dev/null | grep -q "True"; then
       log_pass "Keycloak client '$client_id'"
     else
@@ -147,8 +147,12 @@ check_kafka() {
   local topics=""
   
   # Detect if we're in Docker environment
-  if docker ps --format '{{.Names}}' 2>/dev/null | grep -q "^kafka$"; then
-    topics=$(timeout 10 docker exec kafka kafka-topics.sh \
+  if docker ps --format '{{.Names}}' 2>/dev/null | grep -q "uip-kafka$"; then
+    topics=$(timeout 10 docker exec uip-kafka kafka-topics \
+      --bootstrap-server localhost:9092 \
+      --list 2>/dev/null) || true
+  elif docker ps --format '{{.Names}}' 2>/dev/null | grep -q "^kafka$"; then
+    topics=$(timeout 10 docker exec kafka kafka-topics \
       --bootstrap-server localhost:9092 \
       --list 2>/dev/null) || true
   elif command -v kcat >/dev/null 2>&1; then
@@ -168,7 +172,7 @@ check_kafka() {
   fi
   
   # Check each required topic
-  for topic in "sensor-events" "alert-events" "esg-metrics"; do
+  for topic in "UIP.iot.sensor.reading.v2" "UIP.flink.alert.detected.v2" "ngsi_ld_esg"; do
     if echo "$topics" | grep -q "^${topic}$"; then
       log_pass "Kafka topic '${topic}'"
     else
