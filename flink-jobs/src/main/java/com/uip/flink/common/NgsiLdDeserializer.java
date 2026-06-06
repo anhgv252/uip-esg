@@ -22,6 +22,16 @@ public class NgsiLdDeserializer implements DeserializationSchema<NgsiLdMessage> 
             return null;
         }
         try {
+            // Fast path: message is a JSON object { ... }
+            if (message[0] == '{') {
+                return MAPPER.readValue(message, NgsiLdMessage.class);
+            }
+            // Backend may publish the payload as a JSON string "\"{ ... }\"" (double-encoded).
+            // Unwrap the outer string layer before deserializing.
+            if (message[0] == '"') {
+                String unwrapped = MAPPER.readValue(message, String.class);
+                return MAPPER.readValue(unwrapped, NgsiLdMessage.class);
+            }
             return MAPPER.readValue(message, NgsiLdMessage.class);
         } catch (Exception e) {
             // Skip malformed messages (e.g. perf-test random bytes) — log and return null

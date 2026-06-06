@@ -45,9 +45,11 @@ public class TrafficFlinkJob {
     public static void main(String[] args) throws Exception {
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
 
+        String checkpointDir = System.getenv().getOrDefault(
+                "S3_CHECKPOINT_DIR", "s3://uip-flink-checkpoints/checkpoints");
         env.enableCheckpointing(30_000, CheckpointingMode.EXACTLY_ONCE);
         env.setStateBackend(new EmbeddedRocksDBStateBackend(true));
-        env.getCheckpointConfig().setCheckpointStorage("file:///flink/checkpoints");
+        env.getCheckpointConfig().setCheckpointStorage(checkpointDir);
 
         KafkaSource<NgsiLdMessage> source = KafkaSource.<NgsiLdMessage>builder()
                 .setBootstrapServers(KAFKA_BOOTSTRAP)

@@ -154,8 +154,7 @@ dependencyManagement {
 
 test {
     useJUnitPlatform()
-    // RYUK_DISABLED: Testcontainers skips the Ryuk cleanup container (acceptable for local dev)
-    environment 'RYUK_DISABLED', 'true'
+    // Ryuk được BẬT (không set RYUK_DISABLED) — tự dọn containers sau khi test JVM thoát.
     // Sequential forks: @SpringBootTest contexts share DB pool; parallel forks exhaust connections
     maxParallelForks = 1
     // JaCoCo overhead: 100+ test classes + 24 @SpringBootTest contexts require 3.5GB for instrumentation
@@ -211,7 +210,7 @@ tasks.register('testUnit', Test) {
         excludeTags 'integration'
     }
     exclude '**/*IT.class', '**/*IntegrationTest.class'
-    environment 'RYUK_DISABLED', 'true'
+    // Unit tests không dùng Testcontainers — không cần set RYUK_DISABLED
     maxParallelForks = 1
     jvmArgs '-Xmx2g', '-Xms256m', '-XX:+UseG1GC'
     finalizedBy 'jacocoTestUnitReport'
@@ -223,11 +222,26 @@ tasks.register('integrationTest', Test) {
         includeTags 'integration'
     }
     include '**/*IT.class', '**/*IntegrationTest.class'
-    environment 'RYUK_DISABLED', 'true'
+    // Ryuk được BẬT — tự dọn containers sau khi test JVM thoát.
     maxParallelForks = 1
     jvmArgs '-Xmx3500m', '-Xms512m', '-XX:+UseG1GC', '-XX:+ParallelRefProcEnabled'
     // Do not run as part of the default 'check' lifecycle
     shouldRunAfter testUnit
+    // Safety-net: prune Testcontainers-labeled stopped containers nếu Ryuk miss
+    doLast {
+        try {
+            exec {
+                commandLine 'docker', 'container', 'prune', '--force',
+                    '--filter', 'label=org.testcontainers=true'
+            }
+            exec {
+                commandLine 'docker', 'network', 'prune', '--force',
+                    '--filter', 'label=org.testcontainers=true'
+            }
+        } catch (Exception ignored) {
+            // Docker không available trong CI — bỏ qua
+        }
+    }
 }
 
 // JaCoCo report for unit tests only (faster, smaller memory footprint)
@@ -264,6 +278,23 @@ tasks.register('jacocoTestUnitCoverageVerification', JacocoCoverageVerification)
 tasks.register('coverageUnit') {
     dependsOn 'jacocoTestUnitCoverageVerification'
     doLast { println("✓ Unit test coverage >= 80%") }
+}
+
+// ─── Dọn dẹp Testcontainers thủ công (nếu cần) ───────────────────────────────
+// Usage: ./gradlew cleanTestContainers
+// Xóa tất cả stopped containers + networks có label org.testcontainers=true
+// Bình thường Ryuk tự dọn sau khi JVM thoát — task này chỉ cần khi:
+//   - Ryuk bị crash / timeout
+//   - Test bị kill đột ngột (Ctrl+C, OOM, signal)
+tasks.register('cleanTestContainers', Exec) {
+    group = 'verification'
+    description = 'Xóa stopped Testcontainers containers và networks còn sót lại'
+    commandLine 'sh', '-c',
+        'docker container prune --force --filter label=org.testcontainers=true && ' +
+        'docker network prune --force --filter label=org.testcontainers=true && ' +
+        'docker volume prune --force --filter label=org.testcontainers=true'
+    // Không fail build nếu Docker không available
+    ignoreExitValue = true
 }
 
 

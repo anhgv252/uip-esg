@@ -45,9 +45,11 @@ public class EnvironmentFlinkJob {
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
 
         // Checkpointing every 30s with RocksDB
+        String checkpointDir = System.getenv().getOrDefault(
+                "S3_CHECKPOINT_DIR", "s3://uip-flink-checkpoints/checkpoints");
         env.enableCheckpointing(30_000, CheckpointingMode.EXACTLY_ONCE);
         env.setStateBackend(new EmbeddedRocksDBStateBackend(true));
-        env.getCheckpointConfig().setCheckpointStorage("file:///flink/checkpoints");
+        env.getCheckpointConfig().setCheckpointStorage(checkpointDir);
         env.getCheckpointConfig().setMinPauseBetweenCheckpoints(10_000);
         env.getCheckpointConfig().setCheckpointTimeout(120_000);
         env.getCheckpointConfig().setMaxConcurrentCheckpoints(1);

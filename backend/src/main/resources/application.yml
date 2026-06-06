@@ -110,7 +110,9 @@ spring:
       auto-offset-reset: latest
       enable-auto-commit: false
       properties:
-        spring.json.trusted.packages: "com.uip.*"
+        spring.json.trusted.packages: "com.uip.*, java.util"
+        spring.json.value.default.type: "java.util.LinkedHashMap"
+        spring.json.use.type.headers: false
 
 security:
   login:

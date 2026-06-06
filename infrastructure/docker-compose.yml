@@ -238,7 +238,7 @@ services:
     image: flink:1.19-java17
     container_name: uip-flink-jobmanager
     restart: unless-stopped
-    entrypoint: ["/bin/bash", "-c", "mkdir -p /opt/flink/plugins/s3-fs-hadoop && cp /opt/flink/opt/flink-s3-fs-hadoop-*.jar /opt/flink/plugins/s3-fs-hadoop/ && /docker-entrypoint.sh jobmanager"]
+    entrypoint: ["/bin/bash", "-c", "mkdir -p /opt/flink/plugins/s3-fs-hadoop /flink/checkpoints /flink/savepoints && cp /opt/flink/opt/flink-s3-fs-hadoop-*.jar /opt/flink/plugins/s3-fs-hadoop/ && /docker-entrypoint.sh jobmanager"]
     environment:
       JOB_MANAGER_RPC_ADDRESS: flink-jobmanager
       KAFKA_BOOTSTRAP: kafka:9092
@@ -289,7 +289,7 @@ services:
     image: flink:1.19-java17
     container_name: uip-flink-taskmanager
     restart: unless-stopped
-    entrypoint: ["/bin/bash", "-c", "mkdir -p /opt/flink/plugins/s3-fs-hadoop && cp /opt/flink/opt/flink-s3-fs-hadoop-*.jar /opt/flink/plugins/s3-fs-hadoop/ && /docker-entrypoint.sh taskmanager"]
+    entrypoint: ["/bin/bash", "-c", "mkdir -p /opt/flink/plugins/s3-fs-hadoop /flink/checkpoints /flink/savepoints && cp /opt/flink/opt/flink-s3-fs-hadoop-*.jar /opt/flink/plugins/s3-fs-hadoop/ && /docker-entrypoint.sh taskmanager"]
     environment:
       JOB_MANAGER_RPC_ADDRESS: flink-jobmanager
       KAFKA_BOOTSTRAP: kafka:9092
@@ -320,6 +320,54 @@ services:
     depends_on:
       flink-jobmanager:
         condition: service_healthy
+    networks:
+      - uip-network
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Flink EnvironmentFlinkJob submitter — IoT sensor readings → TimescaleDB (Sprint 1)
+  # Consumes ngsi_ld_environment topic → inserts into environment.sensor_readings
+  # Must be present for City Ops Map, AQI charts, and alert detection to work.
+  # ─────────────────────────────────────────────────────────────────────────────
+  flink-environment-job-submitter:
+    image: uip-flink-submitter:latest
+    container_name: uip-flink-environment-job-submitter
+    restart: "no"
+    command: >
+      /bin/bash -c "
+        echo 'Checking for existing EnvironmentFlinkJob...';
+        EXISTING=$$(curl -sf http://flink-jobmanager:8081/jobs/overview | grep -o '\"name\":\"EnvironmentFlinkJob\".*\"state\":\"RUNNING\"' || true);
+        if [ -n \"$$EXISTING\" ]; then
+          echo 'EnvironmentFlinkJob already RUNNING — skipping submission.';
+        else
+          echo 'No running EnvironmentFlinkJob found — submitting...';
+          flink run --detached -m flink-jobmanager:8081 -c com.uip.flink.environment.EnvironmentFlinkJob /opt/flink/usrlib/uip-flink-jobs-0.1.0-SNAPSHOT.jar;
+        fi
+      "
+    environment:
+      KAFKA_BOOTSTRAP: ${KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}
+      DB_URL: jdbc:postgresql://timescaledb:5432/${POSTGRES_DB:-uip_smartcity}
+      DB_USER: ${POSTGRES_USER:-uip}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      CLICKHOUSE_URL: jdbc:clickhouse://clickhouse:8123/analytics
+      CLICKHOUSE_USER: ${CLICKHOUSE_USER:-default}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-}
+      S3_ENDPOINT: http://minio:9000
+      S3_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
+      S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      S3_CHECKPOINT_DIR: s3://uip-flink-checkpoints/checkpoints
+    volumes:
+      - ../flink-jobs/target:/opt/flink/usrlib:ro
+    depends_on:
+      flink-jobmanager:
+        condition: service_healthy
+      flink-taskmanager:
+        condition: service_started
+      timescaledb:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
     networks:
       - uip-network
 
@@ -356,6 +404,7 @@ services:
       S3_ENDPOINT: http://minio:9000
       S3_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
       S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      S3_CHECKPOINT_DIR: s3://uip-flink-checkpoints/checkpoints
     volumes:
       - ../flink-jobs/target:/opt/flink/usrlib:ro
     depends_on:
@@ -406,6 +455,7 @@ services:
       S3_ENDPOINT: http://minio:9000
       S3_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
       S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      S3_CHECKPOINT_DIR: s3://uip-flink-checkpoints/checkpoints
     volumes:
       - ../flink-jobs/target:/opt/flink/usrlib:ro
     depends_on:
@@ -436,6 +486,9 @@ services:
       SPRING_DATA_REDIS_PORT: 6379
       SPRING_DATA_REDIS_PASSWORD: ${REDIS_PASSWORD}
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      SPRING_KAFKA_CONSUMER_PROPERTIES_SPRING_JSON_VALUE_DEFAULT_TYPE: java.util.LinkedHashMap
+      SPRING_KAFKA_CONSUMER_PROPERTIES_SPRING_JSON_USE_TYPE_HEADERS: "false"
+      SPRING_KAFKA_CONSUMER_PROPERTIES_SPRING_JSON_TRUSTED_PACKAGES: "com.uip.*,java.util"
       EMQX_BROKER_URL: tcp://emqx:1883
       EMQX_CLIENT_ID: ${EMQX_CLIENT_ID:-uip-bms-backend}
       CLAUDE_API_KEY: ${CLAUDE_API_KEY:-}

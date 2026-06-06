@@ -37,6 +37,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class TenantIsolationIT {
 
+    @SuppressWarnings("resource") // Ryuk reaper dọn sạch; @AfterAll stop() explicit để giải phóng sớm
     static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:15-alpine")
             .withDatabaseName("uip_test")
             .withUsername("test")
@@ -70,6 +71,15 @@ class TenantIsolationIT {
 
     @Autowired
     private JdbcTemplate jdbc;
+
+    @AfterAll
+    static void stopContainer() {
+        // Container riêng (không dùng AbstractIT) vì cần tạo non-owner role để test RLS.
+        // Ryuk sẽ tự dọn khi JVM thoát, nhưng stop explicit ở đây để giải phóng tài nguyên sớm.
+        if (postgres != null && postgres.isRunning()) {
+            postgres.stop();
+        }
+    }
 
     @BeforeAll
     void setupRestrictedRoleAndTestData() {

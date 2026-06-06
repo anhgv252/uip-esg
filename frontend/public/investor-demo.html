@@ -1,0 +1,998 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>UIP Smart City — Investor Demo</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0a0e1a;
+    --panel: #0d1528;
+    --border: #1e3a5f;
+    --accent: #00d4ff;
+    --accent2: #00ff88;
+    --warn: #ffb800;
+    --danger: #ff4444;
+    --text: #e2e8f0;
+    --muted: #64748b;
+    --font: 'Segoe UI', system-ui, sans-serif;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  /* ── TOP BAR ── */
+  .topbar {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 10px 20px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    z-index: 100;
+  }
+  .logo {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: 1px;
+    white-space: nowrap;
+  }
+  .logo span { color: var(--accent2); }
+
+  .badge {
+    background: #1e3a5f;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 12px;
+    letter-spacing: 0.5px;
+  }
+  .badge.live {
+    background: rgba(0,255,136,0.1);
+    border-color: var(--accent2);
+    color: var(--accent2);
+    animation: pulse 1.5s infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
+
+  .topbar-right {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .timer-ring {
+    position: relative;
+    width: 40px;
+    height: 40px;
+  }
+  .timer-ring svg { transform: rotate(-90deg); }
+  .timer-ring circle { fill: none; stroke: var(--border); stroke-width: 3; }
+  .timer-ring .progress { stroke: var(--accent); stroke-width: 3; transition: stroke-dashoffset 0.5s linear; }
+  .timer-label {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%,-50%);
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--accent);
+  }
+
+  .ctrl-btn {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 6px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    transition: all 0.2s;
+    user-select: none;
+  }
+  .ctrl-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .ctrl-btn.pause { border-color: var(--warn); color: var(--warn); }
+  .ctrl-btn.pause:hover { background: rgba(255,184,0,0.1); }
+
+  /* ── MAIN LAYOUT ── */
+  .main {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  /* ── SIDEBAR ── */
+  .sidebar {
+    width: 280px;
+    flex-shrink: 0;
+    background: var(--panel);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .sidebar-header {
+    padding: 12px 16px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--muted);
+    border-bottom: 1px solid var(--border);
+  }
+  .page-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px;
+  }
+  .page-list::-webkit-scrollbar { width: 4px; }
+  .page-list::-webkit-scrollbar-track { background: transparent; }
+  .page-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .page-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: all 0.2s;
+    margin-bottom: 4px;
+  }
+  .page-item:hover { background: rgba(0,212,255,0.05); border-color: var(--border); }
+  .page-item.active {
+    background: rgba(0,212,255,0.08);
+    border-color: var(--accent);
+  }
+  .page-item.done { opacity: 0.5; }
+  .page-item.done .page-icon { color: var(--accent2); }
+
+  .page-icon { font-size: 20px; flex-shrink: 0; margin-top: 1px; }
+  .page-info { flex: 1; min-width: 0; }
+  .page-name { font-size: 13px; font-weight: 600; color: var(--text); }
+  .page-item.active .page-name { color: var(--accent); }
+  .page-desc { font-size: 11px; color: var(--muted); margin-top: 2px; line-height: 1.4; }
+  .page-act {
+    font-size: 10px;
+    background: rgba(0,212,255,0.1);
+    color: var(--accent);
+    border-radius: 4px;
+    padding: 1px 6px;
+    white-space: nowrap;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  .progress-bar-wrap {
+    padding: 12px 16px;
+    border-top: 1px solid var(--border);
+  }
+  .progress-bar {
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-bottom: 6px;
+  }
+  .progress-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    transition: width 0.5s ease;
+    border-radius: 2px;
+  }
+  .progress-label {
+    font-size: 11px;
+    color: var(--muted);
+    display: flex;
+    justify-content: space-between;
+  }
+
+  /* ── CONTENT AREA ── */
+  .content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* ── NARRATION BANNER ── */
+  .narration {
+    padding: 10px 20px;
+    background: linear-gradient(135deg, rgba(0,212,255,0.08), rgba(0,255,136,0.05));
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+    min-height: 52px;
+  }
+  .narration-icon { font-size: 22px; flex-shrink: 0; }
+  .narration-text { flex: 1; }
+  .narration-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--accent);
+    margin-bottom: 2px;
+  }
+  .narration-body { font-size: 12px; color: var(--text); line-height: 1.5; opacity: 0.9; }
+  .narration-tag {
+    flex-shrink: 0;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 4px 12px;
+    border-radius: 20px;
+    white-space: nowrap;
+  }
+  .tag-act1 { background: rgba(0,212,255,0.15); color: var(--accent); border: 1px solid var(--accent); }
+  .tag-act2 { background: rgba(0,255,136,0.15); color: var(--accent2); border: 1px solid var(--accent2); }
+  .tag-act3 { background: rgba(255,184,0,0.15); color: var(--warn); border: 1px solid var(--warn); }
+  .tag-act4 { background: rgba(255,68,68,0.15); color: var(--danger); border: 1px solid var(--danger); }
+
+  /* ── STAGE PANEL (replaces iframe) ── */
+  .stage {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(ellipse at center, #0d1a30 0%, #060c16 100%);
+  }
+
+  .stage-bg {
+    position: absolute;
+    inset: 0;
+    background-image: 
+      linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+
+  .stage-content {
+    position: relative;
+    z-index: 2;
+    text-align: center;
+    padding: 40px;
+    max-width: 700px;
+  }
+
+  .stage-page-icon { font-size: 72px; margin-bottom: 20px; display: block; }
+  .stage-page-name {
+    font-size: 32px;
+    font-weight: 800;
+    color: var(--accent);
+    margin-bottom: 12px;
+    letter-spacing: -0.5px;
+  }
+  .stage-page-desc {
+    font-size: 16px;
+    color: var(--text);
+    opacity: 0.8;
+    line-height: 1.6;
+    margin-bottom: 32px;
+  }
+  .stage-url {
+    display: inline-block;
+    background: rgba(0,212,255,0.1);
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    font-family: monospace;
+    font-size: 14px;
+    padding: 8px 20px;
+    border-radius: 8px;
+    margin-bottom: 32px;
+    letter-spacing: 0.5px;
+  }
+
+  .open-btn {
+    background: linear-gradient(135deg, var(--accent), #0099cc);
+    color: #000;
+    font-size: 15px;
+    font-weight: 700;
+    padding: 14px 36px;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0 auto;
+  }
+  .open-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,212,255,0.3); }
+  .open-btn.active {
+    background: linear-gradient(135deg, var(--accent2), #00aa66);
+  }
+
+  .popup-status {
+    margin-top: 20px;
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .popup-status.live { color: var(--accent2); }
+
+  /* ── OVERLAY for transition ── */
+  .transition-overlay {
+    position: absolute;
+    inset: 0;
+    background: var(--bg);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .transition-overlay.show { opacity: 1; pointer-events: all; }
+  .transition-text {
+    text-align: center;
+    animation: fadeInUp 0.3s ease;
+  }
+  @keyframes fadeInUp { from{transform:translateY(10px);opacity:0} to{transform:translateY(0);opacity:1} }
+  .transition-page-name {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--accent);
+    margin-bottom: 8px;
+  }
+  .transition-page-desc {
+    font-size: 15px;
+    color: var(--muted);
+  }
+
+  /* ── AUTO-DEMO highlights ── */
+  .feature-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-top: 24px;
+    text-align: left;
+    width: 100%;
+  }
+  .feature-card {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+    font-size: 12px;
+  }
+  .feature-card .fc-icon { font-size: 18px; margin-bottom: 4px; }
+  .feature-card .fc-title { font-weight: 600; color: var(--text); margin-bottom: 2px; }
+  .feature-card .fc-val { color: var(--accent2); font-weight: 700; }
+
+  /* ── BOTTOM STATS BAR ── */
+  .statsbar {
+    display: flex;
+    gap: 0;
+    background: var(--panel);
+    border-top: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .stat {
+    flex: 1;
+    padding: 8px 16px;
+    border-right: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .stat:last-child { border-right: none; }
+  .stat-icon { font-size: 16px; }
+  .stat-body { }
+  .stat-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+  .stat-value { font-size: 14px; font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; }
+  .stat-value.green { color: var(--accent2); }
+  .stat-value.warn { color: var(--warn); }
+  .stat-value.red { color: var(--danger); animation: pulse 1s infinite; }
+
+  /* ── KEYBOARD HINT ── */
+  .kbd-hint {
+    font-size: 11px;
+    color: var(--muted);
+    padding: 0 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+  kbd {
+    background: #1e2a3a;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 1px 5px;
+    font-size: 10px;
+    font-family: monospace;
+  }
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="logo">🏙️ UIP <span>SmartCity</span></div>
+  <div class="badge">MVP3 Final</div>
+  <div class="badge live">● LIVE</div>
+  <div class="badge" id="scenario-badge">Scenario: Normal</div>
+
+  <div class="topbar-right">
+    <div class="kbd-hint">
+      <kbd>Space</kbd> Pause
+      <kbd>→</kbd> Next
+      <kbd>←</kbd> Prev
+      <kbd>F</kbd> Fullscreen
+    </div>
+    <div class="timer-ring">
+      <svg width="40" height="40" viewBox="0 0 40 40">
+        <circle cx="20" cy="20" r="17" />
+        <circle class="progress" id="timer-circle" cx="20" cy="20" r="17"
+          stroke-dasharray="106.8" stroke-dashoffset="0" />
+      </svg>
+      <div class="timer-label" id="timer-label">--</div>
+    </div>
+    <button class="ctrl-btn" id="prev-btn" onclick="prevPage()">◀ Prev</button>
+    <button class="ctrl-btn pause" id="pause-btn" onclick="togglePause()">⏸ Pause</button>
+    <button class="ctrl-btn" id="next-btn" onclick="nextPage()">Next ▶</button>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sidebar-header">Demo Pages</div>
+    <div class="page-list" id="page-list"></div>
+    <div class="progress-bar-wrap">
+      <div class="progress-bar">
+        <div class="progress-bar-fill" id="overall-progress" style="width:0%"></div>
+      </div>
+      <div class="progress-label">
+        <span id="progress-label-left">Page 1 of 10</span>
+        <span id="progress-label-right">~30 min demo</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONTENT -->
+  <div class="content">
+
+    <!-- NARRATION -->
+    <div class="narration">
+      <div class="narration-icon" id="narr-icon">🗺️</div>
+      <div class="narration-text">
+        <div class="narration-title" id="narr-title">Loading...</div>
+        <div class="narration-body" id="narr-body">Starting investor demo simulator...</div>
+      </div>
+      <div class="narration-tag tag-act1" id="narr-tag">ACT 0</div>
+    </div>
+
+    <!-- STAGE PANEL: popup-based -->
+    <div class="stage">
+      <div class="stage-bg"></div>
+      <div class="stage-content">
+        <span class="stage-page-icon" id="stage-icon">🗺️</span>
+        <div class="stage-page-name" id="stage-name">City Operations Center</div>
+        <div class="stage-page-desc" id="stage-desc">Live sensor map with real-time alerts</div>
+        <div class="stage-url" id="stage-url">http://localhost:3000/city-ops</div>
+        <button class="open-btn" id="open-btn" onclick="openInBrowser()">
+          🚀 Open in Browser Window
+        </button>
+        <div class="popup-status" id="popup-status">Click above — or use keyboard → to auto-advance</div>
+        <div class="feature-grid" id="feature-grid"></div>
+      </div>
+      <div class="transition-overlay" id="transition-overlay">
+        <div class="transition-text">
+          <div class="transition-page-name" id="tr-name"></div>
+          <div class="transition-page-desc" id="tr-desc"></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- STATS BAR -->
+<div class="statsbar">
+  <div class="stat">
+    <div class="stat-icon">📡</div>
+    <div class="stat-body">
+      <div class="stat-label">IoT Readings</div>
+      <div class="stat-value green" id="stat-iot">0</div>
+    </div>
+  </div>
+  <div class="stat">
+    <div class="stat-icon">🚨</div>
+    <div class="stat-body">
+      <div class="stat-label">Alerts</div>
+      <div class="stat-value warn" id="stat-alerts">0</div>
+    </div>
+  </div>
+  <div class="stat">
+    <div class="stat-icon">🔌</div>
+    <div class="stat-body">
+      <div class="stat-label">BMS Cmds</div>
+      <div class="stat-value" id="stat-bms">0</div>
+    </div>
+  </div>
+  <div class="stat">
+    <div class="stat-icon">⚡</div>
+    <div class="stat-body">
+      <div class="stat-label">ESG Readings</div>
+      <div class="stat-value green" id="stat-esg">0</div>
+    </div>
+  </div>
+  <div class="stat">
+    <div class="stat-icon">🏗️</div>
+    <div class="stat-body">
+      <div class="stat-label">Infra Uptime</div>
+      <div class="stat-value green" id="stat-uptime">99.9%</div>
+    </div>
+  </div>
+  <div class="stat">
+    <div class="stat-icon">⏱️</div>
+    <div class="stat-body">
+      <div class="stat-label">API Latency</div>
+      <div class="stat-value" id="stat-latency">-- ms</div>
+    </div>
+  </div>
+  <div class="stat">
+    <div class="stat-icon">🔐</div>
+    <div class="stat-body">
+      <div class="stat-label">Auth Status</div>
+      <div class="stat-value green" id="stat-auth">JWT OK</div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── DEMO PAGES ─────────────────────────────────────────────────────────────
+const PAGES = [
+  {
+    icon: '🗺️',
+    name: 'City Operations Center',
+    path: '/city-ops',
+    act: 'ACT 1',
+    actClass: 'tag-act1',
+    durationSec: 45,
+    title: 'Real-Time City Operations Map',
+    body: '8 AQI sensors across HCMC districts. Color-coded: 🟢 Good | 🟡 Moderate | 🔴 Unhealthy. Watch alerts appear as spikes occur.',
+    desc: 'Live sensor map with real-time alerts',
+  },
+  {
+    icon: '🌬️',
+    name: 'Environment Monitor',
+    path: '/environment',
+    act: 'ACT 1',
+    actClass: 'tag-act1',
+    durationSec: 40,
+    title: 'AQI Monitoring — 8 Districts',
+    body: 'Live AQI gauges for all districts. Charts update every 5 seconds. Watch the spike scenario: ENV-001 Bến Nghé → WARNING alert in ~30s.',
+    desc: 'AQI gauges & trend charts per district',
+  },
+  {
+    icon: '🔔',
+    name: 'Alert Feed',
+    path: '/alerts',
+    act: 'ACT 1',
+    actClass: 'tag-act1',
+    durationSec: 35,
+    title: 'Auto-Generated Alerts — CRITICAL & WARNING',
+    body: 'Alerts auto-fire when AQI exceeds threshold (150 AQI). CRITICAL at >200. Each alert triggers a Camunda AI workflow automatically.',
+    desc: 'Real-time alert feed with severity levels',
+  },
+  {
+    icon: '🤖',
+    name: 'AI Workflow Engine',
+    path: '/ai-workflow',
+    act: 'ACT 2',
+    actClass: 'tag-act2',
+    durationSec: 50,
+    title: 'No-Code AI Workflow Designer',
+    body: 'BPMN visual workflow editor. Drag & drop AI decision nodes. "AQI Alert Workflow" v2 is live — triggered by sensor spikes automatically.',
+    desc: 'Visual BPMN + Camunda + Claude AI decisions',
+  },
+  {
+    icon: '🏢',
+    name: 'BMS Devices',
+    path: '/bms/devices',
+    act: 'ACT 3',
+    actClass: 'tag-act3',
+    durationSec: 40,
+    title: 'Building Management System — Remote Control',
+    body: '5 real devices: HVAC (BACnet/IP), Electrical meter (Modbus TCP), Water meter, IoT Gateway (MQTT), UPS. Commands send every 15 seconds.',
+    desc: 'Modbus/BACnet/MQTT device control',
+  },
+  {
+    icon: '🏗️',
+    name: 'Buildings & Safety',
+    path: '/buildings',
+    act: 'ACT 3',
+    actClass: 'tag-act3',
+    durationSec: 35,
+    title: 'Structural Safety — Score 100/100',
+    body: 'Real-time vibration monitoring per TCVN 9386:2012. Safety score calculated via Welford algorithm. Cross-building energy comparison.',
+    desc: 'Vibration monitoring & cross-building analytics',
+  },
+  {
+    icon: '📊',
+    name: 'ESG Dashboard',
+    path: '/esg',
+    act: 'ACT 2',
+    actClass: 'tag-act2',
+    durationSec: 50,
+    title: 'ESG Reports — GRI 302 + GRI 305',
+    body: 'Energy consumption + Carbon emissions. Click "Export PDF" → 14.7 KB GRI-compliant report generated in <1 second. Was 3 days manual.',
+    desc: 'GRI 302/305 compliance + instant PDF export',
+  },
+  {
+    icon: '🚦',
+    name: 'Traffic Management',
+    path: '/traffic',
+    act: 'ACT 2',
+    actClass: 'tag-act2',
+    durationSec: 30,
+    title: 'Smart Traffic — Auto-Detected Incidents',
+    body: 'Traffic incidents auto-created and resolved. Types: ACCIDENT, CONGESTION, ROAD_WORK, SIGNAL_FAULT. GPS-tagged on HCMC road network.',
+    desc: 'Real-time traffic incident management',
+  },
+  {
+    icon: '📱',
+    name: 'Mobile Operator',
+    path: '/mobile',
+    act: 'ACT 3',
+    actClass: 'tag-act3',
+    durationSec: 30,
+    title: 'Mobile App — Operator Dashboard',
+    body: 'React Native iOS/Android (same codebase). Keycloak SSO. Push notifications < 10 seconds. Operators respond to alerts from anywhere.',
+    desc: 'React Native mobile dashboard for operators',
+  },
+  {
+    icon: '👤',
+    name: 'Citizen Portal',
+    path: '/citizen',
+    act: 'ACT 2',
+    actClass: 'tag-act2',
+    durationSec: 25,
+    title: 'Citizen Services Portal',
+    body: 'Citizens check AQI in their district, view utility bills, receive government notifications. Multi-tenant: each district has isolated data.',
+    desc: 'Citizen-facing AQI, bills, and notifications',
+  },
+];
+
+// ── STATE ───────────────────────────────────────────────────────────────────
+let currentIdx = 0;
+let paused = false;
+let secondsLeft = 0;
+let timerInterval = null;
+let stats = { iot: 0, alerts: 0, bms: 0, esg: 0, tick: 0 };
+const CIRCUMFERENCE = 2 * Math.PI * 17; // ~106.8
+
+// ── RENDER SIDEBAR ──────────────────────────────────────────────────────────
+function renderSidebar() {
+  const list = document.getElementById('page-list');
+  list.innerHTML = PAGES.map((p, i) => `
+    <div class="page-item ${i === currentIdx ? 'active' : ''} ${i < currentIdx ? 'done' : ''}"
+         onclick="goTo(${i})">
+      <div class="page-icon">${p.icon}</div>
+      <div class="page-info">
+        <div class="page-name">${p.name}</div>
+        <div class="page-desc">${p.desc}</div>
+      </div>
+      <div class="page-act">${p.act}</div>
+    </div>
+  `).join('');
+
+  const pct = ((currentIdx + 1) / PAGES.length * 100).toFixed(0);
+  document.getElementById('overall-progress').style.width = pct + '%';
+  document.getElementById('progress-label-left').textContent = `Page ${currentIdx + 1} of ${PAGES.length}`;
+}
+
+// ── RENDER NARRATION ────────────────────────────────────────────────────────
+function renderNarration() {
+  const p = PAGES[currentIdx];
+  document.getElementById('narr-icon').textContent = p.icon;
+  document.getElementById('narr-title').textContent = p.title;
+  document.getElementById('narr-body').textContent = p.body;
+  const tag = document.getElementById('narr-tag');
+  tag.textContent = p.act;
+  tag.className = 'narration-tag ' + p.actClass;
+}
+
+// ── POPUP WINDOW ─────────────────────────────────────────────────────────────
+let demoPopup = null;
+
+function openInBrowser() {
+  const p = PAGES[currentIdx];
+  const url = 'http://localhost:3000' + p.path;
+  if (demoPopup && !demoPopup.closed) {
+    demoPopup.location.href = url;
+    demoPopup.focus();
+  } else {
+    demoPopup = window.open(url, 'uip-demo',
+      'width=1440,height=900,left=0,top=60,menubar=no,toolbar=no,scrollbars=yes');
+  }
+  const btn = document.getElementById('open-btn');
+  btn.classList.add('active');
+  btn.textContent = '✅ Opened in window';
+  document.getElementById('popup-status').textContent = 'Demo running in separate window → use controls below to advance';
+  document.getElementById('popup-status').className = 'popup-status live';
+}
+
+function renderStage() {
+  const p = PAGES[currentIdx];
+  document.getElementById('stage-icon').textContent = p.icon;
+  document.getElementById('stage-name').textContent = p.name;
+  document.getElementById('stage-desc').textContent = p.body.substring(0, 120) + '...';
+  document.getElementById('stage-url').textContent = 'http://localhost:3000' + p.path;
+
+  // Feature grid
+  const feats = [
+    { icon: '📡', title: 'Sensors', val: '8 ONLINE' },
+    { icon: '🚨', title: 'Alerts', val: stats.alerts + ' FIRED' },
+    { icon: '🔌', title: 'BMS Cmds', val: stats.bms + ' SENT' },
+    { icon: '⚡', title: 'IoT Events', val: stats.iot + ' TOTAL' },
+    { icon: '🔐', title: 'Auth', val: 'JWT RSA-256' },
+    { icon: '🏗️', title: 'HA', val: 'Kafka 3-node' },
+  ];
+  document.getElementById('feature-grid').innerHTML = feats.map(f => `
+    <div class="feature-card">
+      <div class="fc-icon">${f.icon}</div>
+      <div class="fc-title">${f.title}</div>
+      <div class="fc-val">${f.val}</div>
+    </div>`).join('');
+
+  // If popup already open, navigate it
+  if (demoPopup && !demoPopup.closed) {
+    demoPopup.location.href = 'http://localhost:3000' + p.path;
+    const btn = document.getElementById('open-btn');
+    btn.classList.add('active');
+    btn.textContent = '✅ Window updated → ' + p.name;
+  } else {
+    const btn = document.getElementById('open-btn');
+    btn.classList.remove('active');
+    btn.textContent = '🚀 Open in Browser Window';
+  }
+}
+
+// ── NAVIGATE ─────────────────────────────────────────────────────────────────
+function goTo(idx, instant = false) {
+  if (idx < 0 || idx >= PAGES.length) return;
+  currentIdx = idx;
+  const p = PAGES[idx];
+
+  if (!instant) {
+    // Show transition overlay
+    document.getElementById('tr-name').textContent = p.icon + ' ' + p.name;
+    document.getElementById('tr-desc').textContent = p.desc;
+    const overlay = document.getElementById('transition-overlay');
+    overlay.classList.add('show');
+    setTimeout(() => {
+      renderStage();
+      setTimeout(() => overlay.classList.remove('show'), 600);
+    }, 400);
+  } else {
+    renderStage();
+  }
+
+  renderSidebar();
+  renderNarration();
+  resetTimer(p.durationSec);
+
+  // Scroll active item into view
+  setTimeout(() => {
+    const active = document.querySelector('.page-item.active');
+    if (active) active.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }, 100);
+}
+
+function nextPage() { goTo((currentIdx + 1) % PAGES.length); }
+function prevPage() { goTo(currentIdx === 0 ? PAGES.length - 1 : currentIdx - 1); }
+
+// ── TIMER ──────────────────────────────────────────────────────────────────
+function resetTimer(seconds) {
+  secondsLeft = seconds;
+  clearInterval(timerInterval);
+  if (!paused) startTimer();
+  renderTimer();
+}
+
+function startTimer() {
+  timerInterval = setInterval(() => {
+    if (paused) return;
+    secondsLeft--;
+    renderTimer();
+    if (secondsLeft <= 0) {
+      clearInterval(timerInterval);
+      nextPage();
+    }
+  }, 1000);
+}
+
+function renderTimer() {
+  const p = PAGES[currentIdx];
+  const pct = secondsLeft / p.durationSec;
+  const offset = CIRCUMFERENCE * (1 - pct);
+  document.getElementById('timer-circle').style.strokeDashoffset = offset;
+  document.getElementById('timer-label').textContent = secondsLeft + 's';
+
+  // Colour change as time runs out
+  const circle = document.getElementById('timer-circle');
+  if (pct < 0.25) circle.style.stroke = '#ff4444';
+  else if (pct < 0.5) circle.style.stroke = '#ffb800';
+  else circle.style.stroke = 'var(--accent)';
+}
+
+function togglePause() {
+  paused = !paused;
+  const btn = document.getElementById('pause-btn');
+  if (paused) {
+    clearInterval(timerInterval);
+    btn.textContent = '▶ Resume';
+    btn.style.borderColor = 'var(--accent2)';
+    btn.style.color = 'var(--accent2)';
+  } else {
+    startTimer();
+    btn.textContent = '⏸ Pause';
+    btn.style.borderColor = 'var(--warn)';
+    btn.style.color = 'var(--warn)';
+  }
+}
+
+// ── KEYBOARD ───────────────────────────────────────────────────────────────
+document.addEventListener('keydown', (e) => {
+  if (e.key === ' ' || e.code === 'Space') { e.preventDefault(); togglePause(); }
+  if (e.key === 'ArrowRight') nextPage();
+  if (e.key === 'ArrowLeft') prevPage();
+  if (e.key === 'f' || e.key === 'F') {
+    if (demoPopup && !demoPopup.closed) demoPopup.focus();
+    else openInBrowser();
+  }
+  // Number keys 1-9 jump to page
+  if (e.key >= '1' && e.key <= '9') goTo(parseInt(e.key) - 1);
+  if (e.key === '0') goTo(9);
+});
+
+// ── LIVE STATS ─────────────────────────────────────────────────────────────
+const BASE = 'http://localhost:3000';  // use nginx proxy (avoids CORS)
+let jwt = null;
+let jwtTs = 0;
+
+async function getJwt() {
+  if (jwt && (Date.now() - jwtTs < 3300000)) return jwt;
+  try {
+    const r = await fetch(`${BASE}/api/v1/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: 'admin', password: 'admin_Dev#2026!' })
+    });
+    if (r.ok) { const d = await r.json(); jwt = d.accessToken; jwtTs = Date.now(); }
+  } catch(e) {}
+  return jwt;
+}
+
+async function pollStats() {
+  stats.tick++;
+
+  // API latency probe
+  const t0 = performance.now();
+  try {
+    await fetch(`${BASE}/api/v1/health`);
+    const lat = Math.round(performance.now() - t0);
+    document.getElementById('stat-latency').textContent = lat + ' ms';
+    document.getElementById('stat-auth').textContent = 'JWT OK';
+    document.getElementById('stat-auth').className = 'stat-value green';
+  } catch(e) {
+    document.getElementById('stat-latency').textContent = 'DOWN';
+    document.getElementById('stat-auth').textContent = 'ERR';
+    document.getElementById('stat-auth').className = 'stat-value red';
+    return;
+  }
+
+  const tok = await getJwt();
+  if (!tok) return;
+  const H = { 'Authorization': 'Bearer ' + tok };
+
+  // Alerts count
+  try {
+    const r = await fetch(`${BASE}/api/v1/alerts?size=1`, { headers: H });
+    if (r.ok) {
+      const d = await r.json();
+      const total = d.totalElements || 0;
+      const el = document.getElementById('stat-alerts');
+      el.textContent = total;
+      el.className = total > 5 ? 'stat-value red' : total > 0 ? 'stat-value warn' : 'stat-value green';
+    }
+  } catch(e) {}
+
+  // Simulate IoT reading (increments our counter)
+  try {
+    const sensors = ['ENV-001','ENV-002','ENV-003','ENV-004','ENV-005','ENV-006','ENV-007','ENV-008'];
+    const sid = sensors[stats.tick % sensors.length];
+    const aqi = Math.round(50 + 40 * Math.sin(stats.tick / 10) + (Math.random() - 0.5) * 20);
+    const r = await fetch(`${BASE}/api/v1/simulate/iot-sensor`, {
+      method: 'POST',
+      headers: { ...H, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sensorId: sid, type: 'AIR_QUALITY', value: aqi, unit: 'AQI',
+        latitude: 10.77 + Math.random() * 0.1, longitude: 106.70 + Math.random() * 0.1 })
+    });
+    if (r.ok) {
+      stats.iot++;
+      const d = await r.json();
+      if (d.alertTriggered) {
+        stats.alerts++;
+        updateScenarioBadge('⚠️ Alert fired!', '#ffb800');
+      }
+    }
+  } catch(e) {}
+
+  // BMS command every 3 ticks
+  if (stats.tick % 3 === 0) {
+    try {
+      const devices = [
+        '97b87cec-2767-4f1c-a3b9-116e6c469a6e',
+        'bd0878f0-49d1-4f97-96b5-d343dcf71923',
+      ];
+      const devId = devices[stats.tick % devices.length];
+      const r = await fetch(`${BASE}/api/v1/bms/devices/${devId}/commands`, {
+        method: 'POST',
+        headers: { ...H, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ commandType: 'STATUS_CHECK', payload: {} })
+      });
+      if (r.ok) stats.bms++;
+    } catch(e) {}
+  }
+
+  // ESG data tick
+  stats.esg = Math.floor(stats.iot / 10);
+
+  // Update display
+  document.getElementById('stat-iot').textContent = stats.iot;
+  document.getElementById('stat-bms').textContent = stats.bms;
+  document.getElementById('stat-esg').textContent = stats.esg;
+
+  // Update scenario badge from AQI
+  const aqi = Math.round(50 + 40 * Math.sin(stats.tick / 10));
+  if (aqi > 200) updateScenarioBadge('🚨 CRITICAL AQI ' + aqi, '#ff4444');
+  else if (aqi > 150) updateScenarioBadge('⚠️ WARNING AQI ' + aqi, '#ffb800');
+  else updateScenarioBadge('✅ Normal AQI ' + aqi, '#00ff88');
+
+  // Refresh stage feature grid with latest stats
+  renderStage();
+}
+
+function updateScenarioBadge(text, color) {
+  const el = document.getElementById('scenario-badge');
+  el.textContent = 'Scenario: ' + text;
+  el.style.color = color;
+  el.style.borderColor = color;
+  el.style.background = color + '15';
+}
+
+// ── KEYBOARD: F opens fullscreen of popup ─────────────────────────────────
+document.getElementById('open-btn').addEventListener('click', openInBrowser);
+
+// ── INIT ──────────────────────────────────────────────────────────────────
+goTo(0, true);
+setInterval(pollStats, 8000);
+pollStats();
+</script>
+</body>
+</html>
