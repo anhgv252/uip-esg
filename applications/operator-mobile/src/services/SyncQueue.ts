@@ -13,6 +13,8 @@ export interface QueuedAction {
   payload?: unknown
   /** tokenKey: key in SecureStore to fetch token at execution time (NOT stored as plaintext) */
   tokenKey?: string
+  /** tenantId: captured at enqueue time, injected as X-Tenant-ID header on flush */
+  tenantId: string
   retries: number
   createdAt: number
 }
@@ -55,10 +57,14 @@ class SyncQueue {
     this.listeners.forEach((l) => l(queue.length))
   }
 
-  async enqueue(action: Omit<QueuedAction, 'id' | 'retries' | 'createdAt'>): Promise<void> {
+  async enqueue(
+    action: Omit<QueuedAction, 'id' | 'tenantId' | 'retries' | 'createdAt'>,
+    tenantId: string,
+  ): Promise<void> {
     const entry: QueuedAction = {
       ...action,
       id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      tenantId,
       retries: 0,
       createdAt: Date.now(),
     }
@@ -124,6 +130,7 @@ class SyncQueue {
         headers: {
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          'X-Tenant-ID': action.tenantId,
         },
         body: action.payload ? JSON.stringify(action.payload) : undefined,
       })
