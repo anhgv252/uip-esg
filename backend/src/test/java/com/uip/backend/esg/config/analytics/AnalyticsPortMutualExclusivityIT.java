@@ -2,6 +2,7 @@ package com.uip.backend.esg.config.analytics;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
@@ -26,6 +27,7 @@ import static org.mockito.Mockito.mock;
  * Spring Boot context — no Testcontainers required).
  */
 @DisplayName("AnalyticsPort bean mutual exclusivity")
+@Tag("integration")
 class AnalyticsPortMutualExclusivityIT {
 
     /** Shared runner: only loads the three adapter classes + TimescaleDB config */

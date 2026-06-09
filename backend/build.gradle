@@ -230,7 +230,7 @@ tasks.register('testUnit', Test) {
 // Integration tests only (requires Docker + running infra for Testcontainers)
 tasks.register('integrationTest', Test) {
     useJUnitPlatform {
-        includeTags 'integration'
+        includeTags 'integration', 'regression'
     }
     include '**/*IT.class', '**/*IntegrationTest.class'
     // Ryuk được BẬT — tự dọn containers sau khi test JVM thoát.

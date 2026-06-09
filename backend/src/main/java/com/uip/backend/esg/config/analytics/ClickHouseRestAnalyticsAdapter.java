@@ -22,7 +22,7 @@ import java.util.stream.Collectors;
  * IMPORTANT: Deployment config must ensure only ONE adapter is active (not both).</p>
  */
 @Component
-@ConditionalOnExpression("${uip.capabilities.analytics-external:false} && '${uip.analytics.transport:rest}'.equals('rest')")
+@ConditionalOnExpression("${uip.capabilities.analytics-external:false} && '${uip.capabilities.analytics-transport:rest}'.equals('rest')")
 @Slf4j
 public class ClickHouseRestAnalyticsAdapter implements AnalyticsPort {
 
