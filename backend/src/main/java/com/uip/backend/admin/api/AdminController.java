@@ -41,6 +41,11 @@ public class AdminController {
 
     @GetMapping("/users")
     @Operation(summary = "List all users with pagination")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Paginated user list returned"),
+        @ApiResponse(responseCode = "401", description = "Authentication required"),
+        @ApiResponse(responseCode = "403", description = "Requires ADMIN role")
+    })
     public ResponseEntity<Page<UserSummaryDto>> listUsers(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
@@ -99,6 +104,11 @@ public class AdminController {
 
     @GetMapping("/sensors")
     @Operation(summary = "List all sensors (active and inactive)")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Sensor list returned"),
+        @ApiResponse(responseCode = "401", description = "Authentication required"),
+        @ApiResponse(responseCode = "403", description = "Requires ADMIN role")
+    })
     public ResponseEntity<List<SensorRegistryDto>> listSensors() {
         return ResponseEntity.ok(
                 environmentService.listAllSensors().stream()
@@ -108,6 +118,12 @@ public class AdminController {
 
     @PutMapping("/sensors/{id}/status")
     @Operation(summary = "Toggle sensor active/inactive status")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Sensor status updated"),
+        @ApiResponse(responseCode = "401", description = "Authentication required"),
+        @ApiResponse(responseCode = "403", description = "Requires ADMIN role"),
+        @ApiResponse(responseCode = "404", description = "Sensor not found")
+    })
     public ResponseEntity<SensorRegistryDto> toggleSensorStatus(
             @PathVariable UUID id,
             @RequestParam boolean active) {

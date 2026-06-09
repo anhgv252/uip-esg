@@ -5,6 +5,7 @@ plugins {
     id 'jacoco'
     id 'org.owasp.dependencycheck' version '12.1.0'
     id 'com.github.spotbugs' version '6.0.7'
+    id 'com.google.protobuf' version '0.9.4'
 }
 
 ext {
@@ -102,6 +103,13 @@ dependencies {
     // Caching abstraction (backed by Redis)
     implementation 'org.springframework.boot:spring-boot-starter-cache'
 
+    // gRPC client — ADR-012 internal transport to analytics-service
+    implementation 'net.devh:grpc-client-spring-boot-starter:3.1.0.RELEASE'
+    implementation 'io.grpc:grpc-protobuf:1.63.0'
+    implementation 'io.grpc:grpc-stub:1.63.0'
+    compileOnly 'jakarta.annotation:jakarta.annotation-api:2.1.1'
+    compileOnly 'javax.annotation:javax.annotation-api:1.3.2'
+
     // ESG report generation (Apache POI — XLSX)
     implementation 'org.apache.poi:poi-ooxml:5.2.5'
     // ESG report generation (OpenPDF — PDF, LGPL-licensed)
@@ -136,6 +144,9 @@ dependencies {
     testImplementation 'com.tngtech.archunit:archunit-junit5:1.3.0'
     // Awaitility — async process completion in integration tests
     testImplementation 'org.awaitility:awaitility:4.2.1'
+    // Pact — consumer-driven contract testing (S11-PACT-01)
+    testImplementation 'au.com.dius.pact.consumer:junit5:4.6.14'
+    testImplementation 'au.com.dius.pact.provider:junit5:4.6.14'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
     // SpotBugs + FindSecBugs — security-focused static analysis
@@ -278,6 +289,21 @@ tasks.register('jacocoTestUnitCoverageVerification', JacocoCoverageVerification)
 tasks.register('coverageUnit') {
     dependsOn 'jacocoTestUnitCoverageVerification'
     doLast { println("✓ Unit test coverage >= 80%") }
+}
+
+// ─── Protobuf / gRPC code generation (ADR-012) ────────────────────────────────
+protobuf {
+    protoc { artifact = 'com.google.protobuf:protoc:3.25.3' }
+    plugins { grpc { artifact = 'io.grpc:protoc-gen-grpc-java:1.63.0' } }
+    generateProtoTasks { all()*.plugins { grpc {} } }
+}
+
+sourceSets {
+    main {
+        proto {
+            srcDir '../shared/proto'
+        }
+    }
 }
 
 // ─── Dọn dẹp Testcontainers thủ công (nếu cần) ───────────────────────────────

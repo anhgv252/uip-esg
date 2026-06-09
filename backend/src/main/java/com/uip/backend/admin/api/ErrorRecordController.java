@@ -3,6 +3,8 @@ package com.uip.backend.admin.api;
 import com.uip.backend.admin.domain.ErrorRecord;
 import com.uip.backend.admin.repository.ErrorRecordRepository;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +30,11 @@ public class ErrorRecordController {
 
     @GetMapping
     @Operation(summary = "List error records with optional module/status filters")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Paginated error records"),
+            @ApiResponse(responseCode = "401", description = "Unauthorized — invalid or missing JWT"),
+            @ApiResponse(responseCode = "403", description = "Forbidden — requires ADMIN role")
+    })
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Page<ErrorRecord>> listErrors(
             @RequestParam(required = false) String module,

@@ -4,6 +4,8 @@ import com.uip.backend.auth.repository.AppUserRepository;
 import com.uip.backend.notification.service.AlertNotification;
 import com.uip.backend.notification.service.NotificationRouter;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -34,6 +36,11 @@ public class PushTestController {
 
     @PostMapping("/test")
     @Operation(summary = "Send a test push notification (non-production only)")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Test push sent"),
+            @ApiResponse(responseCode = "401", description = "Unauthorized — invalid or missing JWT"),
+            @ApiResponse(responseCode = "403", description = "Forbidden — endpoint not available in production")
+    })
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Void> testPush(Authentication auth) {
         UUID userId = resolveUserId(auth);

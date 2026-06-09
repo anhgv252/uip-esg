@@ -29,6 +29,10 @@ public class EnvironmentController {
 
     @GetMapping("/sensors")
     @Operation(summary = "List all active sensors with online/offline status")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Sensor list returned"),
+        @ApiResponse(responseCode = "401", description = "Authentication required")
+    })
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<SensorDto>> listSensors() {
         return ResponseEntity.ok(environmentService.listSensors());
@@ -55,6 +59,10 @@ public class EnvironmentController {
 
     @GetMapping("/aqi/current")
     @Operation(summary = "Current AQI per sensor (latest reading)")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Current AQI data returned"),
+        @ApiResponse(responseCode = "401", description = "Authentication required")
+    })
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<AqiResponseDto>> getCurrentAqi() {
         return ResponseEntity.ok(environmentService.getCurrentAqi());
@@ -62,6 +70,10 @@ public class EnvironmentController {
 
     @GetMapping("/aqi/history")
     @Operation(summary = "AQI history — optionally filtered by district and period (24h/7d/30d)")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "AQI history returned"),
+        @ApiResponse(responseCode = "401", description = "Authentication required")
+    })
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<AqiResponseDto>> getAqiHistory(
             @RequestParam(required = false) String district,

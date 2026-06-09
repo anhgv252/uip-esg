@@ -26,6 +26,10 @@ public class BuildingClusterController {
 
     @GetMapping
     @Operation(summary = "List buildings for current tenant")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Building list returned"),
+        @ApiResponse(responseCode = "401", description = "Authentication required")
+    })
     public List<BuildingResponse> list(
             @RequestHeader("X-Tenant-ID") String tenantId) {
         return service.findByTenant(tenantId)
@@ -36,6 +40,11 @@ public class BuildingClusterController {
 
     @GetMapping("/{buildingCode}")
     @Operation(summary = "Get building by code")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Building returned"),
+        @ApiResponse(responseCode = "401", description = "Authentication required"),
+        @ApiResponse(responseCode = "404", description = "Building not found")
+    })
     public BuildingResponse getByCode(
             @RequestHeader("X-Tenant-ID") String tenantId,
             @PathVariable String buildingCode) {
@@ -59,9 +68,16 @@ public class BuildingClusterController {
 
     @GetMapping("/clusters/{clusterId}")
     @Operation(summary = "List buildings by cluster ID")
-    public List<BuildingResponse> listByCluster(@PathVariable String clusterId) {
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Buildings in cluster returned"),
+        @ApiResponse(responseCode = "401", description = "Authentication required")
+    })
+    public List<BuildingResponse> listByCluster(
+            @RequestHeader("X-Tenant-ID") String tenantId,
+            @PathVariable String clusterId) {
         return service.findByCluster(clusterId)
             .stream()
+            .filter(b -> tenantId.equals(b.getTenantId()))
             .map(BuildingResponse::from)
             .toList();
     }

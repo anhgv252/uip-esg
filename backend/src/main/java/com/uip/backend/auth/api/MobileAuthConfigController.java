@@ -1,6 +1,8 @@
 package com.uip.backend.auth.api;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
@@ -31,6 +33,10 @@ public class MobileAuthConfigController {
 
     @GetMapping("/config")
     @Operation(summary = "Get Keycloak auth config for mobile PKCE login")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Keycloak config for mobile client"),
+            @ApiResponse(responseCode = "400", description = "Invalid tenantId parameter")
+    })
     public ResponseEntity<Map<String, String>> getConfig(
             @RequestParam(required = false, defaultValue = "hcm") String tenantId) {
 

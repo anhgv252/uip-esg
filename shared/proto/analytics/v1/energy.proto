@@ -1,0 +1,27 @@
+syntax = "proto3";
+package uip.analytics.v1;
+
+option java_package = "com.uip.analytics.grpc.v1";
+option java_outer_classname = "EnergyProto";
+option java_multiple_files = true;
+
+// Energy analytics service — backend calls analytics-service via gRPC
+// instead of REST (ADR-012).
+service EnergyAnalyticsService {
+  rpc GetEnergyAggregate(EnergyAggRequest) returns (EnergyAggResponse);
+}
+
+message EnergyAggRequest {
+  string tenant_id = 1;
+  repeated string building_ids = 2;
+  int64 from_epoch = 3;
+  int64 to_epoch = 4;
+}
+
+message EnergyAggResponse {
+  double total_kwh = 1;
+  double peak_demand_kw = 2;
+  double avg_power_factor = 3;
+  double co2_tonnes = 4;
+  map<string, double> per_building_kwh = 5;
+}

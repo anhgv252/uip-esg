@@ -267,6 +267,7 @@ uip:
     iot-ingestion-external: false
     alert-external: false
     analytics-external: false
+    analytics-transport: ${UIP_CAPABILITIES_ANALYTICS_TRANSPORT:rest}
     forecast-engine: ${UIP_FORECAST_ENGINE:python}
   forecast:
     service-url: ${UIP_FORECAST_SERVICE_URL:http://uip-forecast-service:8090}
@@ -287,6 +288,13 @@ logging:
     com.uip: INFO
     org.springframework.security: WARN
     org.hibernate.SQL: WARN
+
+# gRPC client — ADR-012 (only active when analytics-transport=grpc)
+grpc:
+  client:
+    analytics-service:
+      address: ${GRPC_ANALYTICS_ADDRESS:static://localhost:9090}
+      negotiationType: plaintext
 
 ---
 spring:

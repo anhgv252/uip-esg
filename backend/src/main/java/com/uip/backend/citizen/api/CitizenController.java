@@ -8,6 +8,8 @@ import com.uip.backend.auth.service.UipUserDetailsService;
 import com.uip.backend.citizen.api.dto.*;
 import com.uip.backend.citizen.service.CitizenService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
@@ -52,6 +54,10 @@ public class CitizenController {
      */
     @PostMapping("/register")
     @Operation(summary = "Register a new citizen account and receive a JWT")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "201", description = "Account created with JWT"),
+            @ApiResponse(responseCode = "400", description = "Invalid registration data")
+    })
     @Transactional
     public ResponseEntity<CitizenRegistrationResponse> register(
             @Valid @RequestBody CitizenRegistrationRequest request,
@@ -96,6 +102,9 @@ public class CitizenController {
      */
     @GetMapping("/buildings")
     @Operation(summary = "Get all buildings for household registration")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Building list")
+    })
     public ResponseEntity<List<BuildingDto>> getBuildings() {
         List<BuildingDto> buildings = citizenService.getBuildings();
         return ResponseEntity.ok(buildings);
@@ -106,6 +115,10 @@ public class CitizenController {
      */
     @GetMapping("/buildings/by-district")
     @Operation(summary = "Get buildings by district")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Buildings in district"),
+            @ApiResponse(responseCode = "400", description = "Missing district parameter")
+    })
     public ResponseEntity<List<BuildingDto>> getBuildingsByDistrict(
             @RequestParam String district) {
         List<BuildingDto> buildings = citizenService.getBuildingsByDistrict(district);
@@ -118,6 +131,11 @@ public class CitizenController {
      */
     @GetMapping("/profile")
     @Operation(summary = "Get current citizen profile")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Citizen profile"),
+            @ApiResponse(responseCode = "401", description = "Unauthorized — invalid or missing JWT"),
+            @ApiResponse(responseCode = "404", description = "Citizen profile not found")
+    })
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<CitizenProfileDto> getProfile(Authentication authentication) {
         String username = authentication.getName();
@@ -131,6 +149,12 @@ public class CitizenController {
      */
     @PostMapping("/profile/household")
     @Operation(summary = "Link household to citizen account")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Household linked"),
+            @ApiResponse(responseCode = "400", description = "Invalid household data"),
+            @ApiResponse(responseCode = "401", description = "Unauthorized — invalid or missing JWT"),
+            @ApiResponse(responseCode = "403", description = "Forbidden — requires CITIZEN or ADMIN role")
+    })
     @PreAuthorize("hasAnyRole('CITIZEN', 'ADMIN')")
     public ResponseEntity<CitizenProfileDto> linkHousehold(
             @Valid @RequestBody HouseholdRequest request,

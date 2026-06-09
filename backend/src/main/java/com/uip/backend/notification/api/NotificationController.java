@@ -2,6 +2,8 @@ package com.uip.backend.notification.api;
 
 import com.uip.backend.notification.service.SseEmitterRegistry;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
@@ -32,6 +34,11 @@ public class NotificationController {
     @Deprecated
     @GetMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     @Operation(summary = "Subscribe to real-time alert notifications via SSE (DEPRECATED — use /api/v1/alerts/stream)")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "SSE stream established"),
+            @ApiResponse(responseCode = "401", description = "Unauthorized — invalid or missing JWT"),
+            @ApiResponse(responseCode = "403", description = "Forbidden — insufficient permissions")
+    })
     @PreAuthorize("isAuthenticated()")
     public SseEmitter stream() {
         return sseEmitterRegistry.register();

@@ -13,10 +13,11 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * Tier 2+ implementation của AnalyticsPort.
+ * Tier 2+ REST implementation của AnalyticsPort.
  * Delegate sang analytics-service (ClickHouse owner) qua HTTP REST.
  *
- * Load khi analytics-external=true. EsgService không đổi — chỉ biết AnalyticsPort.
+ * <p>Loads when analytics-external=true AND analytics-transport is NOT "grpc".
+ * When analytics-transport=grpc, {@link ClickHouseGrpcAnalyticsAdapter} loads instead.</p>
  */
 @Component
 @ConditionalOnProperty(

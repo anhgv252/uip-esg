@@ -51,6 +51,11 @@ springdoc:
   swagger-ui:
     path: /swagger-ui.html
 
+# gRPC server — ADR-012 internal transport
+grpc:
+  server:
+    port: 9090
+
 logging:
   pattern:
     console: "%d{HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"

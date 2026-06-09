@@ -34,6 +34,11 @@ public class TenantAdminController {
     @GetMapping("/{tenantId}/users")
     @PreAuthorize("hasRole('ADMIN') or hasRole('TENANT_ADMIN')")
     @Operation(summary = "List users in a tenant")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "User list returned"),
+        @ApiResponse(responseCode = "401", description = "Authentication required"),
+        @ApiResponse(responseCode = "403", description = "Requires ADMIN or TENANT_ADMIN role")
+    })
     public ResponseEntity<List<TenantUserDto>> listUsers(
             @PathVariable String tenantId,
             Authentication auth) {
@@ -82,6 +87,11 @@ public class TenantAdminController {
     @GetMapping("/{tenantId}/usage")
     @PreAuthorize("hasRole('ADMIN') or hasRole('TENANT_ADMIN')")
     @Operation(summary = "Get tenant usage statistics")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Usage statistics returned"),
+        @ApiResponse(responseCode = "401", description = "Authentication required"),
+        @ApiResponse(responseCode = "403", description = "Requires ADMIN or TENANT_ADMIN role")
+    })
     public ResponseEntity<TenantUsageDto> getUsage(
             @PathVariable String tenantId,
             @RequestParam Instant from,
@@ -94,6 +104,11 @@ public class TenantAdminController {
     @GetMapping("/{tenantId}/settings")
     @PreAuthorize("hasRole('ADMIN') or hasRole('TENANT_ADMIN')")
     @Operation(summary = "Get tenant settings")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Tenant settings returned"),
+        @ApiResponse(responseCode = "401", description = "Authentication required"),
+        @ApiResponse(responseCode = "403", description = "Requires ADMIN or TENANT_ADMIN role")
+    })
     public ResponseEntity<TenantSettingsDto> getSettings(
             @PathVariable String tenantId,
             Authentication auth) {
@@ -124,6 +139,11 @@ public class TenantAdminController {
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "List all tenants")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Tenant list returned"),
+        @ApiResponse(responseCode = "401", description = "Authentication required"),
+        @ApiResponse(responseCode = "403", description = "Requires ADMIN role")
+    })
     public ResponseEntity<List<TenantSummaryDto>> listAllTenants() {
         return ResponseEntity.ok(tenantAdminService.listAllTenants());
     }
@@ -146,6 +166,11 @@ public class TenantAdminController {
     @GetMapping("/{tenantId}/features")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Get feature flags for a tenant")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Feature flags returned"),
+        @ApiResponse(responseCode = "401", description = "Authentication required"),
+        @ApiResponse(responseCode = "403", description = "Requires ADMIN role")
+    })
     public ResponseEntity<Map<String, Boolean>> getFeatureFlags(@PathVariable String tenantId) {
         return ResponseEntity.ok(tenantAdminService.getFeatureFlags(tenantId));
     }
@@ -153,6 +178,12 @@ public class TenantAdminController {
     @PutMapping("/{tenantId}/features")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Enable or disable a feature flag for a tenant")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Feature flag updated"),
+        @ApiResponse(responseCode = "400", description = "Invalid request body"),
+        @ApiResponse(responseCode = "401", description = "Authentication required"),
+        @ApiResponse(responseCode = "403", description = "Requires ADMIN role")
+    })
     public ResponseEntity<Void> updateFeature(
             @PathVariable String tenantId,
             @RequestBody @jakarta.validation.Valid UpdateFeatureRequest request) {

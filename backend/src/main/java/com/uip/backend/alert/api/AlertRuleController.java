@@ -4,6 +4,8 @@ import com.uip.backend.alert.api.dto.AlertRuleRequest;
 import com.uip.backend.alert.domain.AlertRule;
 import com.uip.backend.alert.service.AlertService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -27,6 +29,11 @@ public class AlertRuleController {
 
     @GetMapping
     @Operation(summary = "List all active alert rules")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "List of alert rules"),
+            @ApiResponse(responseCode = "401", description = "Unauthorized — invalid or missing JWT"),
+            @ApiResponse(responseCode = "403", description = "Forbidden — requires ADMIN role")
+    })
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<AlertRule>> listRules() {
         return ResponseEntity.ok(alertService.listRules());
@@ -34,6 +41,12 @@ public class AlertRuleController {
 
     @PostMapping
     @Operation(summary = "Create a new alert rule")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "201", description = "Alert rule created"),
+            @ApiResponse(responseCode = "400", description = "Invalid request body"),
+            @ApiResponse(responseCode = "401", description = "Unauthorized — invalid or missing JWT"),
+            @ApiResponse(responseCode = "403", description = "Forbidden — requires ADMIN role")
+    })
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<AlertRule> createRule(@Valid @RequestBody AlertRuleRequest req) {
         return ResponseEntity.status(HttpStatus.CREATED).body(alertService.createRule(req));
@@ -41,6 +54,12 @@ public class AlertRuleController {
 
     @DeleteMapping("/{id}")
     @Operation(summary = "Deactivate an alert rule")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "204", description = "Alert rule deactivated"),
+            @ApiResponse(responseCode = "401", description = "Unauthorized — invalid or missing JWT"),
+            @ApiResponse(responseCode = "403", description = "Forbidden — requires ADMIN role"),
+            @ApiResponse(responseCode = "404", description = "Alert rule not found")
+    })
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> deleteRule(@PathVariable UUID id) {
         alertService.deleteRule(id);

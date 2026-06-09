@@ -37,6 +37,9 @@ public class PushSubscriptionController {
 
     @GetMapping("/vapid-key")
     @Operation(summary = "Get VAPID public key for client-side push subscription")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "VAPID public key returned")
+    })
     public ResponseEntity<VapidKeyResponse> getVapidKey() {
         return ResponseEntity.ok(new VapidKeyResponse(vapidConfig.getPublicKey()));
     }
@@ -59,6 +62,11 @@ public class PushSubscriptionController {
 
     @DeleteMapping("/subscriptions/{id}")
     @Operation(summary = "Deactivate a push subscription")
+    @ApiResponses({
+        @ApiResponse(responseCode = "204", description = "Subscription deactivated"),
+        @ApiResponse(responseCode = "401", description = "Authentication required"),
+        @ApiResponse(responseCode = "404", description = "Subscription not found")
+    })
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Void> unsubscribe(
             @PathVariable UUID id,
@@ -70,6 +78,10 @@ public class PushSubscriptionController {
 
     @GetMapping("/subscriptions")
     @Operation(summary = "List active push subscriptions for the current user")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Subscription list returned"),
+        @ApiResponse(responseCode = "401", description = "Authentication required")
+    })
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<PushSubscriptionResponse>> listSubscriptions(Authentication auth) {
         UUID userId = resolveUserId(auth);

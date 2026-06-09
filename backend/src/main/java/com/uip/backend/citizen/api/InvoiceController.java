@@ -5,6 +5,8 @@ import com.uip.backend.citizen.api.dto.InvoiceDto;
 import com.uip.backend.citizen.api.dto.MeterDto;
 import com.uip.backend.citizen.service.InvoiceService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -36,6 +38,12 @@ public class InvoiceController {
      */
     @PostMapping("/meters")
     @Operation(summary = "Register a meter to citizen account")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Meter registered"),
+            @ApiResponse(responseCode = "400", description = "Invalid meter data"),
+            @ApiResponse(responseCode = "401", description = "Unauthorized — invalid or missing JWT"),
+            @ApiResponse(responseCode = "403", description = "Forbidden — requires CITIZEN role")
+    })
     @PreAuthorize("hasRole('CITIZEN')")
     public ResponseEntity<MeterDto> registerMeter(
             @RequestParam String meterCode,

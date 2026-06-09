@@ -5,6 +5,8 @@ import com.uip.backend.traffic.api.dto.TrafficCountDto;
 import com.uip.backend.traffic.api.dto.TrafficIncidentDto;
 import com.uip.backend.traffic.service.TrafficService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -37,6 +39,11 @@ public class TrafficController {
      */
     @GetMapping("/counts")
     @Operation(summary = "Vehicle counts by intersection and time window")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Traffic count data returned"),
+            @ApiResponse(responseCode = "401", description = "Unauthorized — invalid or missing JWT"),
+            @ApiResponse(responseCode = "403", description = "Forbidden — insufficient permissions")
+    })
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<TrafficCountDto>> getCounts(
             @RequestParam(required = false, defaultValue = "INT-001") String intersection,
@@ -55,6 +62,11 @@ public class TrafficController {
      */
     @GetMapping("/incidents")
     @Operation(summary = "Get traffic incidents with status filter")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Paginated incident list"),
+            @ApiResponse(responseCode = "401", description = "Unauthorized — invalid or missing JWT"),
+            @ApiResponse(responseCode = "403", description = "Forbidden — insufficient permissions")
+    })
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Page<TrafficIncidentDto>> getIncidents(
             @RequestParam(required = false, defaultValue = "OPEN") String status,
@@ -70,6 +82,11 @@ public class TrafficController {
      */
     @GetMapping("/congestion-map")
     @Operation(summary = "Get congestion map as GeoJSON FeatureCollection")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "GeoJSON congestion map"),
+            @ApiResponse(responseCode = "401", description = "Unauthorized — invalid or missing JWT"),
+            @ApiResponse(responseCode = "403", description = "Forbidden — insufficient permissions")
+    })
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<CongestionGeoJsonDto> getCongestionMap() {
         CongestionGeoJsonDto map = trafficService.getCongestionMap();
@@ -81,6 +98,12 @@ public class TrafficController {
      */
     @PostMapping("/incidents")
     @Operation(summary = "Create a new traffic incident")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "201", description = "Incident created"),
+            @ApiResponse(responseCode = "400", description = "Invalid request body"),
+            @ApiResponse(responseCode = "401", description = "Unauthorized — invalid or missing JWT"),
+            @ApiResponse(responseCode = "403", description = "Forbidden — requires ADMIN or OPERATOR role")
+    })
     @PreAuthorize("hasAnyRole('ADMIN', 'OPERATOR')")
     public ResponseEntity<TrafficIncidentDto> createIncident(@RequestBody TrafficIncidentDto dto) {
         TrafficIncidentDto created = trafficService.createIncident(dto);
@@ -92,6 +115,12 @@ public class TrafficController {
      */
     @PutMapping("/incidents/{id}/status")
     @Operation(summary = "Update traffic incident status")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Incident status updated"),
+            @ApiResponse(responseCode = "401", description = "Unauthorized — invalid or missing JWT"),
+            @ApiResponse(responseCode = "403", description = "Forbidden — requires ADMIN or OPERATOR role"),
+            @ApiResponse(responseCode = "404", description = "Incident not found")
+    })
     @PreAuthorize("hasAnyRole('ADMIN', 'OPERATOR')")
     public ResponseEntity<TrafficIncidentDto> updateIncidentStatus(
             @PathVariable UUID id,

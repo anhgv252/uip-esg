@@ -34,6 +34,11 @@ public class BmsDeviceController {
 
     @GetMapping
     @Operation(summary = "List all BMS devices for current tenant")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Device list returned"),
+        @ApiResponse(responseCode = "401", description = "Unauthorized — invalid or missing JWT"),
+        @ApiResponse(responseCode = "403", description = "Tenant context required")
+    })
     public ResponseEntity<List<BmsDeviceResponse>> listDevices() {
         String tenantId = TenantContext.getCurrentTenant();
         if (tenantId == null || tenantId.isBlank()) {
@@ -44,6 +49,12 @@ public class BmsDeviceController {
 
     @GetMapping("/{id}")
     @Operation(summary = "Get BMS device by ID")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Device found"),
+        @ApiResponse(responseCode = "401", description = "Unauthorized — invalid or missing JWT"),
+        @ApiResponse(responseCode = "403", description = "Tenant context required"),
+        @ApiResponse(responseCode = "404", description = "Device not found")
+    })
     public ResponseEntity<BmsDeviceResponse> getDevice(@PathVariable UUID id) {
         String tenantId = TenantContext.getCurrentTenant();
         if (tenantId == null || tenantId.isBlank()) {
@@ -75,6 +86,13 @@ public class BmsDeviceController {
 
     @PutMapping("/{id}")
     @Operation(summary = "Update a BMS device")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Device updated"),
+        @ApiResponse(responseCode = "400", description = "Invalid request body"),
+        @ApiResponse(responseCode = "401", description = "Unauthorized — invalid or missing JWT"),
+        @ApiResponse(responseCode = "403", description = "Tenant context required"),
+        @ApiResponse(responseCode = "404", description = "Device not found")
+    })
     public ResponseEntity<BmsDeviceResponse> updateDevice(@PathVariable UUID id,
                                                           @Valid @RequestBody BmsDeviceRequest request) {
         String tenantId = TenantContext.getCurrentTenant();
@@ -86,6 +104,11 @@ public class BmsDeviceController {
 
     @DeleteMapping("/{id}")
     @Operation(summary = "Delete a BMS device")
+    @ApiResponses({
+        @ApiResponse(responseCode = "204", description = "Device deleted"),
+        @ApiResponse(responseCode = "401", description = "Unauthorized — invalid or missing JWT"),
+        @ApiResponse(responseCode = "403", description = "Tenant context required")
+    })
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteDevice(@PathVariable UUID id) {
         String tenantId = TenantContext.getCurrentTenant();
@@ -97,6 +120,11 @@ public class BmsDeviceController {
 
     @PostMapping("/discover")
     @Operation(summary = "Trigger BACnet Who-Is discovery scan")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Discovered devices returned"),
+        @ApiResponse(responseCode = "401", description = "Unauthorized — invalid or missing JWT"),
+        @ApiResponse(responseCode = "403", description = "Tenant context required")
+    })
     public ResponseEntity<List<BmsDeviceResponse>> discoverDevices(
             @RequestParam(defaultValue = "255.255.255.255") String broadcast,
             @RequestParam(defaultValue = "100") int localDeviceId) {

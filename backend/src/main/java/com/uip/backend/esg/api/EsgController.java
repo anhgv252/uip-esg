@@ -49,6 +49,10 @@ public class EsgController {
 
     @GetMapping("/summary")
     @Operation(summary = "ESG summary aggregation for a given period")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "ESG summary returned"),
+        @ApiResponse(responseCode = "401", description = "Unauthorized — invalid or missing JWT")
+    })
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<EsgSummaryDto> getSummary(
             @RequestParam(defaultValue = "quarterly") String period,
@@ -60,6 +64,10 @@ public class EsgController {
 
     @GetMapping("/energy")
     @Operation(summary = "Energy consumption time-series")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Energy metrics returned"),
+        @ApiResponse(responseCode = "401", description = "Unauthorized — invalid or missing JWT")
+    })
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<EsgMetricDto>> getEnergy(
             @RequestParam(required = false) Instant from,
@@ -71,6 +79,10 @@ public class EsgController {
 
     @GetMapping("/carbon")
     @Operation(summary = "Carbon emission time-series")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Carbon metrics returned"),
+        @ApiResponse(responseCode = "401", description = "Unauthorized — invalid or missing JWT")
+    })
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<EsgMetricDto>> getCarbon(
             @RequestParam(required = false) Instant from,
@@ -98,6 +110,11 @@ public class EsgController {
 
     @GetMapping("/reports/{id}/status")
     @Operation(summary = "Check ESG report generation status")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Report status returned"),
+        @ApiResponse(responseCode = "401", description = "Unauthorized — invalid or missing JWT"),
+        @ApiResponse(responseCode = "404", description = "Report not found")
+    })
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<EsgReportDto> getReportStatus(@PathVariable UUID id) {
         String tenantId = TenantContext.getCurrentTenant();
@@ -106,6 +123,11 @@ public class EsgController {
 
     @GetMapping("/reports/{id}/download")
     @Operation(summary = "Download ESG report (XLSX or CSV)")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Report file stream"),
+        @ApiResponse(responseCode = "401", description = "Unauthorized — invalid or missing JWT"),
+        @ApiResponse(responseCode = "404", description = "Report not found")
+    })
     @PreAuthorize("isAuthenticated()")
     @SuppressFBWarnings(value = "PATH_TRAVERSAL_IN", justification = "report.getFilePath() is server-written (set by EsgReportGenerator, never from user input); further guarded by getCanonicalFile() + startsWith(baseDir) check")
     public ResponseEntity<?> downloadReport(

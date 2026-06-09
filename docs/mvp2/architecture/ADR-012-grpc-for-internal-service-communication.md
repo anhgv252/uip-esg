@@ -1,7 +1,7 @@
 # ADR-012: gRPC cho Internal Service-to-Service Communication (Backend → Analytics Service)
 
 **Date**: 2026-05-11  
-**Status**: Proposed  
+**Status**: Accepted
 **Deciders**: Solution Architect, Backend Lead  
 **Context**: Extracted Analytics Service (ADR-011 Strangler Fig — Tier 2)
 
