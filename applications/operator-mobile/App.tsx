@@ -6,6 +6,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import * as Notifications from 'expo-notifications'
 import { AuthProvider, useAuth } from './src/context/AuthContext'
 import { usePushToken } from './src/hooks/usePushToken'
+import OfflineBanner from './src/components/OfflineBanner'
+import { syncQueue } from './src/services/SyncQueue'
 import DashboardScreen from './src/screens/dashboard/DashboardScreen'
 import AlertsScreen from './src/screens/alerts/AlertsScreen'
 import ControlsScreen from './src/screens/controls/ControlsScreen'
@@ -40,6 +42,11 @@ function AppNavigator() {
   usePushToken(token ?? null, selectedTenant ?? null)
 
   useEffect(() => {
+    syncQueue.init()
+    return () => syncQueue.destroy()
+  }, [])
+
+  useEffect(() => {
     const sub = Notifications.addNotificationReceivedListener(notification => {
       const data = notification.request.content.data as Record<string, unknown>
       console.log('[Push] foreground alert:', data?.severity, data?.module)
@@ -58,15 +65,18 @@ function AppNavigator() {
   }
 
   return (
-    <Tab.Navigator
-      initialRouteName="Dashboard"
-      screenOptions={{ tabBarActiveTintColor: '#1565C0' }}
-    >
-      <Tab.Screen name="Dashboard" component={DashboardScreen} />
-      <Tab.Screen name="Alerts" component={AlertsScreen} />
-      <Tab.Screen name="Controls" component={ControlsScreen} />
-      <Tab.Screen name="Profile" component={ProfileScreen} />
-    </Tab.Navigator>
+    <>
+      <OfflineBanner />
+      <Tab.Navigator
+        initialRouteName="Dashboard"
+        screenOptions={{ tabBarActiveTintColor: '#1565C0' }}
+      >
+        <Tab.Screen name="Dashboard" component={DashboardScreen} />
+        <Tab.Screen name="Alerts" component={AlertsScreen} />
+        <Tab.Screen name="Controls" component={ControlsScreen} />
+        <Tab.Screen name="Profile" component={ProfileScreen} />
+      </Tab.Navigator>
+    </>
   )
 }
 

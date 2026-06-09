@@ -2,6 +2,7 @@ package com.uip.backend.esg.config.analytics;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
@@ -16,14 +17,12 @@ import java.util.stream.Collectors;
  * Tier 2+ REST implementation của AnalyticsPort.
  * Delegate sang analytics-service (ClickHouse owner) qua HTTP REST.
  *
- * <p>Loads when analytics-external=true AND analytics-transport is NOT "grpc".
- * When analytics-transport=grpc, {@link ClickHouseGrpcAnalyticsAdapter} loads instead.</p>
+ * <p>Loads when analytics-external=true.
+ * When analytics-transport=grpc, {@link ClickHouseGrpcAnalyticsAdapter} loads instead.
+ * IMPORTANT: Deployment config must ensure only ONE adapter is active (not both).</p>
  */
 @Component
-@ConditionalOnProperty(
-    name        = "uip.capabilities.analytics-external",
-    havingValue = "true"
-)
+@ConditionalOnExpression("${uip.capabilities.analytics-external:false} && '${uip.analytics.transport:rest}'.equals('rest')")
 @Slf4j
 public class ClickHouseRestAnalyticsAdapter implements AnalyticsPort {
 
