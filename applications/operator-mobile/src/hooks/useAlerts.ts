@@ -1,6 +1,7 @@
-import { useQuery } from '@tanstack/react-query'
 import { apiClient } from '../api/client'
 import { useAuth } from '../context/AuthContext'
+import { useOfflineQuery } from './useOfflineQuery'
+import { CACHE_TTL } from '../services/OfflineCache'
 
 export interface AlertItem {
   id: number
@@ -16,13 +17,14 @@ export interface AlertItem {
 
 export function useAlerts(module?: string) {
   const { token } = useAuth()
-  return useQuery({
+  return useOfflineQuery<AlertItem[]>({
     queryKey: ['alerts', module],
     queryFn: () => {
       const params = module ? `?module=${module}` : ''
       return apiClient.get<AlertItem[]>(`/api/v1/alerts${params}`, token ?? undefined)
     },
     staleTime: 10_000,
+    cacheTtl: CACHE_TTL.TIER1, // 5 min — frequently changing
     enabled: !!token,
   })
 }

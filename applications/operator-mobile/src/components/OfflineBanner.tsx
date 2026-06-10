@@ -30,8 +30,17 @@ export default function OfflineBanner() {
   }, [showBanner, opacity])
 
   // Keep the Animated.View mounted so fade-out animation can play
+  const bannerLabel = isOnline
+    ? `Đang đồng bộ ${pendingCount} hành động`
+    : `Ngoại tuyến${pendingCount > 0 ? `, ${pendingCount} hành động chờ` : ''}`
+
   return (
-    <Animated.View style={[styles.banner, { opacity }]} pointerEvents={showBanner ? 'auto' : 'none'}>
+    <Animated.View
+      style={[styles.banner, { opacity }]}
+      pointerEvents={showBanner ? 'auto' : 'none'}
+      accessibilityRole="alert"
+      accessibilityLabel={bannerLabel}
+    >
       <View style={[styles.dot, isOnline ? styles.dotSyncing : styles.dotOffline]} />
       <Text style={styles.text}>
         {isOnline

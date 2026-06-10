@@ -13,17 +13,28 @@ import {
   TextField,
   Divider,
   Stack,
+  Menu,
+  MenuItem,
+  ListItemText,
+  Chip,
+  Button,
 } from '@mui/material';
 import SaveIcon from '@mui/icons-material/Save';
 import ZoomInMapIcon from '@mui/icons-material/ZoomInMap';
+import ZoomInIcon from '@mui/icons-material/ZoomIn';
+import ZoomOutIcon from '@mui/icons-material/ZoomOut';
 import UndoIcon from '@mui/icons-material/Undo';
 import RedoIcon from '@mui/icons-material/Redo';
 import DownloadIcon from '@mui/icons-material/Download';
 import CloseIcon from '@mui/icons-material/Close';
+import TemplateIcon from '@mui/icons-material/Wallpaper';
+import DeleteIcon from '@mui/icons-material/Delete';
+import { WORKFLOW_TEMPLATES, TEMPLATE_CATEGORY_LABELS, type WorkflowTemplate } from './templates';
 
 interface Props {
   initialXml?: string | null;
   onSave?: (xml: string) => void;
+  onLoadTemplate?: (xml: string) => void;
   height?: number | string;
   showToolbar?: boolean;
   showPropertiesPanel?: boolean;
@@ -53,6 +64,7 @@ const EMPTY_BPMN = `<?xml version="1.0" encoding="UTF-8"?>
 export default function WorkflowModeler({
   initialXml,
   onSave,
+  onLoadTemplate,
   height = 'calc(100vh - 200px)',
   showToolbar = true,
   showPropertiesPanel = true,
@@ -64,6 +76,8 @@ export default function WorkflowModeler({
   const [snackbar, setSnackbar] = useState<string | null>(null);
   const [selectedElement, setSelectedElement] = useState<{ id: string; name: string; type: string } | null>(null);
   const [propertiesPanelOpen, setPropertiesPanelOpen] = useState(false);
+  const [templateAnchorEl, setTemplateAnchorEl] = useState<HTMLElement | null>(null);
+  const [zoomLevel, setZoomLevel] = useState(1);
 
   // Initialize modeler instance only once on mount
   useEffect(() => {
@@ -181,6 +195,50 @@ export default function WorkflowModeler({
     }
   }, []);
 
+  /** Zoom in */
+  const handleZoomIn = useCallback(() => {
+    if (!modelerRef.current) return;
+    const canvas = modelerRef.current.get<{ zoom: (level: number | string) => number }>('canvas');
+    const newZoom = canvas.zoom(zoomLevel + 0.15);
+    setZoomLevel(newZoom);
+  }, [zoomLevel]);
+
+  /** Zoom out */
+  const handleZoomOut = useCallback(() => {
+    if (!modelerRef.current) return;
+    const canvas = modelerRef.current.get<{ zoom: (level: number | string) => number }>('canvas');
+    const newZoom = canvas.zoom(Math.max(0.2, zoomLevel - 0.15));
+    setZoomLevel(newZoom);
+  }, [zoomLevel]);
+
+  /** Load a workflow template */
+  const handleLoadTemplate = useCallback((template: WorkflowTemplate) => {
+    if (!modelerRef.current) return;
+    modelerRef.current
+      .importXML(template.xml)
+      .then(() => {
+        const canvas = modelerRef.current?.get<{ zoom: (level: string) => void }>('canvas');
+        canvas?.zoom('fit-viewport');
+        setSnackbar(`Template "${template.name}" loaded`);
+        onLoadTemplate?.(template.xml);
+      })
+      .catch((err: Error) => setError(err.message ?? 'Failed to load template'))
+      .finally(() => setTemplateAnchorEl(null));
+  }, [onLoadTemplate]);
+
+  /** Delete selected element */
+  const handleDeleteSelected = useCallback(() => {
+    if (!modelerRef.current || !selectedElement) return;
+    const modeling = modelerRef.current.get<{ removeElements: (elements: unknown[]) => void }>('modeling');
+    const elementRegistry = modelerRef.current.get<{ get: (id: string) => unknown }>('elementRegistry');
+    const element = elementRegistry.get(selectedElement.id);
+    if (element) {
+      modeling.removeElements([element]);
+      setSelectedElement(null);
+      setPropertiesPanelOpen(false);
+    }
+  }, [selectedElement]);
+
   /** Update element name in properties panel */
   const handleUpdateElementName = useCallback((newName: string) => {
     if (!modelerRef.current || !selectedElement) return;
@@ -260,18 +318,24 @@ export default function WorkflowModeler({
       <Box display="flex" flexDirection="column" style={{ height }} border="1px solid" borderColor="divider" borderRadius={1} overflow="hidden">
         {/* Toolbar */}
         {showToolbar && (
-          <Toolbar variant="dense" sx={{ minHeight: 48, bgcolor: 'background.paper', borderBottom: 1, borderColor: 'divider' }}>
+          <Toolbar variant="dense" sx={{ minHeight: 48, bgcolor: 'background.paper', borderBottom: 1, borderColor: 'divider', gap: 0.5 }}>
+            {/* File group */}
+            <Typography variant="caption" color="text.secondary" sx={{ ml: 0.5, mr: 0.5, fontWeight: 600 }}>FILE</Typography>
             <Tooltip title="Save (Ctrl+S)">
               <IconButton size="small" onClick={handleSave} disabled={!onSave}>
                 <SaveIcon fontSize="small" />
               </IconButton>
             </Tooltip>
-            <Tooltip title="Fit View">
-              <IconButton size="small" onClick={handleFitView}>
-                <ZoomInMapIcon fontSize="small" />
+            <Tooltip title="Export BPMN XML">
+              <IconButton size="small" onClick={handleExportXml}>
+                <DownloadIcon fontSize="small" />
               </IconButton>
             </Tooltip>
+
             <Divider orientation="vertical" flexItem sx={{ mx: 1 }} />
+
+            {/* Edit group */}
+            <Typography variant="caption" color="text.secondary" sx={{ mr: 0.5, fontWeight: 600 }}>EDIT</Typography>
             <Tooltip title="Undo (Ctrl+Z)">
               <IconButton size="small" onClick={handleUndo}>
                 <UndoIcon fontSize="small" />
@@ -282,12 +346,68 @@ export default function WorkflowModeler({
                 <RedoIcon fontSize="small" />
               </IconButton>
             </Tooltip>
+            <Tooltip title="Delete Selected (Del)">
+              <span>
+                <IconButton size="small" onClick={handleDeleteSelected} disabled={!selectedElement}>
+                  <DeleteIcon fontSize="small" />
+                </IconButton>
+              </span>
+            </Tooltip>
+
             <Divider orientation="vertical" flexItem sx={{ mx: 1 }} />
-            <Tooltip title="Export XML">
-              <IconButton size="small" onClick={handleExportXml}>
-                <DownloadIcon fontSize="small" />
+
+            {/* View group */}
+            <Typography variant="caption" color="text.secondary" sx={{ mr: 0.5, fontWeight: 600 }}>VIEW</Typography>
+            <Tooltip title="Zoom In (+)">
+              <IconButton size="small" onClick={handleZoomIn}>
+                <ZoomInIcon fontSize="small" />
               </IconButton>
             </Tooltip>
+            <Chip label={`${Math.round(zoomLevel * 100)}%`} size="small" variant="outlined" sx={{ minWidth: 52, height: 24, fontSize: '0.7rem' }} />
+            <Tooltip title="Zoom Out (-)">
+              <IconButton size="small" onClick={handleZoomOut}>
+                <ZoomOutIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Fit to Screen">
+              <IconButton size="small" onClick={handleFitView}>
+                <ZoomInMapIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+
+            <Divider orientation="vertical" flexItem sx={{ mx: 1 }} />
+
+            {/* Templates */}
+            <Button
+              size="small"
+              startIcon={<TemplateIcon fontSize="small" />}
+              onClick={(e) => setTemplateAnchorEl(e.currentTarget)}
+              sx={{ textTransform: 'none', fontSize: '0.75rem' }}
+            >
+              Templates
+            </Button>
+            <Menu
+              anchorEl={templateAnchorEl}
+              open={Boolean(templateAnchorEl)}
+              onClose={() => setTemplateAnchorEl(null)}
+              PaperProps={{ sx: { maxHeight: 360, width: 320 } }}
+            >
+              {Object.entries(TEMPLATE_CATEGORY_LABELS).map(([cat, label]) => {
+                const templates = WORKFLOW_TEMPLATES.filter((t) => t.category === cat);
+                if (templates.length === 0) return null;
+                return [
+                  <Typography key={`header-${cat}`} variant="caption" color="text.secondary" sx={{ px: 2, py: 0.5, fontWeight: 600, display: 'block' }}>
+                    {label}
+                  </Typography>,
+                  ...templates.map((t) => (
+                    <MenuItem key={t.id} onClick={() => handleLoadTemplate(t)} dense>
+                      <ListItemText primary={t.name} secondary={t.description} secondaryTypographyProps={{ fontSize: '0.7rem', lineHeight: 1.2, noWrap: true }} />
+                    </MenuItem>
+                  )),
+                  <Divider key={`divider-${cat}`} />,
+                ];
+              })}
+            </Menu>
           </Toolbar>
         )}
 

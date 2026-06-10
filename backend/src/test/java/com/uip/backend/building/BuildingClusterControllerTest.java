@@ -2,7 +2,6 @@ package com.uip.backend.building;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.uip.backend.building.api.BuildingClusterController;
-import com.uip.backend.building.api.dto.BuildingResponse;
 import com.uip.backend.building.domain.BuildingCluster;
 import com.uip.backend.building.service.BuildingClusterService;
 import com.uip.backend.common.exception.GlobalExceptionHandler;
@@ -57,7 +56,6 @@ class BuildingClusterControllerTest {
 
     private static final String CLUSTER_ID     = "cluster-hcm-01";
     private static final String TENANT_A       = "tenant-hcm";
-    private static final String TENANT_B       = "tenant-hanoi";
 
     @BeforeEach
     void setUp() {
@@ -81,11 +79,10 @@ class BuildingClusterControllerTest {
         }
 
         @Test
-        @DisplayName("Returns only buildings belonging to the requesting tenant")
-        void withValidTenantHeader_returnsOnlyTenantOwnedBuildings() throws Exception {
+        @DisplayName("Returns buildings for requesting tenant from service (tenant filter at repo layer)")
+        void withValidTenantHeader_returnsServiceResults() throws Exception {
             BuildingCluster bldA = buildingFor(TENANT_A, CLUSTER_ID);
-            BuildingCluster bldB = buildingFor(TENANT_B, CLUSTER_ID);   // cross-tenant
-            when(service.findByCluster(CLUSTER_ID)).thenReturn(List.of(bldA, bldB));
+            when(service.findByCluster(TENANT_A, CLUSTER_ID)).thenReturn(List.of(bldA));
 
             mockMvc.perform(get("/api/v1/buildings/clusters/{id}", CLUSTER_ID)
                             .header("X-Tenant-ID", TENANT_A)
@@ -96,10 +93,9 @@ class BuildingClusterControllerTest {
         }
 
         @Test
-        @DisplayName("Returns empty list when all cluster buildings belong to another tenant")
-        void tenantARequestForTenantBBuildings_returnsEmptyList() throws Exception {
-            BuildingCluster bldB = buildingFor(TENANT_B, CLUSTER_ID);
-            when(service.findByCluster(CLUSTER_ID)).thenReturn(List.of(bldB));
+        @DisplayName("Returns empty list when service finds no buildings for tenant+cluster")
+        void noBuildingsForTenant_returnsEmptyList() throws Exception {
+            when(service.findByCluster(TENANT_A, CLUSTER_ID)).thenReturn(List.of());
 
             mockMvc.perform(get("/api/v1/buildings/clusters/{id}", CLUSTER_ID)
                             .header("X-Tenant-ID", TENANT_A)
@@ -113,7 +109,7 @@ class BuildingClusterControllerTest {
         void tenantOwnsAllBuildings_returnsAll() throws Exception {
             BuildingCluster bld1 = buildingFor(TENANT_A, CLUSTER_ID, "BLD-001");
             BuildingCluster bld2 = buildingFor(TENANT_A, CLUSTER_ID, "BLD-002");
-            when(service.findByCluster(CLUSTER_ID)).thenReturn(List.of(bld1, bld2));
+            when(service.findByCluster(TENANT_A, CLUSTER_ID)).thenReturn(List.of(bld1, bld2));
 
             mockMvc.perform(get("/api/v1/buildings/clusters/{id}", CLUSTER_ID)
                             .header("X-Tenant-ID", TENANT_A)
@@ -123,14 +119,14 @@ class BuildingClusterControllerTest {
         }
 
         @Test
-        @DisplayName("Service findByCluster is called once with the correct clusterId")
-        void serviceIsCalledWithCorrectClusterId() throws Exception {
-            when(service.findByCluster(CLUSTER_ID)).thenReturn(List.of());
+        @DisplayName("Service findByCluster is called with tenantId and clusterId")
+        void serviceIsCalledWithCorrectArgs() throws Exception {
+            when(service.findByCluster(TENANT_A, CLUSTER_ID)).thenReturn(List.of());
 
             mockMvc.perform(get("/api/v1/buildings/clusters/{id}", CLUSTER_ID)
                             .header("X-Tenant-ID", TENANT_A));
 
-            verify(service, times(1)).findByCluster(CLUSTER_ID);
+            verify(service, times(1)).findByCluster(TENANT_A, CLUSTER_ID);
         }
     }
 

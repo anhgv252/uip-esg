@@ -1,0 +1,115 @@
+_format_version: "3.0"
+_transform: true
+
+# Kong DB-less declarative config — UIP Platform STAGING
+# Sprint 11 | ADR-028: Kong Gateway Scope — analytics-service only
+#
+# DIFF from kong.poc.yml:
+#   - jwt_secrets.key updated to staging Keycloak issuer URL
+#   - rsa_public_key updated to staging Keycloak RS256 public key
+#   - cors.origins updated for staging domain
+#   - consumer username updated for staging namespace
+#
+# Pre-deploy checklist:
+#   1. Decode a real staging JWT at jwt.io → verify iss field matches jwt_secrets.key below
+#   2. Extract staging Keycloak RS256 public key:
+#      curl -s https://staging-api.uip-smartcity.vn/realms/uip/protocol/openid-connect/certs \
+#        | python3 -c "import sys,json,base64,struct; ks=json.load(sys.stdin)['keys']; \
+#          [print(k) for k in ks if k['use']=='sig']"
+#      Then convert JWK n/e to PEM using: https://keycloak.example/realms/uip/protocol/openid-connect/certs
+#   3. After Kong container restart: curl -s -o /dev/null -w "%{http_code}" \
+#        https://staging-api.uip-smartcity.vn/api/v1/analytics
+#      MUST return 401 — not 200 (auth bypass check)
+#
+# Plugin order (BR-007, ADR-028 — LOCKED):
+#   1. cors → 2. jwt → 3. request-transformer → 4. rate-limiting → 5. prometheus → 6. correlation-id
+
+services:
+  - name: analytics-service
+    url: http://analytics-service:8081
+    connect_timeout: 5000
+    read_timeout: 30000
+    write_timeout: 30000
+    retries: 0
+    routes:
+      - name: analytics-cross-building
+        paths:
+          - /api/v1/analytics
+        strip_path: false
+        methods:
+          - GET
+          - POST
+    plugins:
+      - name: cors
+        config:
+          origins:
+            - "https://staging-api.uip-smartcity.vn"
+            - "https://staging.uip-smartcity.vn"
+            - "http://localhost:3000"
+          methods:
+            - GET
+            - POST
+            - OPTIONS
+          headers:
+            - Authorization
+            - Content-Type
+            - X-Tenant-ID
+          max_age: 3600
+          credentials: true
+
+      - name: jwt
+        config:
+          claims_to_verify:
+            - exp
+          key_claim_name: iss
+          secret_is_base64: false
+          # alg=none rejected: Kong jwt plugin requires valid signature — no signature = 401
+
+      - name: request-transformer
+        config:
+          remove:
+            headers:
+              # Strip client-supplied X-Tenant-ID (BR-008: prevent header spoofing)
+              # analytics-service reads tenant from JWT claim via downstream service logic
+              - X-Tenant-ID
+              - X-Is-Aggregator
+
+      - name: rate-limiting
+        config:
+          minute: 1000
+          policy: local
+          fault_tolerant: true
+          hide_client_headers: false
+
+      - name: prometheus
+        config:
+          status_code_metrics: true
+          latency_metrics: true
+          upstream_health_metrics: true
+
+      - name: correlation-id
+        config:
+          header_name: X-Correlation-ID
+          generator: uuid#counter
+          echo_downstream: true
+
+# ── Consumers (staging Keycloak JWT issuer) ───────────────────────────────────
+consumers:
+  - username: keycloak-uip-realm-staging
+    custom_id: keycloak-uip-realm-staging
+
+jwt_secrets:
+  - consumer: keycloak-uip-realm-staging
+    # key MUST match the `iss` claim in JWT tokens issued by staging Keycloak.
+    # Local staging: Keycloak internal hostname is 'keycloak' (Docker network).
+    # Tokens obtained inside Docker network will have iss=http://keycloak:8085/realms/uip
+    # Production staging: update to https://staging-api.uip-smartcity.vn/realms/uip
+    key: "http://keycloak:8085/realms/uip"
+    algorithm: RS256
+    rsa_public_key: "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAoOWmmQulYDHiTEPrXnck\n1/wFDhbKJ96sYhHHAlheP8CPAu9SxU7XA4jCcUBY+0ihQ1GMgMb9HfLRJPv9iZHx\nlDmwaX7UwKGykN8OHnmeDVW+6hFNnoAm9EiWrfO/jHwbVBYDREKRANUbI9HSEtcm\nUZQ7ZV1XD/jzt8LMU1js5HMLyQ2T6t9M/g7AKddoEfT6XVC5noVNezU2LTtUCFg0\n9NMHxbKmUjUIUz8LvWwh2+v1lA6Kna4bAHmVhQmuvwKGEQ4pB+pxzblPiPHZOuIZ\nMDhOPqgqyMwefHu4Cchgd+C0llEnOaMtQ2yPdWZ1D9Iyop+MNmp9cuD6iSmx1WIZ\n1QIDAQAB\n-----END PUBLIC KEY-----"
+
+# ── Global plugins ────────────────────────────────────────────────────────────
+plugins:
+  - name: prometheus
+    config:
+      status_code_metrics: true

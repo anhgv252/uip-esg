@@ -3,6 +3,7 @@ import * as WebBrowser from 'expo-web-browser'
 import * as AuthSession from 'expo-auth-session'
 import Constants from 'expo-constants'
 import { storageGet, storageSet, storageDelete } from '../storage/secureStorage'
+import { syncQueue } from '../services/SyncQueue'
 
 WebBrowser.maybeCompleteAuthSession()
 
@@ -120,6 +121,7 @@ export function useAuthMobile() {
   }, [state.selectedTenant])
 
   const logout = useCallback(async () => {
+    syncQueue.destroy()
     await Promise.all([
       storageDelete(TOKEN_KEY),
       storageDelete(REFRESH_TOKEN_KEY),

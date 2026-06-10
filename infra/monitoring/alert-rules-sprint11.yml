@@ -1,0 +1,160 @@
+groups:
+
+  # ── Sprint 11: Offline Sync Queue ─────────────────────────────────────────────
+  - name: sprint11-offline-sync
+    interval: 30s
+    rules:
+
+      # Alert: SyncQueue depth >100 pending offline mutations
+      # Metric: uip_sync_queue_depth{tenant_id="..."} — custom gauge
+      # Status: PENDING INSTRUMENTATION — backend must expose this gauge when mobile
+      #         reports queue depth on reconnect flush (Sprint 12 backlog item).
+      #         Rule is created now so alert fires as soon as metric is available.
+      - alert: SyncQueueDepthHigh
+        expr: uip_sync_queue_depth > 100
+        for: 5m
+        labels:
+          severity: warning
+          team: mobile
+          sprint: "11"
+        annotations:
+          summary: "Offline sync queue depth >100 for tenant {{ $labels.tenant_id }}"
+          description: >
+            Tenant {{ $labels.tenant_id }} has {{ $value }} queued offline actions pending flush.
+            High depth indicates repeated flush failures or prolonged offline period.
+            Check: (1) X-Tenant-ID header present in POST logs; (2) SyncQueue retry exhaustion;
+            (3) backend 400 rate on building/alert routes.
+          runbook: "docs/sprint11/ops/offline-sync-runbook.md"
+
+      # Alert: High 400-rate on building/alert POST routes
+      # Proxy indicator for SyncQueue flush failures (missing X-Tenant-ID → 400)
+      # Fires if rate of 400 responses exceeds 0.1 req/s (6 failures/min) sustained 3 min
+      - alert: SyncQueueFlushFailuresHigh
+        expr: >
+          sum(rate(http_server_requests_seconds_count{
+            job="uip-backend",
+            uri=~".*/(buildings|alerts).*",
+            status="400"
+          }[5m])) > 0.1
+        for: 3m
+        labels:
+          severity: warning
+          team: backend
+          sprint: "11"
+        annotations:
+          summary: "Sustained 400 errors on building/alert routes — possible SyncQueue flush failures"
+          description: >
+            Rate: {{ $value | humanize }} req/s returning HTTP 400 on building/alert endpoints.
+            Root cause: mobile SyncQueue flush missing X-Tenant-ID header.
+            Verify commit 86f48a3c (SyncQueue X-Tenant-ID fix) is in the deployed APK.
+            Also check: token expiry, SecureStore availability on device.
+          runbook: "docs/sprint11/ops/offline-sync-runbook.md#400-flush-failures"
+
+  # ── Sprint 11: Analytics Latency ──────────────────────────────────────────────
+  - name: sprint11-analytics
+    interval: 30s
+    rules:
+
+      # Alert: Analytics REST endpoint p99 latency >5s
+      - alert: AnalyticsRestLatencyHigh
+        expr: >
+          histogram_quantile(0.99, sum(rate(http_server_requests_seconds_bucket{
+            job="analytics-service",
+            uri=~".*/energy-aggregate.*"
+          }[5m])) by (le)) > 5.0
+        for: 3m
+        labels:
+          severity: critical
+          team: backend
+          sprint: "11"
+        annotations:
+          summary: "Analytics REST p99 latency >5s on energy-aggregate endpoint"
+          description: >
+            p99 latency: {{ $value | humanizeDuration }}.
+            Check: (1) ClickHouse query performance on analytics.esg_readings;
+            (2) CLICKHOUSE_DB env var = 'analytics' on both analytics-service and Flink TM;
+            (3) ClickHouse merge progress (high merge load degrades query latency).
+          runbook: "docs/sprint11/ops/analytics-runbook.md"
+
+      # Alert: gRPC adapter active in REST-only staging profile (misconfiguration detector)
+      # REST-only staging means SPRING_APPLICATION_JSON analytics-transport=rest.
+      # If gRPC calls are processed, either:
+      #   (a) SPRING_APPLICATION_JSON was overridden and gRPC adapter loaded, or
+      #   (b) some client is calling analytics-service gRPC port directly
+      - alert: GrpcAdapterUnexpectedlyActive
+        expr: >
+          sum(rate(grpc_server_handled_total{
+            job="analytics-service",
+            grpc_method="GetEnergyAggregate"
+          }[5m])) > 0
+        for: 2m
+        labels:
+          severity: warning
+          team: devops
+          sprint: "11"
+        annotations:
+          summary: "gRPC analytics handler active — staging configured REST-only"
+          description: >
+            Staging is configured with analytics-transport=rest but gRPC calls are observed.
+            Check: (1) SPRING_APPLICATION_JSON in docker-compose.staging.yml not overridden;
+            (2) ClickHouseGrpcAnalyticsAdapter NOT in backend startup log;
+            (3) no direct gRPC client calling analytics-service:9090.
+          runbook: "docs/sprint11/ops/grpc-mutual-exclusivity.md"
+
+      # Alert: Analytics downstream 5xx sustained (REST adapter fallback active)
+      # REST adapter returns zero-result on timeout but logs ERROR — this catches
+      # prolonged analytics-service unavailability
+      - alert: AnalyticsServiceUnreachable
+        expr: >
+          up{job="analytics-service"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          team: devops
+          sprint: "11"
+        annotations:
+          summary: "analytics-service is DOWN — REST adapter fallback active"
+          description: >
+            analytics-service is unreachable. Backend REST adapter returns zero EsgAggregateResult.
+            Energy aggregation APIs return stale/zero data until service recovers.
+            Check container health: docker compose logs analytics-service.
+          runbook: "docs/sprint11/ops/analytics-runbook.md#service-down"
+
+  # ── Sprint 11: Infrastructure Health ─────────────────────────────────────────
+  - name: sprint11-infra
+    interval: 30s
+    rules:
+
+      # Alert: Backend container restart loop (indicates crash/OOM)
+      - alert: BackendRestartLoop
+        expr: >
+          increase(kube_pod_container_status_restarts_total{container="backend"}[15m]) > 2
+        for: 0m
+        labels:
+          severity: critical
+          team: devops
+          sprint: "11"
+        annotations:
+          summary: "Backend container restarting repeatedly"
+          description: >
+            Backend has restarted {{ $value }} times in 15 minutes.
+            Common causes: OOM (check memory limit 1G), startup crash (Spring context),
+            missing env var (JWT_SECRET, POSTGRES_PASSWORD).
+
+      # Alert: Backend API p99 > 500ms (staging SLO gate)
+      - alert: BackendLatencySLOBreached
+        expr: >
+          histogram_quantile(0.99, sum(rate(http_server_requests_seconds_bucket{
+            job="uip-backend"
+          }[5m])) by (le)) > 0.5
+        for: 5m
+        labels:
+          severity: warning
+          team: backend
+          sprint: "11"
+        annotations:
+          summary: "Backend p99 >500ms — staging SLO breached"
+          description: >
+            p99 latency: {{ $value | humanizeDuration }}.
+            Staging NO-GO gate requires p99 <500ms.
+            Check: HikariCP pool, Redis cache hit rate, DB slow query log.

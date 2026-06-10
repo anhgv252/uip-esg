@@ -1,12 +1,15 @@
 .DEFAULT_GOAL := help
 
-COMPOSE          = docker compose --env-file .env
-COMPOSE_UAT      = docker compose --env-file .env.uat
-COMPOSE_FILE     = -f docker-compose.yml
-COMPOSE_UAT_FILE = -f docker-compose.yml -f docker-compose.uat.yml
+COMPOSE             = docker compose --env-file .env
+COMPOSE_UAT         = docker compose --env-file .env.uat
+COMPOSE_STAGING     = docker compose --env-file .env.staging
+COMPOSE_FILE        = -f docker-compose.yml
+COMPOSE_UAT_FILE    = -f docker-compose.yml -f docker-compose.uat.yml
+COMPOSE_STAGING_FILE = -f docker-compose.yml -f docker-compose.uat.yml -f docker-compose.staging.yml
 
 .PHONY: help up up-ha ha-health-check down logs ps migrate test-mqtt test-pipeline check-contract-drift \
         uat-up uat-down uat-logs uat-ps uat-test uat-clean seed-uat clean \
+        staging-up staging-down staging-logs staging-ps staging-smoke-test \
         regression-test regression-test-group \
         flink-list flink-build flink-submit flink-cancel flink-savepoint flink-deploy flink-status \
         avro-register ch-migrate \
@@ -163,6 +166,48 @@ seed-uat: ## Seed UAT data (50 buildings, 100 sensors, 3 citizens, 6-month histo
 		DB_USER=$$(grep -E '^POSTGRES_USER=' .env.uat | cut -d= -f2-) \
 		DB_PASSWORD=$$(grep -E '^POSTGRES_PASSWORD=' .env.uat | cut -d= -f2-) \
 		python3 ../scripts/seed_uat_data.py
+
+# ─── Staging Stack (Sprint 11) ────────────────────────────────────────────────
+
+staging-up: ## Start Sprint 11 staging stack (uses .env.staging — copy from .env.staging.example first)
+	@test -f .env.staging || { echo "ERROR: .env.staging not found. Copy .env.staging.example and fill in values."; exit 1; }
+	@test -f ../infra/kong/kong.staging.yml || { echo "ERROR: kong.staging.yml not found."; exit 1; }
+	@echo "Pre-flight: verifying kong.staging.yml RS256 public key is not the placeholder..."
+	@grep -q "REPLACE_WITH_STAGING_KEYCLOAK_RS256_PUBLIC_KEY" ../infra/kong/kong.staging.yml && \
+		{ echo "ERROR: kong.staging.yml still has placeholder RS256 key. Update jwt_secrets.rsa_public_key."; exit 1; } || true
+	@echo "Building sprint11-staging image..."
+	@cp -n ../backend/build/libs/uip-backend-0.1.0-SNAPSHOT.jar ../backend/build/libs/app.jar 2>/dev/null || \
+		cp ../backend/build/libs/uip-backend-0.1.0-SNAPSHOT.jar ../backend/build/libs/app.jar
+	$(COMPOSE_STAGING) $(COMPOSE_STAGING_FILE) build backend
+	$(COMPOSE_STAGING) $(COMPOSE_STAGING_FILE) up -d
+	@echo ""
+	@echo "=== Staging stack starting ==="
+	@echo "  Backend:            http://localhost:8080"
+	@echo "  Kong proxy:         http://localhost:8000"
+	@echo "  Analytics-service:  http://localhost:8082"
+	@echo "  ClickHouse:         http://localhost:8123"
+	@echo "  Flink UI:           http://localhost:8081"
+	@echo ""
+	@echo "Run 'make staging-smoke-test' after stack is healthy."
+
+staging-down: ## Stop staging stack (preserves volumes)
+	$(COMPOSE_STAGING) $(COMPOSE_STAGING_FILE) down
+
+staging-logs: ## Tail staging logs: make staging-logs svc=backend
+	$(COMPOSE_STAGING) $(COMPOSE_STAGING_FILE) logs -f $(svc)
+
+staging-ps: ## Show staging service status
+	$(COMPOSE_STAGING) $(COMPOSE_STAGING_FILE) ps
+
+staging-smoke-test: ## Run Sprint 11 smoke tests against staging
+	@echo "Running Sprint 11 smoke tests..."
+	@BACKEND_URL=http://localhost:8080 \
+	 KONG_PROXY_URL=http://localhost:8000 \
+	 ANALYTICS_SERVICE_URL=http://localhost:8082 \
+	 CLICKHOUSE_URL=http://localhost:8123 \
+	 POSTGRES_USER=$$(grep -E '^POSTGRES_USER=' .env.staging | cut -d= -f2-) \
+	 POSTGRES_DB=$$(grep -E '^POSTGRES_DB=' .env.staging | cut -d= -f2-) \
+	 bash ../scripts/smoke-test-sprint11.sh
 
 uat-test: ## Run smoke tests against UAT stack (10 smoke test cases)
 	@echo "Running UAT smoke tests against http://localhost:8080 ..."

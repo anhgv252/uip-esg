@@ -75,9 +75,8 @@ public class BuildingClusterController {
     public List<BuildingResponse> listByCluster(
             @RequestHeader("X-Tenant-ID") String tenantId,
             @PathVariable String clusterId) {
-        return service.findByCluster(clusterId)
+        return service.findByCluster(tenantId, clusterId)
             .stream()
-            .filter(b -> tenantId.equals(b.getTenantId()))
             .map(BuildingResponse::from)
             .toList();
     }

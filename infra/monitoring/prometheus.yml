@@ -7,6 +7,7 @@ global:
 rule_files:
   - "alert-rules.yml"
   - "alerts/*.yml"
+  - "alert-rules-sprint11.yml"
 
 alerting:
   alertmanagers:
@@ -75,3 +76,10 @@ scrape_configs:
     scrape_interval: 15s
     static_configs:
       - targets: ['emqx:18083']
+
+  # Sprint 11 — ClickHouse OLAP metrics (via clickhouse-exporter sidecar)
+  # Exporter added to docker-compose.monitoring.yml; connects to uip-clickhouse:8123
+  - job_name: 'clickhouse'
+    scrape_interval: 30s
+    static_configs:
+      - targets: ['clickhouse-exporter:9116']

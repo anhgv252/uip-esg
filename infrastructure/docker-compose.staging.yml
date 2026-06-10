@@ -1,0 +1,206 @@
+# Sprint 11 Staging Overlay
+# Layers on top of docker-compose.yml + docker-compose.uat.yml
+#
+# Usage:
+#   docker compose \
+#     -f docker-compose.yml \
+#     -f docker-compose.uat.yml \
+#     -f docker-compose.staging.yml \
+#     --env-file .env.staging \
+#     up -d
+#
+# Or: make staging-up  (add to Makefile)
+#
+# Sprint 11 changes from UAT:
+#   - backend: sprint11-staging image + T2 capability flags
+#       analytics-external=true, analytics-transport=rest
+#       ClickHouseRestAnalyticsAdapter LOADS; ClickHouseGrpcAnalyticsAdapter does NOT
+#   - backend: multi-tenancy=true (SyncQueue X-Tenant-ID enforcement active)
+#   - kong: staging config (staging Keycloak issuer URL + RS256 public key)
+#   - flink: checkpoints restored to S3/MinIO (UAT overlay erroneously used local disk)
+#   - clickhouse: CLICKHOUSE_DB=analytics asserted (canonical name — schema alignment)
+#
+# INFRA CONSTRAINT FIX (vs docker-compose.uat.yml):
+#   The UAT overlay sets state.checkpoints.dir: file:///flink/checkpoints (local disk).
+#   This violates the S3 checkpoint constraint (pod eviction = data loss).
+#   This staging overlay explicitly restores S3 checkpoint path for both JM and TM.
+
+services:
+
+  # ── Backend: Sprint 11 image + T2 capability flags ───────────────────────────
+  backend:
+    image: uip-smartcity-backend:sprint11-staging
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      JAVA_TOOL_OPTIONS: >-
+        -XX:+UseContainerSupport
+        -XX:MaxRAMPercentage=70.0
+        -XX:InitialRAMPercentage=50.0
+        -Djava.security.egd=file:/dev/./urandom
+      # Sprint 11 T2 capability flags.
+      # SPRING_APPLICATION_JSON is the only reliable way to set properties with dashes
+      # in environment variables (Spring relaxed binding does not map UIP_CAPABILITIES_ANALYTICS-EXTERNAL).
+      # ClickHouseRestAnalyticsAdapter @ConditionalOnExpression:
+      #   analytics-external=true AND analytics-transport=rest → REST adapter LOADS
+      # ClickHouseGrpcAnalyticsAdapter @ConditionalOnProperty(transport=grpc):
+      #   transport != grpc → gRPC adapter does NOT load
+      # => Only ONE AnalyticsPort bean active (REST). NoUniqueBeanDefinitionException cannot occur.
+      SPRING_APPLICATION_JSON: >-
+        {"uip":{"capabilities":{"analytics-external":true,"analytics-transport":"rest","multi-tenancy":true},"analytics-service":{"url":"http://analytics-service:8081"}}}
+      MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: health,info,prometheus
+      MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS: never
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 512M
+    logging:
+      driver: json-file
+      options:
+        max-size: "100m"
+        max-file: "5"
+
+  # ── Kong: staging config (Keycloak issuer + RS256 key for staging) ───────────
+  kong:
+    volumes:
+      - ../infra/kong/kong.staging.yml:/tmp/kong.yml:ro
+    logging:
+      driver: json-file
+      options:
+        max-size: "30m"
+        max-file: "3"
+
+  # ── Analytics-service: canonical DB name + resource limits ───────────────────
+  analytics-service:
+    environment:
+      # Canonical DB name assertion — must match Flink sink and ClickHouse schema
+      CLICKHOUSE_DB: analytics
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+          cpus: '0.5'
+        reservations:
+          memory: 256m
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "3"
+
+  # ── ClickHouse: canonical DB name assertion ───────────────────────────────────
+  clickhouse:
+    environment:
+      CLICKHOUSE_DB: analytics
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "3"
+
+  # ── TimescaleDB ───────────────────────────────────────────────────────────────
+  timescaledb:
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "3"
+
+  # ── Redis ─────────────────────────────────────────────────────────────────────
+  redis:
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "3"
+
+  # ── Kafka ─────────────────────────────────────────────────────────────────────
+  kafka:
+    logging:
+      driver: json-file
+      options:
+        max-size: "30m"
+        max-file: "3"
+
+  # ── EMQX: management dashboard localhost-only ─────────────────────────────────
+  emqx:
+    ports:
+      - "1883:1883"
+      - "8083:8083"
+      - "127.0.0.1:18083:18083"
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "3"
+
+  # ── Flink JobManager: S3 checkpoint path RESTORED (fixes UAT overlay regression) ──
+  # UAT overlay erroneously overwrites FLINK_PROPERTIES with local disk checkpoint path.
+  # Staging MUST use S3 (MinIO) — pod eviction with local checkpoints = unrecoverable job loss.
+  flink-jobmanager:
+    environment:
+      FLINK_PROPERTIES: |
+        jobmanager.rpc.address: flink-jobmanager
+        jobmanager.memory.process.size: 1400m
+        state.backend: rocksdb
+        state.backend.incremental: true
+        state.checkpoints.dir: s3://uip-flink-checkpoints/checkpoints
+        state.savepoints.dir: s3://uip-flink-checkpoints/savepoints
+        s3.endpoint: http://minio:9000
+        s3.access-key: ${MINIO_ROOT_USER:-minioadmin}
+        s3.secret-key: ${MINIO_ROOT_PASSWORD:-minioadmin}
+        s3.path.style.access: true
+        execution.checkpointing.interval: 30000
+        execution.checkpointing.timeout: 60000
+        metrics.reporter.prom.class: org.apache.flink.metrics.prometheus.PrometheusReporter
+        metrics.reporter.prom.port: 9250
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "3"
+
+  # ── Flink TaskManager: S3 checkpoint path RESTORED ────────────────────────────
+  flink-taskmanager:
+    environment:
+      FLINK_PROPERTIES: |
+        jobmanager.rpc.address: flink-jobmanager
+        taskmanager.memory.process.size: 2400m
+        taskmanager.numberOfTaskSlots: 4
+        state.backend: rocksdb
+        state.backend.incremental: true
+        state.checkpoints.dir: s3://uip-flink-checkpoints/checkpoints
+        state.savepoints.dir: s3://uip-flink-checkpoints/savepoints
+        s3.endpoint: http://minio:9000
+        s3.access-key: ${MINIO_ROOT_USER:-minioadmin}
+        s3.secret-key: ${MINIO_ROOT_PASSWORD:-minioadmin}
+        s3.path.style.access: true
+        metrics.reporter.prom.class: org.apache.flink.metrics.prometheus.PrometheusReporter
+        metrics.reporter.prom.port: 9250
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "3"
+
+  # ── Keycloak ──────────────────────────────────────────────────────────────────
+  keycloak:
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "3"
+
+  # ── Frontend ──────────────────────────────────────────────────────────────────
+  frontend:
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "3"

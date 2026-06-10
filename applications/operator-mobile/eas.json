@@ -18,14 +18,43 @@
         "gradleCommand": ":app:assembleRelease"
       }
     },
+    "staging": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk",
+        "gradleCommand": ":app:assembleRelease"
+      },
+      "env": {
+        "API_BASE_URL": "https://staging-api.uip-smartcity.vn"
+      }
+    },
     "production": {
+      "autoIncrement": {
+        "versionCode": true
+      },
       "android": {
         "buildType": "aab",
         "gradleCommand": ":app:bundleRelease"
+      },
+      "env": {
+        "API_BASE_URL": "https://api.uip-smartcity.vn"
       }
     }
   },
   "submit": {
-    "production": {}
+    "staging": {
+      "android": {
+        "serviceAccountKeyPath": "./google-service-account.json",
+        "track": "internal",
+        "releaseStatus": "draft"
+      }
+    },
+    "production": {
+      "android": {
+        "serviceAccountKeyPath": "./google-service-account.json",
+        "track": "production",
+        "releaseStatus": "completed"
+      }
+    }
   }
 }

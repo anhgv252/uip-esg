@@ -19,6 +19,11 @@ export interface QueuedAction {
   createdAt: number
 }
 
+export interface SyncQueueConfig {
+  /** Called when a queued action results in HTTP 409 Conflict */
+  onConflict?: (action: QueuedAction, serverVersion: unknown) => void
+}
+
 type SyncStatusListener = (pending: number) => void
 
 class SyncQueue {
@@ -26,7 +31,13 @@ class SyncQueue {
   private isFlushing = false
   private listeners: SyncStatusListener[] = []
   private unsubscribeNetInfo?: () => void
-  private enqueueLock = false
+  private lockPromise: Promise<void> = Promise.resolve()
+  private lockResolver: (() => void) | null = null
+  private config: SyncQueueConfig
+
+  constructor(config: SyncQueueConfig = {}) {
+    this.config = config
+  }
 
   init(): void {
     this.unsubscribeNetInfo = NetInfo.addEventListener((state: NetInfoState) => {
@@ -57,6 +68,23 @@ class SyncQueue {
     this.listeners.forEach((l) => l(queue.length))
   }
 
+  private async acquireLock(): Promise<void> {
+    const prevLock = this.lockPromise
+    let resolver: () => void
+    this.lockPromise = new Promise<void>((resolve) => {
+      resolver = resolve
+    })
+    await prevLock
+    this.lockResolver = resolver!
+  }
+
+  private releaseLock(): void {
+    if (this.lockResolver) {
+      this.lockResolver()
+      this.lockResolver = null
+    }
+  }
+
   async enqueue(
     action: Omit<QueuedAction, 'id' | 'tenantId' | 'retries' | 'createdAt'>,
     tenantId: string,
@@ -70,16 +98,13 @@ class SyncQueue {
     }
 
     // Serialize writes to prevent concurrent enqueue losing entries
-    while (this.enqueueLock) {
-      await new Promise((r) => setTimeout(r, 20))
-    }
-    this.enqueueLock = true
+    await this.acquireLock()
     try {
       const queue = await this.getQueue()
       queue.push(entry)
       await this.saveQueue(queue)
     } finally {
-      this.enqueueLock = false
+      this.releaseLock()
     }
 
     await this.notify()
@@ -100,8 +125,8 @@ class SyncQueue {
 
       const remaining: QueuedAction[] = []
       for (const action of queue) {
-        const success = await this.executeAction(action)
-        if (!success && action.retries < MAX_RETRIES) {
+        const result = await this.executeAction(action)
+        if (!result.ok && result.retryable && action.retries < MAX_RETRIES) {
           remaining.push({ ...action, retries: action.retries + 1 })
         }
       }
@@ -118,7 +143,13 @@ class SyncQueue {
     await this.notify()
   }
 
-  private async executeAction(action: QueuedAction): Promise<boolean> {
+  /**
+   * Execute a queued action.
+   * Returns { ok: true } on success,
+   * { ok: false, retryable: true } on network/server error (5xx),
+   * { ok: false, retryable: false } on client error (4xx) — do NOT retry.
+   */
+  private async executeAction(action: QueuedAction): Promise<{ ok: boolean; retryable: boolean }> {
     let token: string | null = null
     if (action.tokenKey) {
       token = await storageGet(action.tokenKey)
@@ -134,9 +165,33 @@ class SyncQueue {
         },
         body: action.payload ? JSON.stringify(action.payload) : undefined,
       })
-      return response.ok
+
+      if (response.ok) {
+        return { ok: true, retryable: false }
+      }
+
+      // Client errors (4xx) — don't waste retries, the request is invalid/expired
+      if (response.status >= 400 && response.status < 500) {
+        // Handle 409 Conflict separately — notify operator
+        if (response.status === 409 && this.config.onConflict) {
+          try {
+            const serverVersion = await response.json()
+            this.config.onConflict(action, serverVersion)
+          } catch {
+            this.config.onConflict(action, null)
+          }
+        }
+        console.warn(
+          `[SyncQueue] action "${action.type}" failed with ${response.status}, not retrying`,
+        )
+        return { ok: false, retryable: false }
+      }
+
+      // Server errors (5xx) and unknown — retryable
+      return { ok: false, retryable: true }
     } catch {
-      return false
+      // Network error — retryable
+      return { ok: false, retryable: true }
     }
   }
 

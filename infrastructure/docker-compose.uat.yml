@@ -130,7 +130,13 @@ services:
         jobmanager.rpc.address: flink-jobmanager
         jobmanager.memory.process.size: 1400m
         state.backend: rocksdb
-        state.checkpoints.dir: file:///flink/checkpoints
+        state.backend.incremental: true
+        state.checkpoints.dir: s3://uip-flink-checkpoints/checkpoints
+        state.savepoints.dir: s3://uip-flink-checkpoints/savepoints
+        s3.endpoint: http://minio:9000
+        s3.access-key: ${MINIO_ROOT_USER:-minioadmin}
+        s3.secret-key: ${MINIO_ROOT_PASSWORD:-minioadmin}
+        s3.path.style.access: true
         execution.checkpointing.interval: 30000
         execution.checkpointing.timeout: 60000
         web.log.path: /flink/log
@@ -157,7 +163,13 @@ services:
         taskmanager.memory.process.size: 2400m
         taskmanager.numberOfTaskSlots: 4
         state.backend: rocksdb
-        state.checkpoints.dir: file:///flink/checkpoints
+        state.backend.incremental: true
+        state.checkpoints.dir: s3://uip-flink-checkpoints/checkpoints
+        state.savepoints.dir: s3://uip-flink-checkpoints/savepoints
+        s3.endpoint: http://minio:9000
+        s3.access-key: ${MINIO_ROOT_USER:-minioadmin}
+        s3.secret-key: ${MINIO_ROOT_PASSWORD:-minioadmin}
+        s3.path.style.access: true
     deploy:
       resources:
         limits:

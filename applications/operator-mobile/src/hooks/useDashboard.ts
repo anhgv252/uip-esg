@@ -1,6 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
 import { apiClient } from '../api/client'
 import { useAuth } from '../context/AuthContext'
+import { useOfflineQuery } from './useOfflineQuery'
+import { CACHE_TTL } from '../services/OfflineCache'
 
 /** Building safety score from BuildingSafetyService */
 export interface BuildingSafetyScore {
@@ -40,12 +42,12 @@ export function useBuildingSafety(buildingId: string | null) {
 
 export function useDashboard() {
   const { token } = useAuth()
-  return useQuery({
+  return useOfflineQuery<DashboardData>({
     queryKey: ['dashboard'],
     queryFn: () =>
       apiClient.get<DashboardData>('/api/v1/dashboard', token ?? undefined),
     staleTime: 30_000,
-    refetchInterval: 30_000, // Auto-refresh every 30s
+    cacheTtl: CACHE_TTL.TIER1, // 5 min — real-time KPIs
     enabled: !!token,
   })
 }

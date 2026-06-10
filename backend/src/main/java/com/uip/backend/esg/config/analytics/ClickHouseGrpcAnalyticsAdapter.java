@@ -6,7 +6,7 @@ import com.uip.analytics.grpc.v1.EnergyAnalyticsServiceGrpc;
 import io.grpc.StatusRuntimeException;
 import lombok.extern.slf4j.Slf4j;
 import net.devh.boot.grpc.client.inject.GrpcClient;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -23,10 +23,7 @@ import java.util.concurrent.TimeUnit;
  * so ESG reporting continues (with zero data) rather than 500.</p>
  */
 @Component
-@ConditionalOnProperty(
-    name = "uip.capabilities.analytics-transport",
-    havingValue = "grpc"
-)
+@ConditionalOnExpression("${uip.capabilities.analytics-external:false} && '${uip.capabilities.analytics-transport:rest}'.equals('grpc')")
 @Slf4j
 public class ClickHouseGrpcAnalyticsAdapter implements AnalyticsPort {
 

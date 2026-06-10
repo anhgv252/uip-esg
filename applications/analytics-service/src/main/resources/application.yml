@@ -54,7 +54,7 @@ springdoc:
 # gRPC server — ADR-012 internal transport
 grpc:
   server:
-    port: 9090
+    port: ${GRPC_SERVER_PORT:9090}
 
 logging:
   pattern:

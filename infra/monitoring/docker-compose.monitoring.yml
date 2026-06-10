@@ -5,6 +5,7 @@ services:
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
       - ./alert-rules.yml:/etc/prometheus/alert-rules.yml
+      - ./alert-rules-sprint11.yml:/etc/prometheus/alert-rules-sprint11.yml
       - ./prometheus/alerts:/etc/prometheus/alerts
       - prometheus_data:/prometheus
     command:
@@ -75,6 +76,23 @@ services:
       REDIS_PASSWORD: "${REDIS_PASSWORD:-redis_dev_password}"
     ports:
       - "9121:9121"
+    restart: unless-stopped
+    networks:
+      - uip-network
+
+  # Sprint 11: ClickHouse metrics exporter
+  # Connects to uip-clickhouse:8123 and exposes metrics at :9116 for Prometheus scraping.
+  # Scrape target: clickhouse-exporter:9116 (see prometheus.yml job 'clickhouse')
+  clickhouse-exporter:
+    image: f1yegor/clickhouse-exporter:latest
+    container_name: clickhouse-exporter
+    environment:
+      CLICKHOUSE_USER: "${CLICKHOUSE_USER:-default}"
+      CLICKHOUSE_PASSWORD: "${CLICKHOUSE_PASSWORD:-}"
+    command:
+      - '-scrape_uri=http://uip-clickhouse:8123/'
+    ports:
+      - "9116:9116"
     restart: unless-stopped
     networks:
       - uip-network

@@ -17,6 +17,8 @@ public interface BuildingClusterRepository extends JpaRepository<BuildingCluster
 
     List<BuildingCluster> findByClusterIdAndIsActiveTrue(String clusterId);
 
+    List<BuildingCluster> findByClusterIdAndTenantIdAndIsActiveTrue(String clusterId, String tenantId);
+
     boolean existsByTenantIdAndBuildingCode(String tenantId, String buildingCode);
 
     List<BuildingCluster> findByTenantIdInAndIsActiveTrue(List<String> tenantIds);

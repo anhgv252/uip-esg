@@ -29,8 +29,8 @@ public class BuildingClusterService {
                 "Building not found: " + buildingCode + " for tenant: " + tenantId));
     }
 
-    public List<BuildingCluster> findByCluster(String clusterId) {
-        return repository.findByClusterIdAndIsActiveTrue(clusterId);
+    public List<BuildingCluster> findByCluster(String tenantId, String clusterId) {
+        return repository.findByClusterIdAndTenantIdAndIsActiveTrue(clusterId, tenantId);
     }
 
     /**
