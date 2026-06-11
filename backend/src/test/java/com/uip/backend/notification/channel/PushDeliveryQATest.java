@@ -1,5 +1,7 @@
 package com.uip.backend.notification.channel;
 
+import com.google.firebase.messaging.FirebaseMessaging;
+import com.eatthepath.pushy.apns.ApnsClient;
 import com.uip.backend.notification.domain.PushSubscription;
 import com.uip.backend.notification.repository.PushSubscriptionRepository;
 import com.uip.backend.notification.service.AlertNotification;
@@ -28,6 +30,12 @@ class PushDeliveryQATest {
     @Mock
     private PushSubscriptionRepository subscriptionRepository;
 
+    @Mock
+    private FirebaseMessaging firebaseMessaging;
+
+    @Mock
+    private ApnsClient apnsClient;
+
     private final AlertNotification testNotification = new AlertNotification(
             "SENSOR-001", "FLOOD", "CRITICAL", "Flood emergency detected", "hcm", 1L);
 
@@ -46,7 +54,7 @@ class PushDeliveryQATest {
             when(subscriptionRepository.findByTenantIdAndActiveTrue("hcm"))
                     .thenReturn(List.of(fcmSub));
 
-            FcmAdapter fcm = new FcmAdapter(subscriptionRepository);
+            FcmAdapter fcm = new FcmAdapter(subscriptionRepository, (FirebaseMessaging) null);
             assertDoesNotThrow(() -> fcm.send(testNotification));
         }
 
@@ -73,8 +81,8 @@ class PushDeliveryQATest {
             when(subscriptionRepository.findByTenantIdAndActiveTrue("hcm"))
                     .thenReturn(List.of(fcmSub, apnsSub));
 
-            FcmAdapter fcm = new FcmAdapter(subscriptionRepository);
-            ApnsAdapter apns = new ApnsAdapter(subscriptionRepository);
+            FcmAdapter fcm = new FcmAdapter(subscriptionRepository, (FirebaseMessaging) null);
+            ApnsAdapter apns = new ApnsAdapter(subscriptionRepository, apnsClient, "com.uip.operator");
 
             assertDoesNotThrow(() -> fcm.send(testNotification));
             assertDoesNotThrow(() -> apns.send(testNotification));
@@ -86,7 +94,7 @@ class PushDeliveryQATest {
             when(subscriptionRepository.findByTenantIdAndActiveTrue("hcm"))
                     .thenReturn(Collections.emptyList());
 
-            FcmAdapter fcm = new FcmAdapter(subscriptionRepository);
+            FcmAdapter fcm = new FcmAdapter(subscriptionRepository, (FirebaseMessaging) null);
             assertDoesNotThrow(() -> fcm.send(testNotification));
             // No exception = graceful degradation to SSE-only
         }

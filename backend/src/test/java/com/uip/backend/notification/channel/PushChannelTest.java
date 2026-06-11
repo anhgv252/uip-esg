@@ -1,5 +1,7 @@
 package com.uip.backend.notification.channel;
 
+import com.google.firebase.messaging.FirebaseMessaging;
+import com.eatthepath.pushy.apns.ApnsClient;
 import com.uip.backend.notification.domain.PushSubscription;
 import com.uip.backend.notification.repository.PushSubscriptionRepository;
 import com.uip.backend.notification.service.AlertNotification;
@@ -31,8 +33,9 @@ class PushChannelTest {
     @BeforeEach
     void setup() {
         subscriptionRepository = mock(PushSubscriptionRepository.class);
-        fcmAdapter = new FcmAdapter(subscriptionRepository);
-        apnsAdapter = new ApnsAdapter(subscriptionRepository);
+        // Use test constructors with null clients — graceful no-op mode
+        fcmAdapter = new FcmAdapter(subscriptionRepository, (FirebaseMessaging) null);
+        apnsAdapter = new ApnsAdapter(subscriptionRepository, (ApnsClient) null, "com.uip.operator");
     }
 
     // -------------------------------------------------------------------------

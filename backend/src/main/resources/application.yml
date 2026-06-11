@@ -276,6 +276,15 @@ uip:
       public-key: ${VAPID_PUBLIC_KEY:}
       private-key: ${VAPID_PRIVATE_KEY:}
       subject: ${VAPID_SUBJECT:mailto:admin@uip.vn}
+    fcm:
+      enabled: false
+      service-account-key: ${FCM_SERVICE_ACCOUNT_KEY:}
+    apns:
+      enabled: false
+      certificate-path: ${APNS_CERTIFICATE_PATH:}
+      certificate-password: ${APNS_CERTIFICATE_PASSWORD:}
+      topic: ${APNS_TOPIC:com.uip.operator}
+      production: ${APNS_PRODUCTION:false}
 
 apicurio:
   registry:

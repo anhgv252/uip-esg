@@ -4,6 +4,7 @@ set -euo pipefail
 
 BOOTSTRAP="kafka:9092"
 WAIT_SECS=10
+REPLICATION_FACTOR="${KAFKA_REPLICATION_FACTOR:-1}"
 
 echo "Waiting ${WAIT_SECS}s for Kafka to be fully ready..."
 sleep "${WAIT_SECS}"
@@ -16,12 +17,12 @@ create_topic() {
     --create --if-not-exists \
     --topic "${topic}" \
     --partitions "${partitions}" \
-    --replication-factor 1 \
+    --replication-factor "${REPLICATION_FACTOR}" \
     --config retention.ms="${retention_ms}"
   echo "  [OK] ${topic}"
 }
 
-echo "=== Creating UIP Kafka Topics ==="
+echo "=== Creating UIP Kafka Topics (RF=${REPLICATION_FACTOR}) ==="
 
 # Raw ingestion
 create_topic "raw_telemetry" 6

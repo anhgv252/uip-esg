@@ -71,6 +71,8 @@ dependencies {
     // Test
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'org.springframework.security:spring-security-test'
+    testImplementation 'org.springframework.security:spring-security-oauth2-resource-server'
+    testImplementation 'org.springframework.security:spring-security-oauth2-jose'
     testImplementation 'org.testcontainers:junit-jupiter'
     testImplementation 'org.testcontainers:clickhouse:1.19.7'
     // Pact — provider verification (S11-PACT-01)
@@ -97,6 +99,15 @@ test {
 jacocoTestReport {
     dependsOn test
     reports { xml.required = true; html.required = true }
+    // Exclude generated protobuf/gRPC classes from coverage
+    afterEvaluate {
+        classDirectories.setFrom(files(classDirectories.files.collect {
+            fileTree(dir: it, exclude: [
+                'com/uip/analytics/grpc/v1/**',
+                'io/grpc/**'
+            ])
+        }))
+    }
 }
 
 bootJar {

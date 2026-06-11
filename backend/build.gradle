@@ -127,6 +127,11 @@ dependencies {
     implementation 'org.apache.httpcomponents:httpclient:4.5.14'
     implementation 'org.bitbucket.b_c:jose4j:0.9.6'
 
+    // FCM — Firebase Cloud Messaging (S6-M04 push notification)
+    implementation 'com.google.firebase:firebase-admin:9.2.0'
+    // APNs — Apple Push Notification service via Pushy (S6-M04)
+    implementation 'com.eatthepath:pushy:0.15.4'
+
     // Utilities
     compileOnly    'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'

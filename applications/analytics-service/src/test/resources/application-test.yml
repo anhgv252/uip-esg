@@ -1,0 +1,28 @@
+server:
+  port: 0
+
+spring:
+  application:
+    name: uip-analytics-service-test
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+
+clickhouse:
+  url: jdbc:clickhouse://localhost:8123
+  username: default
+  password: ""
+  database: analytics
+
+uip:
+  security:
+    jwt-secret: test_jwt_secret_must_be_at_least_32_chars
+    keycloak-public-key: ""
+
+grpc:
+  server:
+    port: 0
+
+logging:
+  level:
+    com.uip.analytics: DEBUG

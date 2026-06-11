@@ -251,6 +251,18 @@ services:
     networks:
       - uip-network
 
+  # ─── Override: kafka-init uses RF=3 in HA cluster ─────────────────────────
+  kafka-init:
+    environment:
+      KAFKA_REPLICATION_FACTOR: "3"
+    depends_on:
+      kafka:
+        condition: service_healthy
+      kafka-2:
+        condition: service_healthy
+      kafka-3:
+        condition: service_healthy
+
   # ═══════════════════════════════════════════════════════════════════════════
   # PostgreSQL Streaming Replication — Primary + Hot Standby (S8-OPS04)
   # Manual promotion (no auto-failover) — SA recommendation: false promotion

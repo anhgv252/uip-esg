@@ -1,19 +1,31 @@
 package com.uip.backend.notification.channel;
 
+import com.google.auth.oauth2.GoogleCredentials;
+import com.google.firebase.FirebaseApp;
+import com.google.firebase.FirebaseOptions;
+import com.google.firebase.messaging.FirebaseMessaging;
+import com.google.firebase.messaging.FirebaseMessagingException;
+import com.google.firebase.messaging.Message;
+import com.google.firebase.messaging.Notification;
 import com.uip.backend.notification.domain.PushSubscription;
 import com.uip.backend.notification.repository.PushSubscriptionRepository;
 import com.uip.backend.notification.service.AlertNotification;
 import com.uip.backend.notification.service.NotificationChannel;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 
 /**
  * S6-M04 — FCM (Firebase Cloud Messaging) notification channel.
  * Only active when push.fcm.enabled=true in configuration.
- * No-op otherwise — safe for environments without Firebase credentials.
+ * If service account key is not configured, operates in graceful no-op mode.
  */
 @Component
 @ConditionalOnProperty(name = "push.fcm.enabled", havingValue = "true")
@@ -21,10 +33,34 @@ import java.util.List;
 public class FcmAdapter implements NotificationChannel {
 
     private final PushSubscriptionRepository subscriptionRepository;
+    private final FirebaseMessaging firebaseMessaging;
+    private final boolean initialized;
 
-    public FcmAdapter(PushSubscriptionRepository subscriptionRepository) {
+    /**
+     * Production constructor — initializes Firebase from service account key file.
+     */
+    public FcmAdapter(
+            PushSubscriptionRepository subscriptionRepository,
+            @Value("${uip.push.fcm.service-account-key:}") String serviceAccountKeyPath
+    ) {
         this.subscriptionRepository = subscriptionRepository;
-        log.info("FCM notification channel ENABLED");
+        this.firebaseMessaging = initializeFirebase(serviceAccountKeyPath);
+        this.initialized = this.firebaseMessaging != null;
+
+        if (initialized) {
+            log.info("FCM notification channel ENABLED — FirebaseMessaging ready");
+        } else {
+            log.warn("FCM notification channel ENABLED but no service account key configured — operating in no-op mode");
+        }
+    }
+
+    /**
+     * Test constructor — accepts a pre-built FirebaseMessaging instance.
+     */
+    FcmAdapter(PushSubscriptionRepository subscriptionRepository, FirebaseMessaging firebaseMessaging) {
+        this.subscriptionRepository = subscriptionRepository;
+        this.firebaseMessaging = firebaseMessaging;
+        this.initialized = firebaseMessaging != null;
     }
 
     @Override
@@ -40,12 +76,18 @@ public class FcmAdapter implements NotificationChannel {
             return;
         }
 
+        if (!initialized) {
+            log.debug("FCM not initialized — skipping {} tokens for tenant={}",
+                    fcmTokens.size(), notification.tenantId());
+            return;
+        }
+
         for (PushSubscription subscription : fcmTokens) {
             try {
                 sendFcmMessage(subscription.getDeviceToken(), notification);
             } catch (Exception e) {
-                log.warn("FCM send failed for tenant={}: {}", notification.tenantId(), e.getMessage());
-                log.debug("Failed FCM token: {}", maskToken(subscription.getDeviceToken()));
+                log.warn("FCM send failed for tenant={} token={}: {}",
+                        notification.tenantId(), maskToken(subscription.getDeviceToken()), e.getMessage());
                 handleInvalidToken(subscription, e);
             }
         }
@@ -57,23 +99,67 @@ public class FcmAdapter implements NotificationChannel {
     }
 
     /**
-     * Send FCM message. In production, this uses FirebaseMessaging.getInstance().send().
-     * For now, logs the notification — actual Firebase integration requires service account key.
+     * Send FCM message via FirebaseMessaging SDK.
+     * Builds a Message with notification payload and alert metadata as data fields.
      */
-    private void sendFcmMessage(String token, AlertNotification notification) {
-        log.debug("FCM push sent: token={} severity={} module={} sensor={}",
-                maskToken(token), notification.severity(), notification.module(), notification.sensorId());
-        // TODO: Wire FirebaseMessaging when service account key is configured
-        // Message message = Message.builder()
-        //     .setToken(token)
-        //     .setNotification(Notification.builder()
-        //         .setTitle("Alert: " + notification.severity())
-        //         .setBody(notification.message())
-        //         .build())
-        //     .putData("alertId", String.valueOf(notification.alertId()))
-        //     .putData("module", notification.module())
-        //     .build();
-        // FirebaseMessaging.getInstance().send(message);
+    private void sendFcmMessage(String token, AlertNotification notification) throws FirebaseMessagingException {
+        Message.Builder messageBuilder = Message.builder()
+                .setToken(token)
+                .setNotification(Notification.builder()
+                        .setTitle("Alert: " + notification.severity())
+                        .setBody(notification.message())
+                        .build())
+                .putData("module", String.valueOf(notification.module()))
+                .putData("severity", String.valueOf(notification.severity()));
+
+        if (notification.sensorId() != null) {
+            messageBuilder.putData("sensorId", notification.sensorId());
+        }
+        if (notification.alertId() != null) {
+            messageBuilder.putData("alertId", String.valueOf(notification.alertId()));
+        }
+        if (notification.tenantId() != null) {
+            messageBuilder.putData("tenantId", notification.tenantId());
+        }
+
+        String messageId = firebaseMessaging.send(messageBuilder.build());
+        log.debug("FCM push sent: messageId={} token={} severity={} module={} sensor={}",
+                messageId, maskToken(token), notification.severity(),
+                notification.module(), notification.sensorId());
+    }
+
+    /**
+     * Initialize FirebaseApp from service account key file.
+     * Returns null if key file is not configured or invalid — graceful no-op.
+     */
+    private FirebaseMessaging initializeFirebase(String serviceAccountKeyPath) {
+        if (serviceAccountKeyPath == null || serviceAccountKeyPath.isBlank()) {
+            return null;
+        }
+
+        if (!Files.exists(Path.of(serviceAccountKeyPath))) {
+            log.warn("FCM service account key file not found: {}", serviceAccountKeyPath);
+            return null;
+        }
+
+        try (FileInputStream serviceAccountStream = new FileInputStream(serviceAccountKeyPath)) {
+            FirebaseOptions options = FirebaseOptions.builder()
+                    .setCredentials(GoogleCredentials.fromStream(serviceAccountStream))
+                    .build();
+
+            // Check if FirebaseApp already initialized (e.g., in test contexts)
+            FirebaseApp app;
+            try {
+                app = FirebaseApp.getInstance();
+            } catch (IllegalStateException e) {
+                app = FirebaseApp.initializeApp(options);
+            }
+
+            return FirebaseMessaging.getInstance(app);
+        } catch (IOException e) {
+            log.warn("Failed to initialize Firebase from key file: {}", e.getMessage());
+            return null;
+        }
     }
 
     private void handleInvalidToken(PushSubscription subscription, Exception error) {
