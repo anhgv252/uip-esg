@@ -35,6 +35,7 @@ import org.springframework.test.context.ActiveProfiles;
 @Provider("analytics-service")
 @PactFolder("pacts")
 @Tag("contract")
+@Tag("integration")
 @DisplayName("Pact Provider Verification — Analytics Service")
 class AnalyticsServiceProviderPactTest {
 

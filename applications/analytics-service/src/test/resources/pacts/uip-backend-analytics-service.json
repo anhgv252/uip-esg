@@ -1,0 +1,62 @@
+{
+  "consumer": {
+    "name": "uip-backend"
+  },
+  "interactions": [
+    {
+      "description": "a POST request for energy aggregate",
+      "providerStates": [
+        {
+          "name": "analytics data exists for tenant alpha"
+        }
+      ],
+      "request": {
+        "body": {
+          "buildingIds": [
+            "B01"
+          ],
+          "fromEpoch": 1704067200,
+          "tenantId": "alpha",
+          "toEpoch": 1706745600
+        },
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "method": "POST",
+        "path": "/energy-aggregate"
+      },
+      "response": {
+        "body": {
+          "averagePowerFactor": 0.95,
+          "buildings": [
+            {
+              "buildingId": "B01",
+              "peakDemandKw": 120.5,
+              "totalKwh": 15000.0
+            }
+          ],
+          "fromEpoch": 1704067200,
+          "peakDemandKw": 120.5,
+          "tenantId": "alpha",
+          "toEpoch": 1706745600,
+          "totalKwh": 15000.0
+        },
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "status": 200
+      }
+    }
+  ],
+  "metadata": {
+    "pact-jvm": {
+      "version": "4.6.14"
+    },
+    "pactSpecification": {
+      "version": "3.0.0"
+    }
+  },
+  "provider": {
+    "name": "analytics-service"
+  }
+}

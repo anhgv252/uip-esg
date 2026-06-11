@@ -85,7 +85,10 @@ dependencyManagement {
 }
 
 test {
-    useJUnitPlatform()
+    useJUnitPlatform {
+        // Pact provider verification needs ClickHouse Testcontainers — run via pact-verify.sh
+        excludeTags 'integration'
+    }
     environment 'RYUK_DISABLED', 'true'
     jvmArgs '-Xmx1g'
     finalizedBy jacocoTestReport
