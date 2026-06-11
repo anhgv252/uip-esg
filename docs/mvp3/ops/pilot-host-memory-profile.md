@@ -206,3 +206,88 @@ chmod +x scripts/verify-memory.sh
 ---
 
 *Document: Pilot Host RAM Profile v1.0 | Created 2026-06-09*
+
+---
+
+## 6. Staging Overlay Memory Budget (S11-INFRA-02)
+
+Memory limits configured in `infrastructure/docker-compose.staging.yml` for 16GB pilot host:
+
+| Service | Limit | Reservation | JVM Heap | Notes |
+|---------|-------|-------------|----------|-------|
+| **Backend** | 1,024 MB | 512 MB | -Xmx716m (70% of 1024) | UseContainerSupport + MaxRAMPercentage=70 |
+| **Analytics-service** | 512 MB | 256 MB | -Xmx358m | UseContainerSupport |
+| **ClickHouse** | 1,536 MB | 512 MB | — | max_server_memory_usage=1GB |
+| **TimescaleDB** | 768 MB | 256 MB | — | shared_buffers=256MB |
+| **Kafka (×3)** | 768 MB ×3 | 256 MB ×3 | -Xmx536m | KRaft mode |
+| **Redis** | 256 MB | 64 MB | — | maxmemory 200mb allkeys-lru |
+| **EMQX** | 256 MB | 64 MB | — | MQTT low connections |
+| **Flink JobManager** | ~1,400 MB | — | process.size=1400m | Configured via FLINK_PROPERTIES |
+| **Flink TaskManager** | ~2,400 MB | — | process.size=2400m | 4 task slots |
+| **Keycloak** | 512 MB | 256 MB | -Xmx358m (70%) | UseContainerSupport |
+| **Kong** | ~256 MB | — | — | DB-less mode |
+| **Frontend** | 128 MB | 32 MB | — | nginx static files |
+| **Prometheus** | ~256 MB | — | — | 15d retention |
+| **Grafana** | ~128 MB | — | — | 8+ dashboards |
+| **MinIO** | ~256 MB | — | — | S3 checkpoint backend |
+| **OS + Docker** | 2,048 MB | — | — | Reserved |
+| **TOTAL** | **~14.0 GB** | — | — | **2 GB buffer** |
+
+### Before Deployment Checklist
+
+```bash
+# 1. Verify host has ≥16GB RAM
+free -h | head -2
+
+# 2. Verify swap is configured (emergency buffer)
+swapon --show
+
+# 3. Verify Docker has memory limit awareness enabled
+docker info | grep "Total Memory"
+
+# 4. Pre-deploy: pull all images to avoid download during first start
+docker compose -f infrastructure/docker-compose.staging.yml pull
+
+# 5. Start services with memory limits
+docker compose -f infrastructure/docker-compose.yml \
+  -f infrastructure/docker-compose.uat.yml \
+  -f infrastructure/docker-compose.staging.yml \
+  --env-file .env.staging up -d
+```
+
+### OOM Emergency Procedure
+
+If any container is OOM-killed during pilot:
+
+```bash
+# 1. Identify OOM-killed containers
+docker ps -a --filter "status=exited" --format "{{.Names}} {{.Status}}" | grep "OOM"
+
+# 2. Check dmesg for OOM killer logs
+dmesg | grep -i "oom" | tail -10
+
+# 3. Restart the killed service
+docker compose restart <service-name>
+
+# 4. If repeated OOM: increase memory limit in staging compose
+#    Edit infrastructure/docker-compose.staging.yml:
+#    deploy.resources.limits.memory: 1536m  → 2048m
+
+# 5. Monitor after restart
+docker stats --no-stream --format "table {{.Name}}\t{{.MemUsage}}\t{{.MemPerc}}"
+
+# 6. If host memory exhausted: reduce lower-priority services
+#    Priority reduction order (Section 3):
+#    Kafka 768→512 → Grafana 128→96 → EMQX 256→192
+```
+
+### Continuous Monitoring
+
+```bash
+# Quick check: total Docker memory vs host
+echo "Host total: $(free -m | awk '/Mem:/{print $2}') MB"
+echo "Docker used: $(docker stats --no-stream --format '{{.MemUsage}}' | awk -F'/' '{gsub(/[MiB]/,"",$1); sum+=$1} END {printf "%.0f MB", sum}')"
+
+# Alert: if Docker total > 13GB, trigger warning
+# Prometheus alert rule is in infra/monitoring/alert-rules-sprint11.yml (BackendRestartLoop)
+```

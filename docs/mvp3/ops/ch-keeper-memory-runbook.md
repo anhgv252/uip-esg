@@ -97,3 +97,78 @@ Panels:
 ---
 
 *Document: CH Keeper Memory Runbook v1.0 | Created 2026-06-09*
+
+---
+
+## 5. Memory Monitoring — Prometheus Alert Rules (S11-INFRA-01)
+
+Prometheus alert rules được cấu hình tại `infra/monitoring/alert-rules-ch-keeper.yml`.
+
+### Alert Reference
+
+| Alert | Severity | Condition | Action |
+|-------|----------|-----------|--------|
+| `ClickHouseKeeperMemoryHigh` | warning | Memory >70% limit (>5min) | Investigate, check snapshot size |
+| `ClickHouseKeeperMemoryCritical` | critical | Memory >90% limit (>2min) | **Restart Keeper immediately** |
+| `ClickHouseKeeperHeapUsageHigh` | warning | JVM heap >75% (>5min) | Check GC pause, consider restart |
+| `ClickHouseKeeperGoroutinesHigh` | warning | Goroutines >1000 (>10min) | Check Keeper version for leak fixes |
+| `ClickHouseKeeperSnapshotSizeLarge` | warning | Snapshot >500MB (>15min) | Run compact, tune auto_clean_interval |
+
+### Grafana Dashboard
+
+Dashboard: **ClickHouse Keeper Overview** (`ch-keeper-overview`)
+- File: `infra/monitoring/grafana/dashboards/ch-keeper-overview.json`
+- UID: `ch-keeper-overview`
+- Panels:
+  1. Keeper Memory Usage (bytes — used vs limit, time series)
+  2. Memory Usage % of Limit (gauge — green/yellow/red thresholds)
+  3. Goroutine Count (time series with threshold line at 1000)
+  4. Snapshot Size (bytes — trend over time)
+  5. gRPC Connections (stat — active client connections)
+
+### Quick Check via API
+
+```bash
+# Check Keeper memory via Prometheus
+curl -s 'http://localhost:9090/api/v1/query' \
+  --data-urlencode 'query=clickhouse_keeper_memory_usage_bytes/clickhouse_keeper_memory_limit_bytes' \
+  | python3 -m json.tool
+
+# Check goroutine count
+curl -s 'http://localhost:9090/api/v1/query' \
+  --data-urlencode 'query=clickhouse_keeper_goroutines' \
+  | python3 -m json.tool
+
+# Check active alerts
+curl -s 'http://localhost:9090/api/v1/alerts' \
+  | python3 -c "import sys,json; alerts=[a for a in json.load(sys.stdin)['data']['alerts'] if 'keeper' in a['labels'].get('component','')]; [print(f\"{a['state']}: {a['labels']['alertname']}\") for a in alerts]"
+```
+
+### Remediation by Alert
+
+#### memory-high (>70%)
+1. Check current snapshot size: `docker exec clickhouse-keeper du -sh /keeper-data/snapshots/`
+2. If snapshot large (>200MB): run compact (see Section 3, Step 1)
+3. Monitor for 15 minutes — if trend is flat, no action needed
+4. If trend rising: proactively increase memory limit to 1.5GB
+
+#### memory-critical (>90%)
+1. **Immediate**: restart Keeper container: `docker compose restart clickhouse-keeper-01`
+2. Verify rejoin: `docker exec clickhouse-keeper-02 clickhouse-keeper-client --command "ruok"`
+3. Post-restart: increase memory limit in docker-compose to prevent recurrence
+
+#### heap-high (>75%)
+1. Check GC log: `docker logs clickhouse-keeper 2>&1 | grep "GC pause" | tail -20`
+2. If GC pauses >500ms: restart Keeper
+3. If persistent: increase heap: `-Xmx1536m` in JAVA_OPTS
+
+#### goroutines-high (>1000)
+1. Check Keeper version — known goroutine leak fixed in v24.3+
+2. If on older version: upgrade Keeper
+3. Temporary: restart to reset goroutine count
+4. Check gRPC connection count for connection leak
+
+#### snapshot-large (>500MB)
+1. Run compaction: see Section 3, Step 1
+2. Increase `auto_clean_interval` in keeper config
+3. Consider snapshot compression: `snapshot_compression=true`

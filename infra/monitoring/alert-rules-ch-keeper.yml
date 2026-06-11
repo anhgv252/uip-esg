@@ -1,0 +1,98 @@
+groups:
+
+  # ── ClickHouse Keeper Memory Monitoring ─────────────────────────────────────
+  # S11-INFRA-01: CH Keeper health alerts for HA staging
+  # Keeper exposes metrics at :9363/metrics (native Prometheus endpoint)
+  # Reference: https://clickhouse.com/docs/en/operations/monitoring
+  # ─────────────────────────────────────────────────────────────────────────────
+  - name: ch-keeper-memory
+    interval: 30s
+    rules:
+
+      # WARN: Keeper process memory > 70% of configured limit (default 1GB)
+      # Metric: clickhouse_keeper_memory_usage_bytes / clickhouse_keeper_memory_limit_bytes
+      - alert: ClickHouseKeeperMemoryHigh
+        expr: >
+          (clickhouse_keeper_memory_usage_bytes / clickhouse_keeper_memory_limit_bytes) > 0.7
+        for: 5m
+        labels:
+          severity: warning
+          team: devops
+          component: clickhouse-keeper
+        annotations:
+          summary: "ClickHouse Keeper memory usage >70% limit on {{ $labels.instance }}"
+          description: >
+            Keeper memory: {{ $value | humanizePercentage }} of limit.
+            Default limit: 1GB. If sustained, Keeper may OOM during snapshot compaction.
+            Check: (1) docker stats clickhouse-keeper; (2) keeper config max_memory_limit;
+            (3) snapshot frequency and size.
+          runbook: "docs/mvp3/ops/ch-keeper-memory-runbook.md#memory-high"
+
+      # CRITICAL: Keeper process memory > 90% of limit — imminent OOM
+      - alert: ClickHouseKeeperMemoryCritical
+        expr: >
+          (clickhouse_keeper_memory_usage_bytes / clickhouse_keeper_memory_limit_bytes) > 0.9
+        for: 2m
+        labels:
+          severity: critical
+          team: devops
+          component: clickhouse-keeper
+        annotations:
+          summary: "ClickHouse Keeper memory >90% limit — OOM imminent"
+          description: >
+            Keeper memory at {{ $value | humanizePercentage }} of limit.
+            ACTION REQUIRED: Restart Keeper container or increase memory limit.
+            Risk: Keeper OOM → ClickHouse quorum loss → write unavailability.
+          runbook: "docs/mvp3/ops/ch-keeper-memory-runbook.md#memory-critical"
+
+      # WARN: JVM heap usage > 75% (Keeper runs embedded JVM for coordination)
+      - alert: ClickHouseKeeperHeapUsageHigh
+        expr: >
+          clickhouse_keeper_jvm_heap_used_bytes / clickhouse_keeper_jvm_heap_max_bytes > 0.75
+        for: 5m
+        labels:
+          severity: warning
+          team: devops
+          component: clickhouse-keeper
+        annotations:
+          summary: "ClickHouse Keeper JVM heap >75% on {{ $labels.instance }}"
+          description: >
+            JVM heap: {{ $value | humanizePercentage }}. May indicate GC pressure.
+            If combined with high goroutine count, suspect memory leak.
+            Check GC pause times in Keeper logs.
+          runbook: "docs/mvp3/ops/ch-keeper-memory-runbook.md#heap-high"
+
+      # WARN: Goroutine count > 1000 — potential goroutine leak
+      - alert: ClickHouseKeeperGoroutinesHigh
+        expr: >
+          clickhouse_keeper_goroutines > 1000
+        for: 10m
+        labels:
+          severity: warning
+          team: devops
+          component: clickhouse-keeper
+        annotations:
+          summary: "ClickHouse Keeper goroutines >1000 on {{ $labels.instance }}"
+          description: >
+            Goroutine count: {{ $value }}. Normal range: 100-500.
+            Sustained high count indicates goroutine leak (unreleased connections,
+            stuck RPC handlers). Check Keeper version for known leak fixes.
+          runbook: "docs/mvp3/ops/ch-keeper-memory-runbook.md#goroutines-high"
+
+      # WARN: Keeper snapshot file size > 500MB — large state
+      - alert: ClickHouseKeeperSnapshotSizeLarge
+        expr: >
+          clickhouse_keeper_snapshot_size_bytes > 524288000
+        for: 15m
+        labels:
+          severity: warning
+          team: devops
+          component: clickhouse-keeper
+        annotations:
+          summary: "ClickHouse Keeper snapshot >500MB on {{ $labels.instance }}"
+          description: >
+            Snapshot size: {{ $value | humanize1024 }}B.
+            Large snapshots slow restart recovery and increase memory pressure.
+            Check: (1) number of z-nodes; (2) compaction frequency;
+            (3) consider auto_clean_interval tuning.
+          runbook: "docs/mvp3/ops/ch-keeper-memory-runbook.md#snapshot-large"

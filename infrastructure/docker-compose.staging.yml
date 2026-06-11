@@ -98,6 +98,13 @@ services:
   clickhouse:
     environment:
       CLICKHOUSE_DB: analytics
+    deploy:
+      resources:
+        limits:
+          memory: 1536m
+          cpus: '0.75'
+        reservations:
+          memory: 512m
     logging:
       driver: json-file
       options:
@@ -106,6 +113,13 @@ services:
 
   # ── TimescaleDB ───────────────────────────────────────────────────────────────
   timescaledb:
+    deploy:
+      resources:
+        limits:
+          memory: 768m
+          cpus: '0.5'
+        reservations:
+          memory: 256m
     logging:
       driver: json-file
       options:
@@ -114,6 +128,13 @@ services:
 
   # ── Redis ─────────────────────────────────────────────────────────────────────
   redis:
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+          cpus: '0.25'
+        reservations:
+          memory: 64m
     logging:
       driver: json-file
       options:
@@ -122,6 +143,13 @@ services:
 
   # ── Kafka ─────────────────────────────────────────────────────────────────────
   kafka:
+    deploy:
+      resources:
+        limits:
+          memory: 768m
+          cpus: '0.5'
+        reservations:
+          memory: 256m
     logging:
       driver: json-file
       options:
@@ -134,6 +162,13 @@ services:
       - "1883:1883"
       - "8083:8083"
       - "127.0.0.1:18083:18083"
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+          cpus: '0.25'
+        reservations:
+          memory: 64m
     logging:
       driver: json-file
       options:
@@ -191,6 +226,18 @@ services:
 
   # ── Keycloak ──────────────────────────────────────────────────────────────────
   keycloak:
+    environment:
+      JAVA_TOOL_OPTIONS: >-
+        -XX:+UseContainerSupport
+        -XX:MaxRAMPercentage=70.0
+        -XX:InitialRAMPercentage=40.0
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+          cpus: '0.25'
+        reservations:
+          memory: 256m
     logging:
       driver: json-file
       options:
@@ -199,6 +246,13 @@ services:
 
   # ── Frontend ──────────────────────────────────────────────────────────────────
   frontend:
+    deploy:
+      resources:
+        limits:
+          memory: 128m
+          cpus: '0.1'
+        reservations:
+          memory: 32m
     logging:
       driver: json-file
       options:

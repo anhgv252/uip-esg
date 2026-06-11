@@ -6,6 +6,7 @@ services:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
       - ./alert-rules.yml:/etc/prometheus/alert-rules.yml
       - ./alert-rules-sprint11.yml:/etc/prometheus/alert-rules-sprint11.yml
+      - ./alert-rules-ch-keeper.yml:/etc/prometheus/alert-rules-ch-keeper.yml
       - ./prometheus/alerts:/etc/prometheus/alerts
       - prometheus_data:/prometheus
     command:
