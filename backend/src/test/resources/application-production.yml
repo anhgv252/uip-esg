@@ -1,0 +1,48 @@
+# Test overrides for production profile — used by ProductionProfileSecurityTest
+# This file provides test-compatible overrides so the Spring context can start
+# without requiring a real PostgreSQL/Redis/Kafka connection.
+#
+# The purpose of these tests is to verify that debug endpoints return 404
+# when the 'production' profile is active (G4, G14).
+
+spring:
+  datasource:
+    url: jdbc:tc:postgresql:16:///testdb?TC_DAEMON=true
+    driver-class-name: org.testcontainers.jdbc.ContainerDatabaseDriver
+  jpa:
+    hibernate:
+      ddl-auto: none
+  flyway:
+    enabled: false
+  kafka:
+    bootstrap-servers: localhost:9092
+    consumer:
+      auto-offset-reset: earliest
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+  data:
+    redis:
+      host: localhost
+      port: 6379
+  cache:
+    type: simple
+
+camunda:
+  bpm:
+    auto-deployment-enabled: false
+    history-level: none
+
+uip:
+  capabilities:
+    analytics-external: false
+    multi-tenancy: false
+  security:
+    jwt:
+      secret: test-production-profile-secret-must-be-32chars
+      issuer: uip-backend
+      expiration-ms: 3600000
+
+logging:
+  level:
+    com.uip: WARN

@@ -139,6 +139,8 @@ dependencies {
     testImplementation 'org.testcontainers:postgresql'
     testImplementation 'org.testcontainers:kafka'
     testImplementation 'com.redis:testcontainers-redis:2.2.0'
+    // H2 — in-memory DB for production profile security tests (no Testcontainers needed)
+    testRuntimeOnly 'com.h2database:h2'
 
     // ArchUnit — module boundary enforcement
     testImplementation 'com.tngtech.archunit:archunit-junit5:1.3.0'
