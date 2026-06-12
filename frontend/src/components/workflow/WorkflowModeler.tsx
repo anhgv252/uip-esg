@@ -18,6 +18,9 @@ import {
   ListItemText,
   Chip,
   Button,
+  Collapse,
+  useTheme,
+  useMediaQuery,
 } from '@mui/material';
 import SaveIcon from '@mui/icons-material/Save';
 import ZoomInMapIcon from '@mui/icons-material/ZoomInMap';
@@ -29,7 +32,11 @@ import DownloadIcon from '@mui/icons-material/Download';
 import CloseIcon from '@mui/icons-material/Close';
 import TemplateIcon from '@mui/icons-material/Wallpaper';
 import DeleteIcon from '@mui/icons-material/Delete';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import { WORKFLOW_TEMPLATES, TEMPLATE_CATEGORY_LABELS, type WorkflowTemplate } from './templates';
+
+/** Snap-to-grid size in pixels */
+const GRID_SNAP = 20;
 
 interface Props {
   initialXml?: string | null;
@@ -59,7 +66,10 @@ const EMPTY_BPMN = `<?xml version="1.0" encoding="UTF-8"?>
 
 /**
  * BPMN Modeler component using bpmn-js.
- * Supports drag & drop, editing, save/export, and properties panel.
+ * Supports drag & drop, editing, save/export, collapsible properties panel,
+ * node hover effects, and responsive layout (v3.1-04 UX polish).
+ *
+ * All toolbar buttons have aria-label for WCAG 2.1 AA (v3.1-17).
  */
 export default function WorkflowModeler({
   initialXml,
@@ -69,6 +79,8 @@ export default function WorkflowModeler({
   showToolbar = true,
   showPropertiesPanel = true,
 }: Props) {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const containerRef = useRef<HTMLDivElement>(null);
   const modelerRef = useRef<InstanceType<typeof BpmnModeler> | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -90,6 +102,108 @@ export default function WorkflowModeler({
     return () => {
       modeler.destroy();
       modelerRef.current = null;
+    };
+  }, []);
+
+  // ── DnD drop handler: accept dragged palette nodes and create BPMN elements (M4-SS-03) ──
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const handleDragOver = (e: DragEvent) => {
+      if (e.dataTransfer?.types.includes('application/bpmn-node') || e.dataTransfer?.types.includes('text/plain')) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'copy';
+      }
+    };
+
+    const handleDrop = (e: DragEvent) => {
+      e.preventDefault();
+      if (!modelerRef.current) return;
+
+      const nodeType = e.dataTransfer?.getData('application/bpmn-node') || e.dataTransfer?.getData('text/plain');
+      if (!nodeType) return;
+
+      // Convert page coordinates to BPMN canvas coordinates
+      const canvas = modelerRef.current.get<{ getViewbox: () => { x: number; y: number; width: number; height: number }; zoom: () => number }>('canvas');
+      const elementFactory = modelerRef.current.get<{ create: (type: string, options?: Record<string, unknown>) => unknown }>('elementFactory');
+      const modeling = modelerRef.current.get<{ createShape: (args: Record<string, unknown>) => unknown; connect: (source: unknown, target: unknown) => void }>('modeling');
+      const elementRegistry = modelerRef.current.get<{ getAll: () => Array<{ id: string; businessObject: { $type: string }; x: number; y: number; width: number; height: number }> }>('elementRegistry');
+
+      const viewbox = canvas.getViewbox();
+      const zoom = canvas.zoom();
+      const clientRect = container.getBoundingClientRect();
+
+      // Compute drop position in BPMN coordinates
+      const rawX = (e.clientX - clientRect.left) / zoom + viewbox.x;
+      const rawY = (e.clientY - clientRect.top) / zoom + viewbox.y;
+
+      // Snap to grid
+      const snappedX = Math.round(rawX / GRID_SNAP) * GRID_SNAP;
+      const snappedY = Math.round(rawY / GRID_SNAP) * GRID_SNAP;
+
+      // Determine BPMN element type and create it
+      let bpmnType: string;
+      let shapeOptions: Record<string, unknown> = {};
+
+      if (nodeType === 'bpmn:ServiceTask:notification') {
+        bpmnType = 'bpmn:ServiceTask';
+        shapeOptions = { businessObject: { name: 'Notification' } };
+      } else if (nodeType === 'ai:AiDecisionTask') {
+        bpmnType = 'bpmn:ServiceTask';
+        shapeOptions = { businessObject: { name: 'AI Decision' } };
+      } else {
+        bpmnType = nodeType;
+      }
+
+      try {
+        const shape = elementFactory.create(bpmnType, shapeOptions);
+        modeling.createShape({
+          shape,
+          position: { x: snappedX, y: snappedY },
+          parent: undefined, // defaults to root process
+        });
+
+        // Auto-connect: find the closest preceding element and connect if possible
+        const allElements = elementRegistry.getAll();
+        const sourceCandidates = allElements.filter(
+          (el) =>
+            el.id !== (shape as { id: string }).id &&
+            el.businessObject.$type !== 'bpmn:EndEvent' &&
+            el.businessObject.$type !== 'bpmn:SequenceFlow',
+        );
+
+        if (sourceCandidates.length > 0) {
+          // Find closest element by distance to the drop point
+          const closest = sourceCandidates.reduce((prev, curr) => {
+            const prevDist = Math.hypot(prev.x + (prev.width / 2) - snappedX, prev.y + (prev.height / 2) - snappedY);
+            const currDist = Math.hypot(curr.x + (curr.width / 2) - snappedX, curr.y + (curr.height / 2) - snappedY);
+            return currDist < prevDist ? curr : prev;
+          });
+
+          const dist = Math.hypot(closest.x + (closest.width / 2) - snappedX, closest.y + (closest.height / 2) - snappedY);
+          // Only auto-connect if within reasonable distance (250px in BPMN coords)
+          if (dist < 250 && bpmnType !== 'bpmn:StartEvent') {
+            try {
+              modeling.connect(closest, shape);
+            } catch {
+              // Connection not possible between these types — skip silently
+            }
+          }
+        }
+
+        setSnackbar(`Added ${nodeType.replace('bpmn:', '').replace('ai:', '')}`);
+      } catch (err) {
+        console.error('Failed to create BPMN element:', err);
+        setSnackbar('Failed to add node');
+      }
+    };
+
+    container.addEventListener('dragover', handleDragOver);
+    container.addEventListener('drop', handleDrop);
+    return () => {
+      container.removeEventListener('dragover', handleDragOver);
+      container.removeEventListener('drop', handleDrop);
     };
   }, []);
 
@@ -268,66 +382,93 @@ export default function WorkflowModeler({
 
   return (
     <>
-      {/* Custom CSS for BPMN node styles */}
+      {/* Custom CSS for BPMN node styles with hover effects (v3.1-04) */}
       <style>
         {`
           /* Start Event - Green */
           .djs-element .djs-visual > circle[data-element-id*="StartEvent"],
           .djs-shape[data-element-id*="StartEvent"] .djs-visual > circle {
-            fill: #E8F5E9 !important;
-            stroke: #388E3C !important;
+            fill: ${theme.palette.success.main}22 !important;
+            stroke: ${theme.palette.success.main} !important;
             stroke-width: 2px !important;
+            transition: fill 0.2s ease, stroke-width 0.2s ease;
           }
-          
+
           /* End Event - Red */
           .djs-element .djs-visual > circle[data-element-id*="EndEvent"],
           .djs-shape[data-element-id*="EndEvent"] .djs-visual > circle {
-            fill: #FFEBEE !important;
-            stroke: #C62828 !important;
+            fill: ${theme.palette.error.main}22 !important;
+            stroke: ${theme.palette.error.main} !important;
             stroke-width: 3px !important;
+            transition: fill 0.2s ease, stroke-width 0.2s ease;
           }
-          
+
           /* Service Task - Blue */
           .djs-shape[data-element-id*="ServiceTask"] .djs-visual > rect,
           .djs-element[data-element-id*="ServiceTask"] .djs-visual > rect {
-            fill: #E3F2FD !important;
-            stroke: #1565C0 !important;
+            fill: ${theme.palette.primary.main}18 !important;
+            stroke: ${theme.palette.primary.main} !important;
             stroke-width: 2px !important;
+            transition: fill 0.2s ease, stroke-width 0.2s ease;
           }
-          
+
           /* User Task - Orange */
           .djs-shape[data-element-id*="Task"] .djs-visual > rect:not([data-element-id*="ServiceTask"]),
           .djs-element[data-element-id*="Task"] .djs-visual > rect {
-            fill: #FFF3E0 !important;
-            stroke: #E65100 !important;
+            fill: ${theme.palette.warning.main}18 !important;
+            stroke: ${theme.palette.warning.main} !important;
             stroke-width: 2px !important;
+            transition: fill 0.2s ease, stroke-width 0.2s ease;
           }
-          
+
           /* Gateway - Yellow */
           .djs-shape[data-element-id*="Gateway"] .djs-visual > path,
           .djs-shape[data-element-id*="Gateway"] .djs-visual > polygon,
           .djs-element[data-element-id*="Gateway"] .djs-visual > path,
           .djs-element[data-element-id*="Gateway"] .djs-visual > polygon {
             fill: #FFFDE7 !important;
-            stroke: #F9A825 !important;
+            stroke: ${theme.palette.warning.dark} !important;
+            stroke-width: 2px !important;
+            transition: fill 0.2s ease, stroke-width 0.2s ease;
+          }
+
+          /* Node hover effects (v3.1-04) */
+          .djs-element:hover .djs-visual > rect,
+          .djs-element:hover .djs-visual > circle {
+            filter: brightness(0.95);
+            stroke-width: 3px !important;
+          }
+          .djs-element.selected .djs-outline {
+            stroke: ${theme.palette.primary.main} !important;
             stroke-width: 2px !important;
           }
         `}
       </style>
 
       <Box display="flex" flexDirection="column" style={{ height }} border="1px solid" borderColor="divider" borderRadius={1} overflow="hidden">
-        {/* Toolbar */}
+        {/* Toolbar (v3.1-04 UX polish + v3.1-17 aria-labels) */}
         {showToolbar && (
-          <Toolbar variant="dense" sx={{ minHeight: 48, bgcolor: 'background.paper', borderBottom: 1, borderColor: 'divider', gap: 0.5 }}>
+          <Toolbar
+            variant="dense"
+            sx={{
+              minHeight: 48,
+              bgcolor: 'background.paper',
+              borderBottom: 1,
+              borderColor: 'divider',
+              gap: 0.5,
+              flexWrap: { xs: 'wrap', md: 'nowrap' },
+              overflow: 'auto',
+            }}
+          >
             {/* File group */}
-            <Typography variant="caption" color="text.secondary" sx={{ ml: 0.5, mr: 0.5, fontWeight: 600 }}>FILE</Typography>
+            <Typography variant="caption" color="text.secondary" sx={{ ml: 0.5, mr: 0.5, fontWeight: 600 }} component="span">FILE</Typography>
             <Tooltip title="Save (Ctrl+S)">
-              <IconButton size="small" onClick={handleSave} disabled={!onSave}>
+              <IconButton size="small" onClick={handleSave} disabled={!onSave} aria-label="Save workflow">
                 <SaveIcon fontSize="small" />
               </IconButton>
             </Tooltip>
             <Tooltip title="Export BPMN XML">
-              <IconButton size="small" onClick={handleExportXml}>
+              <IconButton size="small" onClick={handleExportXml} aria-label="Export BPMN XML file">
                 <DownloadIcon fontSize="small" />
               </IconButton>
             </Tooltip>
@@ -335,20 +476,20 @@ export default function WorkflowModeler({
             <Divider orientation="vertical" flexItem sx={{ mx: 1 }} />
 
             {/* Edit group */}
-            <Typography variant="caption" color="text.secondary" sx={{ mr: 0.5, fontWeight: 600 }}>EDIT</Typography>
+            <Typography variant="caption" color="text.secondary" sx={{ mr: 0.5, fontWeight: 600 }} component="span">EDIT</Typography>
             <Tooltip title="Undo (Ctrl+Z)">
-              <IconButton size="small" onClick={handleUndo}>
+              <IconButton size="small" onClick={handleUndo} aria-label="Undo last action">
                 <UndoIcon fontSize="small" />
               </IconButton>
             </Tooltip>
             <Tooltip title="Redo (Ctrl+Y)">
-              <IconButton size="small" onClick={handleRedo}>
+              <IconButton size="small" onClick={handleRedo} aria-label="Redo last action">
                 <RedoIcon fontSize="small" />
               </IconButton>
             </Tooltip>
             <Tooltip title="Delete Selected (Del)">
               <span>
-                <IconButton size="small" onClick={handleDeleteSelected} disabled={!selectedElement}>
+                <IconButton size="small" onClick={handleDeleteSelected} disabled={!selectedElement} aria-label="Delete selected element">
                   <DeleteIcon fontSize="small" />
                 </IconButton>
               </span>
@@ -357,20 +498,20 @@ export default function WorkflowModeler({
             <Divider orientation="vertical" flexItem sx={{ mx: 1 }} />
 
             {/* View group */}
-            <Typography variant="caption" color="text.secondary" sx={{ mr: 0.5, fontWeight: 600 }}>VIEW</Typography>
+            <Typography variant="caption" color="text.secondary" sx={{ mr: 0.5, fontWeight: 600 }} component="span">VIEW</Typography>
             <Tooltip title="Zoom In (+)">
-              <IconButton size="small" onClick={handleZoomIn}>
+              <IconButton size="small" onClick={handleZoomIn} aria-label="Zoom in">
                 <ZoomInIcon fontSize="small" />
               </IconButton>
             </Tooltip>
-            <Chip label={`${Math.round(zoomLevel * 100)}%`} size="small" variant="outlined" sx={{ minWidth: 52, height: 24, fontSize: '0.7rem' }} />
+            <Chip label={`${Math.round(zoomLevel * 100)}%`} size="small" variant="outlined" sx={{ minWidth: 52, height: 24, fontSize: '0.7rem' }} aria-label={`Zoom level ${Math.round(zoomLevel * 100)} percent`} />
             <Tooltip title="Zoom Out (-)">
-              <IconButton size="small" onClick={handleZoomOut}>
+              <IconButton size="small" onClick={handleZoomOut} aria-label="Zoom out">
                 <ZoomOutIcon fontSize="small" />
               </IconButton>
             </Tooltip>
             <Tooltip title="Fit to Screen">
-              <IconButton size="small" onClick={handleFitView}>
+              <IconButton size="small" onClick={handleFitView} aria-label="Fit diagram to screen">
                 <ZoomInMapIcon fontSize="small" />
               </IconButton>
             </Tooltip>
@@ -383,6 +524,9 @@ export default function WorkflowModeler({
               startIcon={<TemplateIcon fontSize="small" />}
               onClick={(e) => setTemplateAnchorEl(e.currentTarget)}
               sx={{ textTransform: 'none', fontSize: '0.75rem' }}
+              aria-label="Load workflow template"
+              aria-haspopup="true"
+              aria-expanded={Boolean(templateAnchorEl)}
             >
               Templates
             </Button>
@@ -400,7 +544,7 @@ export default function WorkflowModeler({
                     {label}
                   </Typography>,
                   ...templates.map((t) => (
-                    <MenuItem key={t.id} onClick={() => handleLoadTemplate(t)} dense>
+                    <MenuItem key={t.id} onClick={() => handleLoadTemplate(t)} dense aria-label={`Load template: ${t.name}`}>
                       <ListItemText primary={t.name} secondary={t.description} secondaryTypographyProps={{ fontSize: '0.7rem', lineHeight: 1.2, noWrap: true }} />
                     </MenuItem>
                   )),
@@ -408,6 +552,26 @@ export default function WorkflowModeler({
                 ];
               })}
             </Menu>
+
+            {/* Properties panel toggle (v3.1-04 collapsible) */}
+            {showPropertiesPanel && !isMobile && (
+              <>
+                <Divider orientation="vertical" flexItem sx={{ mx: 1 }} />
+                <Tooltip title={propertiesPanelOpen ? 'Close Properties Panel' : 'Open Properties Panel'}>
+                  <IconButton
+                    size="small"
+                    onClick={() => setPropertiesPanelOpen((prev) => !prev)}
+                    aria-label={propertiesPanelOpen ? 'Close properties panel' : 'Open properties panel'}
+                    sx={{
+                      transform: propertiesPanelOpen ? 'rotate(0deg)' : 'rotate(180deg)',
+                      transition: 'transform 0.2s ease',
+                    }}
+                  >
+                    <ChevronRightIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+              </>
+            )}
           </Toolbar>
         )}
 
@@ -433,37 +597,101 @@ export default function WorkflowModeler({
             />
           </Box>
 
-          {/* Properties Panel */}
-          {showPropertiesPanel && propertiesPanelOpen && selectedElement && (
+          {/* Properties Panel — collapsible (v3.1-04) */}
+          {showPropertiesPanel && !isMobile && (
+            <Collapse orientation="horizontal" in={propertiesPanelOpen} collapsedSize={0}>
+              <Paper
+                elevation={2}
+                sx={{
+                  width: 240,
+                  flexShrink: 0,
+                  borderLeft: 1,
+                  borderColor: 'divider',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  overflow: 'auto',
+                }}
+              >
+                {/* Panel header */}
+                <Box display="flex" alignItems="center" justifyContent="space-between" p={1.5} borderBottom={1} borderColor="divider">
+                  <Typography variant="subtitle2">Properties</Typography>
+                  <IconButton
+                    size="small"
+                    onClick={() => setPropertiesPanelOpen(false)}
+                    aria-label="Close properties panel"
+                  >
+                    <CloseIcon fontSize="small" />
+                  </IconButton>
+                </Box>
+
+                {/* Panel content */}
+                {selectedElement ? (
+                  <Stack spacing={2} p={2}>
+                    <TextField
+                      label="Element ID"
+                      value={selectedElement.id}
+                      size="small"
+                      InputProps={{ readOnly: true }}
+                      fullWidth
+                      inputProps={{ 'aria-label': 'Element ID' }}
+                    />
+                    <TextField
+                      label="Name"
+                      value={selectedElement.name}
+                      onChange={(e) => handleUpdateElementName(e.target.value)}
+                      size="small"
+                      fullWidth
+                      placeholder="Enter element name"
+                      inputProps={{ 'aria-label': 'Element name' }}
+                    />
+                    <TextField
+                      label="Type"
+                      value={selectedElement.type}
+                      size="small"
+                      InputProps={{ readOnly: true }}
+                      fullWidth
+                      inputProps={{ 'aria-label': 'Element type' }}
+                    />
+                  </Stack>
+                ) : (
+                  <Box p={2}>
+                    <Typography variant="body2" color="text.secondary">
+                      Click an element to view its properties
+                    </Typography>
+                  </Box>
+                )}
+              </Paper>
+            </Collapse>
+          )}
+
+          {/* Mobile properties panel — bottom sheet */}
+          {showPropertiesPanel && isMobile && selectedElement && (
             <Paper
-              elevation={2}
+              elevation={4}
               sx={{
-                width: 240,
-                flexShrink: 0,
-                borderLeft: 1,
-                borderColor: 'divider',
-                display: 'flex',
-                flexDirection: 'column',
+                position: 'absolute',
+                bottom: 0,
+                left: 0,
+                right: 0,
+                maxHeight: '50%',
                 overflow: 'auto',
+                borderTop: 1,
+                borderColor: 'divider',
+                borderRadius: '8px 8px 0 0',
               }}
             >
-              {/* Panel header */}
               <Box display="flex" alignItems="center" justifyContent="space-between" p={1.5} borderBottom={1} borderColor="divider">
                 <Typography variant="subtitle2">Properties</Typography>
-                <IconButton size="small" onClick={() => setPropertiesPanelOpen(false)}>
+                <IconButton
+                  size="small"
+                  onClick={() => setSelectedElement(null)}
+                  aria-label="Close properties panel"
+                >
                   <CloseIcon fontSize="small" />
                 </IconButton>
               </Box>
-
-              {/* Panel content */}
               <Stack spacing={2} p={2}>
-                <TextField
-                  label="Element ID"
-                  value={selectedElement.id}
-                  size="small"
-                  InputProps={{ readOnly: true }}
-                  fullWidth
-                />
+                <TextField label="Element ID" value={selectedElement.id} size="small" InputProps={{ readOnly: true }} fullWidth />
                 <TextField
                   label="Name"
                   value={selectedElement.name}
@@ -472,13 +700,7 @@ export default function WorkflowModeler({
                   fullWidth
                   placeholder="Enter element name"
                 />
-                <TextField
-                  label="Type"
-                  value={selectedElement.type}
-                  size="small"
-                  InputProps={{ readOnly: true }}
-                  fullWidth
-                />
+                <TextField label="Type" value={selectedElement.type} size="small" InputProps={{ readOnly: true }} fullWidth />
               </Stack>
             </Paper>
           )}
