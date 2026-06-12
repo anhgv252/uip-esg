@@ -54,7 +54,11 @@ public class CorrelationDlqHandler {
     @RetryableTopic(
             attempts = "3",
             backoff  = @Backoff(delay = 1000),
-            autoCreateTopics = "false"
+            autoCreateTopics = "false",
+            // Explicitly name the KafkaTemplate to use — required when multiple
+            // KafkaTemplate beans exist (e.g. avroKafkaTemplate + Spring Boot default),
+            // otherwise Spring Kafka cannot resolve which one owns the retry topics.
+            kafkaTemplate = "kafkaTemplate"
     )
     @KafkaListener(
             topics      = "${correlation.flink.outputTopic:correlated.incidents}",

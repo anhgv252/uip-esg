@@ -123,10 +123,9 @@ class AiCacheConfigTest {
     // ─── Fallback CacheManager ────────────────────────────────────────────────
 
     @Test
-    @DisplayName("FallbackAiCacheConfiguration creates ConcurrentMapCacheManager for 'ai-responses'")
+    @DisplayName("aiResponseFallbackCacheManager creates ConcurrentMapCacheManager for 'ai-responses'")
     void fallbackCacheManager_registersAiResponsesCache() {
-        AiCacheConfig.FallbackAiCacheConfiguration config =
-                new AiCacheConfig.FallbackAiCacheConfiguration();
+        AiCacheConfig config = new AiCacheConfig();
         CacheManager cm = config.aiResponseFallbackCacheManager();
 
         assertThat(cm).isInstanceOf(ConcurrentMapCacheManager.class);
@@ -137,8 +136,7 @@ class AiCacheConfigTest {
     @Test
     @DisplayName("Fallback cache supports put/get cycle")
     void fallbackCache_putGet_works() {
-        AiCacheConfig.FallbackAiCacheConfiguration config =
-                new AiCacheConfig.FallbackAiCacheConfiguration();
+        AiCacheConfig config = new AiCacheConfig();
         CacheManager cm = config.aiResponseFallbackCacheManager();
         Cache cache = cm.getCache("ai-responses");
         assertThat(cache).isNotNull();
