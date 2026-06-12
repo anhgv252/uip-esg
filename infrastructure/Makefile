@@ -11,7 +11,8 @@ COMPOSE_STAGING_FILE = -f docker-compose.yml -f docker-compose.uat.yml -f docker
         uat-up uat-down uat-logs uat-ps uat-test uat-clean seed-uat clean \
         staging-up staging-down staging-logs staging-ps staging-smoke-test \
         regression-test regression-test-group \
-        flink-list flink-build flink-submit flink-cancel flink-savepoint flink-deploy flink-status \
+        flink-list flink-build flink-submit flink-cancel flink-savepoint flink-deploy flink-rollback flink-status flink-logs \
+        kong-test-jwks \
         avro-register ch-migrate \
         security-scan security-report security-open \
         spotbugs-scan spotbugs-report spotbugs-open security-full
@@ -81,7 +82,7 @@ check-contract-drift: ## Check API contract drift (runs gen-api-types and verifi
 	}
 	@echo "✓ API types are in sync with openapi.json"
 
-# ─── Flink Jobs (ADR-038, S8-OPS03) ────────────────────────────────────────────
+# ─── Flink Jobs (ADR-038, S8-OPS03, GAP-036) ──────────────────────────────────
 
 FLINK_SCRIPT := scripts/flink-deploy.sh
 FLINK_URL    ?= http://localhost:8081
@@ -92,8 +93,8 @@ flink-list: ## List running Flink jobs
 flink-build: ## Build Flink jobs JAR
 	@bash $(FLINK_SCRIPT) build
 
-flink-submit: ## Submit all Flink jobs to cluster
-	@FLINK_URL=$(FLINK_URL) bash $(FLINK_SCRIPT) submit
+flink-submit: ## Submit all Flink jobs to cluster (use JAR= for specific JAR)
+	@FLINK_URL=$(FLINK_URL) JAR=$(or $(JAR),) ENTRY_CLASS=$(or $(ENTRY_CLASS),) bash $(FLINK_SCRIPT) submit
 
 flink-cancel: ## Cancel all running Flink jobs
 	@FLINK_URL=$(FLINK_URL) bash $(FLINK_SCRIPT) cancel
@@ -101,11 +102,22 @@ flink-cancel: ## Cancel all running Flink jobs
 flink-savepoint: ## Take savepoint of running jobs
 	@FLINK_URL=$(FLINK_URL) bash $(FLINK_SCRIPT) savepoint
 
-flink-deploy: ## Full deploy cycle: savepoint → cancel → submit (zero-downtime)
-	@FLINK_URL=$(FLINK_URL) bash $(FLINK_SCRIPT) deploy
+flink-deploy: ## Full deploy cycle: savepoint → cancel → submit. Use JAR=path.jar for specific JAR
+	@FLINK_URL=$(FLINK_URL) JAR=$(or $(JAR),) ENTRY_CLASS=$(or $(ENTRY_CLASS),) bash $(FLINK_SCRIPT) deploy
+
+flink-rollback: ## Rollback: cancel current jobs → restore from last savepoint
+	@FLINK_URL=$(FLINK_URL) bash $(FLINK_SCRIPT) rollback
 
 flink-status: ## Show Flink cluster + job status
 	@FLINK_URL=$(FLINK_URL) bash $(FLINK_SCRIPT) status
+
+flink-logs: ## Tail Flink JobManager logs (last 100 lines, follow)
+	docker logs uip-jobmanager --tail=100 -f
+
+# ─── Kong JWKS Verification (v3.1-15) ────────────────────────────────────────
+
+kong-test-jwks: ## Test Kong JWKS integration (requires full stack running)
+	@bash ../infra/kong/test-jwks.sh
 
 avro-register: ## Register Avro schemas into Apicurio Registry (idempotent)
 	@bash scripts/register-avro-schemas.sh

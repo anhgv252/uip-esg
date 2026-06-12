@@ -2,10 +2,16 @@ _format_version: "3.0"
 _transform: true
 
 # Kong DB-less declarative config — UIP Platform non-prod
-# Sprint MVP3-1 | ADR-028: Kong Gateway Scope — Extracted Services Only
+# Sprint MVP4-S2 | ADR-028: Kong Gateway Scope — Extracted Services Only
+# v3.1-15: Migrated from static RSA public key to JWKS endpoint
 #
 # Kong scope = extracted services only (analytics-service, iot-ingestion-service)
 # Monolith vẫn qua nginx Ingress trực tiếp (ADR-028 constraint)
+#
+# JWKS migration benefits:
+#   - Token rotation without Kong restart (Keycloak rotates keys → Kong auto-fetches)
+#   - No need to embed RSA public key in declarative config
+#   - Kong re-fetches JWKS every 300s (config.uris_timeout default)
 #
 # Plugin order (BẤT BIẾN — BR-007):
 #   1. cors → 2. jwt → 3. request-transformer → 4. rate-limiting → 5. prometheus → 6. correlation-id
@@ -45,8 +51,14 @@ services:
 
       - name: jwt
         config:
+          uri: "http://keycloak:8085/realms/uip/protocol/openid-connect/certs"
+          # JWKS public keys fetched from Keycloak at: http://keycloak:8085/realms/uip/protocol/openid-connect/certs
+          # JWKS endpoint — Kong fetches signing keys from Keycloak automatically.
+          # Key rotation: when Keycloak rotates RS256 keys, Kong re-fetches within
+          # config.cache_ttl (default 300s) — no Kong restart required.
           claims_to_verify:
             - exp
+            - nbf
           key_claim_name: iss
           secret_is_base64: false
           # alg=none rejected: Kong jwt plugin requires valid signature
@@ -93,17 +105,9 @@ consumers:
 jwt_secrets:
   - consumer: keycloak-uip-realm
     key: "http://localhost:8085/realms/uip"
+    # No static rsa_public_key needed — Kong fetches from JWKS endpoint (config.uri above).
+    # The 'key' field still required as consumer identifier (must match JWT iss claim).
     algorithm: RS256
-    rsa_public_key: |
-      -----BEGIN PUBLIC KEY-----
-      MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA2eK1Blwq77iHHhticJc0
-      A3ueME50EF2TAlEpm41iq1Q4mht3P1dK6p6YtE7f97F3rfbxjNkxE0iB9xGRG1MR
-      4mCzwWw2imK/1ITutcWTnNaA/J2P0mH7ih6KxcVcPqeUpO2wHl+ZGk59dEG1BUTo
-      jbAFPZT8UqeRzcpDKHG+at3miXyz9mVM2GhferCSe2c5SIgYNb3Zo1WNX4urKq7p
-      x1PVSvGTfvi12jZfyEEFFU1sJS+6rnuIbnyUTscSqBOEqN7isYh8bOmygzrpS1hp
-      a3pH6LPtEoP095Cm2GzQrEBeg9B9rsqv3Tk/il71060yfImK6vpelN3szs6NSq8v
-      2wIDAQAB
-      -----END PUBLIC KEY-----
 
 # ─── Global plugins (apply to all services) ──────────────────────────────────
 plugins:

@@ -32,6 +32,13 @@ services:
       timeout: 5s
       retries: 10
       start_period: 15s
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+          cpus: '0.25'
+        reservations:
+          memory: 64m
     networks:
       - uip-network
 
@@ -50,6 +57,13 @@ services:
       timeout: 5s
       retries: 10
       start_period: 15s
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+          cpus: '0.25'
+        reservations:
+          memory: 64m
     networks:
       - uip-network
 
@@ -68,6 +82,13 @@ services:
       timeout: 5s
       retries: 10
       start_period: 15s
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+          cpus: '0.25'
+        reservations:
+          memory: 64m
     networks:
       - uip-network
 
@@ -106,6 +127,13 @@ services:
       timeout: 5s
       retries: 10
       start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 2g
+          cpus: '1.0'
+        reservations:
+          memory: 512m
     networks:
       - uip-network
 
@@ -146,6 +174,13 @@ services:
       timeout: 5s
       retries: 10
       start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 2g
+          cpus: '1.0'
+        reservations:
+          memory: 512m
     networks:
       - uip-network
 
@@ -190,6 +225,13 @@ services:
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+          cpus: '0.75'
+        reservations:
+          memory: 256m
 
   kafka-2:
     image: confluentinc/cp-kafka:7.5.0
@@ -218,6 +260,13 @@ services:
       timeout: 10s
       retries: 5
       start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+          cpus: '0.75'
+        reservations:
+          memory: 256m
     networks:
       - uip-network
 
@@ -248,6 +297,13 @@ services:
       timeout: 10s
       retries: 5
       start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+          cpus: '0.75'
+        reservations:
+          memory: 256m
     networks:
       - uip-network
 
@@ -283,6 +339,13 @@ services:
       -c hba_file=/etc/postgresql/pg_hba.conf
     volumes:
       - ./timescaledb/pg_hba.conf:/etc/postgresql/pg_hba.conf:ro
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+          cpus: '0.5'
+        reservations:
+          memory: 256m
     # NOTE: create-replication-role.sh is in timescaledb/migrations/ (mounted by base compose as /docker-entrypoint-initdb.d)
 
   # ─── Standby replica (read-only) ──────────────────────────────────────────
@@ -313,6 +376,13 @@ services:
     depends_on:
       timescaledb:
         condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+          cpus: '0.5'
+        reservations:
+          memory: 256m
     networks:
       - uip-network
 
