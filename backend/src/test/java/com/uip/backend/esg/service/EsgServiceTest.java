@@ -7,12 +7,16 @@ import com.uip.backend.esg.config.analytics.EsgAggregateResult;
 import com.uip.backend.esg.domain.EsgReport;
 import com.uip.backend.esg.repository.EsgMetricRepository;
 import com.uip.backend.esg.repository.EsgReportRepository;
+import com.uip.backend.tenant.domain.TenantConfigEntry;
+import com.uip.backend.tenant.repository.TenantConfigRepository;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.*;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -35,6 +39,7 @@ class EsgServiceTest {
     @Mock private EsgReportGenerator   reportGenerator;
     @Mock private CacheKeyBuilder      cacheKeyBuilder;
     @Mock private AnalyticsPort        analyticsPort;
+    @Mock private TenantConfigRepository tenantConfigRepository;
 
     @InjectMocks private EsgService esgService;
 
@@ -53,6 +58,12 @@ class EsgServiceTest {
         when(metricRepository.sumByTypeAndRange(eq(TENANT_ID), eq("WATER"),  any(), any())).thenReturn(500.0);
         when(metricRepository.sumByTypeAndRange(eq(TENANT_ID), eq("CARBON"), any(), any())).thenReturn(200.0);
         when(metricRepository.sumByTypeAndRange(eq(TENANT_ID), eq("WASTE"),  any(), any())).thenReturn(50.0);
+        // Population config for water intensity
+        when(tenantConfigRepository.findByTenantId(TENANT_ID)).thenReturn(List.of(
+                TenantConfigEntry.builder()
+                        .tenantId(TENANT_ID).configKey("population_served_2025")
+                        .configValue("250").updatedAt(Instant.now()).build()
+        ));
 
         EsgSummaryDto dto = esgService.getSummary(TENANT_ID, "QUARTERLY", 2025, 1);
 
@@ -62,6 +73,7 @@ class EsgServiceTest {
         assertThat(dto.getTotalWasteTons()).isEqualTo(50.0);
         assertThat(dto.getYear()).isEqualTo(2025);
         assertThat(dto.getQuarter()).isEqualTo(1);
+        assertThat(dto.getWaterIntensityM3PerPerson()).isCloseTo(2.0, org.assertj.core.data.Offset.offset(0.001));
     }
 
     @Test
@@ -73,6 +85,7 @@ class EsgServiceTest {
                 .thenReturn(new EsgAggregateResult(0.0, 0.0, Map.of(), List.of()));
         when(metricRepository.sumByTypeAndRangeFast(any(), any(), any(), any())).thenReturn(null);
         when(metricRepository.sumByTypeAndRange(any(), anyString(), any(), any())).thenReturn(null);
+        // tenantConfigRepository NOT stubbed: calculateWaterIntensity short-circuits when water=null
 
         EsgSummaryDto dto = esgService.getSummary(TENANT_ID, "QUARTERLY", 2025, 2);
 
@@ -89,6 +102,7 @@ class EsgServiceTest {
                 .thenReturn(new EsgAggregateResult(200.0, 0.1, Map.of(), List.of()));
         when(metricRepository.sumByTypeAndRangeFast(any(), any(), any(), any())).thenReturn(null);
         when(metricRepository.sumByTypeAndRange(any(), anyString(), any(), any())).thenReturn(null);
+        // tenantConfigRepository NOT stubbed: calculateWaterIntensity short-circuits when water=null
 
         EsgSummaryDto dtoA = esgService.getSummary("tenant-a", "QUARTERLY", 2025, 1);
         EsgSummaryDto dtoB = esgService.getSummary("tenant-b", "QUARTERLY", 2025, 1);
@@ -194,5 +208,166 @@ class EsgServiceTest {
 
         assertThat(anomalies).hasSize(1);
         assertThat(anomalies.get(0).metricType()).isEqualTo("energy");
+    }
+
+    // ─── getWaterIntensity (ISO 37120 GDP proxy) ───────────────────────────────
+
+    @Nested
+    @DisplayName("getWaterIntensity — GDP proxy")
+    class WaterIntensityGdpProxy {
+
+        @Test
+        @DisplayName("getWaterIntensity_returnsCorrectRatio: water / (sampleCount * 1000)")
+        void getWaterIntensity_returnsCorrectRatio() {
+            // Arrange: ANNUAL 2025 summary returns 500 m3 water; sampleCount null → gdpProxy=1
+            when(analyticsPort.queryEnergyAggregate(eq(TENANT_ID), anyList(), anyLong(), anyLong()))
+                    .thenReturn(new EsgAggregateResult(0.0, 0.0, Map.of(), List.of()));
+            when(metricRepository.sumByTypeAndRangeFast(any(), any(), any(), any())).thenReturn(null);
+            when(metricRepository.sumByTypeAndRange(eq(TENANT_ID), eq("WATER"), any(), any()))
+                    .thenReturn(500.0);
+            when(metricRepository.sumByTypeAndRange(eq(TENANT_ID), eq("CARBON"), any(), any()))
+                    .thenReturn(null);
+            when(metricRepository.sumByTypeAndRange(eq(TENANT_ID), eq("WASTE"), any(), any()))
+                    .thenReturn(null);
+            when(tenantConfigRepository.findByTenantId(TENANT_ID)).thenReturn(List.of());
+
+            // Act
+            double result = esgService.getWaterIntensity(TENANT_ID, 2025);
+
+            // Assert: sampleCount=null → gdpProxy=1 → 500.0 / 1 = 500.0
+            assertThat(result).isCloseTo(500.0, org.assertj.core.data.Offset.offset(0.001));
+        }
+
+        @Test
+        @DisplayName("getWaterIntensity: no water data → returns 0.0")
+        void getWaterIntensity_noWaterData_returnsZero() {
+            when(analyticsPort.queryEnergyAggregate(any(), anyList(), anyLong(), anyLong()))
+                    .thenReturn(new EsgAggregateResult(0.0, 0.0, Map.of(), List.of()));
+            when(metricRepository.sumByTypeAndRangeFast(any(), any(), any(), any())).thenReturn(null);
+            when(metricRepository.sumByTypeAndRange(any(), anyString(), any(), any())).thenReturn(null);
+            // tenantConfigRepository NOT stubbed: calculateWaterIntensity short-circuits when water=null
+
+            double result = esgService.getWaterIntensity(TENANT_ID, 2025);
+
+            assertThat(result).isZero();
+        }
+    }
+
+    // ─── calculateWaterIntensity (ISO 37120) ──────────────────────────────────
+
+    @Nested
+    @DisplayName("calculateWaterIntensity — ISO 37120")
+    class WaterIntensity {
+
+        @Test
+        @DisplayName("returns water intensity when population config exists")
+        void populationExists_returnsIntensity() {
+            // 1000 m3 / 500 people = 2.0 m3/person
+            TenantConfigEntry popEntry = TenantConfigEntry.builder()
+                    .tenantId(TENANT_ID)
+                    .configKey("population_served_2025")
+                    .configValue("500")
+                    .updatedAt(Instant.now())
+                    .build();
+            when(tenantConfigRepository.findByTenantId(TENANT_ID))
+                    .thenReturn(List.of(popEntry));
+
+            Double result = esgService.calculateWaterIntensity(TENANT_ID, 1000.0, 2025);
+
+            assertThat(result).isCloseTo(2.0, org.assertj.core.data.Offset.offset(0.001));
+        }
+
+        @Test
+        @DisplayName("returns null when totalWater is null")
+        void nullWater_returnsNull() {
+            Double result = esgService.calculateWaterIntensity(TENANT_ID, null, 2025);
+            assertThat(result).isNull();
+        }
+
+        @Test
+        @DisplayName("returns null when totalWater is zero")
+        void zeroWater_returnsNull() {
+            Double result = esgService.calculateWaterIntensity(TENANT_ID, 0.0, 2025);
+            assertThat(result).isNull();
+        }
+
+        @Test
+        @DisplayName("returns null when population config is missing")
+        void missingPopulation_returnsNull() {
+            when(tenantConfigRepository.findByTenantId(TENANT_ID))
+                    .thenReturn(List.of());
+
+            Double result = esgService.calculateWaterIntensity(TENANT_ID, 500.0, 2025);
+
+            assertThat(result).isNull();
+        }
+
+        @Test
+        @DisplayName("returns null when population config value is zero")
+        void zeroPopulation_returnsNull() {
+            TenantConfigEntry popEntry = TenantConfigEntry.builder()
+                    .tenantId(TENANT_ID)
+                    .configKey("population_served_2025")
+                    .configValue("0")
+                    .updatedAt(Instant.now())
+                    .build();
+            when(tenantConfigRepository.findByTenantId(TENANT_ID))
+                    .thenReturn(List.of(popEntry));
+
+            Double result = esgService.calculateWaterIntensity(TENANT_ID, 500.0, 2025);
+
+            assertThat(result).isNull();
+        }
+
+        @Test
+        @DisplayName("returns null when population config value is non-numeric")
+        void invalidPopulation_returnsNull() {
+            TenantConfigEntry popEntry = TenantConfigEntry.builder()
+                    .tenantId(TENANT_ID)
+                    .configKey("population_served_2025")
+                    .configValue("not-a-number")
+                    .updatedAt(Instant.now())
+                    .build();
+            when(tenantConfigRepository.findByTenantId(TENANT_ID))
+                    .thenReturn(List.of(popEntry));
+
+            Double result = esgService.calculateWaterIntensity(TENANT_ID, 500.0, 2025);
+
+            assertThat(result).isNull();
+        }
+
+        @Test
+        @DisplayName("uses year-specific population key")
+        void yearSpecificPopulationKey() {
+            TenantConfigEntry popEntry = TenantConfigEntry.builder()
+                    .tenantId(TENANT_ID)
+                    .configKey("population_served_2026")
+                    .configValue("800")
+                    .updatedAt(Instant.now())
+                    .build();
+            when(tenantConfigRepository.findByTenantId(TENANT_ID))
+                    .thenReturn(List.of(popEntry));
+
+            // Requesting 2025 but config is for 2026 → should return null
+            Double result = esgService.calculateWaterIntensity(TENANT_ID, 500.0, 2025);
+            assertThat(result).isNull();
+        }
+
+        @Test
+        @DisplayName("large population returns small intensity")
+        void largePopulation_smallIntensity() {
+            TenantConfigEntry popEntry = TenantConfigEntry.builder()
+                    .tenantId(TENANT_ID)
+                    .configKey("population_served_2025")
+                    .configValue("1000000")
+                    .updatedAt(Instant.now())
+                    .build();
+            when(tenantConfigRepository.findByTenantId(TENANT_ID))
+                    .thenReturn(List.of(popEntry));
+
+            Double result = esgService.calculateWaterIntensity(TENANT_ID, 500000.0, 2025);
+
+            assertThat(result).isCloseTo(0.5, org.assertj.core.data.Offset.offset(0.001));
+        }
     }
 }

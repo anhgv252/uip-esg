@@ -2,6 +2,7 @@ package com.uip.backend.alert.api;
 
 import com.uip.backend.alert.api.dto.AcknowledgeRequest;
 import com.uip.backend.alert.api.dto.AlertEventDto;
+import com.uip.backend.alert.api.dto.AlertFeedbackRequest;
 import com.uip.backend.alert.service.AlertService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -107,5 +108,23 @@ public class AlertController {
             Authentication auth) {
         String note = req != null ? req.getNote() : null;
         return ResponseEntity.ok(alertService.resolveAlert(id, auth.getName(), note));
+    }
+
+    @PostMapping("/{id}/feedback")
+    @Operation(summary = "Submit operator feedback on an AI-generated alert (M4-COR-06)")
+    @PreAuthorize("hasAnyRole('OPERATOR','ADMIN')")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Feedback recorded, updated alert returned"),
+        @ApiResponse(responseCode = "401", description = "Authentication required"),
+        @ApiResponse(responseCode = "403", description = "Requires OPERATOR or ADMIN role"),
+        @ApiResponse(responseCode = "404", description = "Alert not found")
+    })
+    public ResponseEntity<AlertEventDto> submitFeedback(
+            @PathVariable UUID id,
+            @RequestBody AlertFeedbackRequest feedback,
+            Authentication auth) {
+        AlertEventDto updated = alertService.recordFeedback(
+                id, auth.getName(), feedback.getCorrect(), feedback.getComment());
+        return ResponseEntity.ok(updated);
     }
 }

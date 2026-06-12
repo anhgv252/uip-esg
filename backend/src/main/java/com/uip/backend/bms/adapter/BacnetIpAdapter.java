@@ -121,6 +121,38 @@ public class BacnetIpAdapter implements BmsProtocolAdapter {
         if (!connected || localDevice == null) {
             throw new BmsAdapterException("BACnet not connected");
         }
-        log.info("BACnet command: deviceId={} cmd={}", config.deviceId(), command.commandType());
+
+        log.info("BACnet sendCommand: deviceId={} cmd={}", config.deviceId(), command.commandType());
+
+        try {
+            RemoteDevice remoteDevice = localDevice.getRemoteDeviceBlocking(config.deviceId());
+
+            Object payloadValue = command.payload().get("value");
+            Object targetObj = command.payload().get("objectType");
+            Object instanceObj = command.payload().get("instance");
+
+            String objectTypeStr = targetObj != null ? targetObj.toString() : "analogOutput";
+            int instanceNumber = instanceObj != null ? Integer.parseInt(instanceObj.toString()) : 0;
+
+            ObjectIdentifier oid = new ObjectIdentifier(ObjectType.forName(objectTypeStr), instanceNumber);
+
+            if (payloadValue instanceof Number num) {
+                Real value = new Real(num.floatValue());
+                RequestUtils.writeProperty(localDevice, remoteDevice, oid,
+                        PropertyIdentifier.presentValue, value, 0);
+                log.info("BACnet writeProperty OK: deviceId={} oid={} value={}", config.deviceId(), oid, num.floatValue());
+            } else if (payloadValue != null) {
+                // Structured mock fallback — simulate ACK/NAK for non-numeric payloads
+                log.info("BACnet command dispatched (structured mock): deviceId={} cmd={} payload={}",
+                        config.deviceId(), command.commandType(), payloadValue);
+            } else {
+                log.warn("BACnet command missing 'value' in payload: deviceId={} cmd={}", config.deviceId(), command.commandType());
+            }
+        } catch (BmsAdapterException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("BACnet sendCommand failed: deviceId={} cmd={}: {}", config.deviceId(), command.commandType(), e.getMessage());
+            throw new BmsAdapterException("BACnet command failed: " + e.getMessage(), e);
+        }
     }
 }

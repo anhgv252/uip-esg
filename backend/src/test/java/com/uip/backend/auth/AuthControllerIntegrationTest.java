@@ -21,6 +21,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -125,17 +127,16 @@ class AuthControllerIntegrationTest {
         return p.waitFor(timeoutSec, TimeUnit.SECONDS) ? p.exitValue() : -1;
     }
 
-    private static void waitForPostgres(int port, int timeoutSec) throws Exception {
+    private static void waitForPostgres(int port, int timeoutSec) {
         String url = "jdbc:postgresql://localhost:" + port + "/uip_test";
-        long deadline = System.currentTimeMillis() + timeoutSec * 1000L;
-        while (System.currentTimeMillis() < deadline) {
-            try (Connection c = DriverManager.getConnection(url, "uip", "test_password")) {
-                return; // connected
-            } catch (Exception ignored) {
-                Thread.sleep(500);
-            }
-        }
-        throw new IllegalStateException("PostgreSQL on port " + port + " did not become ready in " + timeoutSec + "s");
+        await().atMost(timeoutSec, TimeUnit.SECONDS)
+                .pollInterval(500, TimeUnit.MILLISECONDS)
+                .ignoreExceptions()
+                .untilAsserted(() -> {
+                    try (var c = DriverManager.getConnection(url, "uip", "test_password")) {
+                        assertThat(c.isValid(1)).isTrue();
+                    }
+                });
     }
 
     private static void stopContainer(String containerId) {

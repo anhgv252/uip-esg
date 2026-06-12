@@ -1,5 +1,6 @@
 package com.uip.backend.tenant.filter;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.JWSHeader;
 import com.nimbusds.jose.crypto.MACSigner;
@@ -39,10 +40,11 @@ class TenantContextFilterTest {
                     .getBytes(StandardCharsets.UTF_8);
 
     private TenantContextFilter filter;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     @BeforeEach
     void setUp() {
-        filter = new TenantContextFilter();
+        filter = new TenantContextFilter(objectMapper);
     }
 
     @AfterEach

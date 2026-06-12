@@ -41,8 +41,10 @@ public class TrafficController {
     @Operation(summary = "Vehicle counts by intersection and time window")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Traffic count data returned"),
+            @ApiResponse(responseCode = "400", description = "Bad request — invalid time range or intersection parameter"),
             @ApiResponse(responseCode = "401", description = "Unauthorized — invalid or missing JWT"),
-            @ApiResponse(responseCode = "403", description = "Forbidden — insufficient permissions")
+            @ApiResponse(responseCode = "403", description = "Forbidden — insufficient permissions"),
+            @ApiResponse(responseCode = "500", description = "Internal server error")
     })
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<TrafficCountDto>> getCounts(
@@ -64,8 +66,10 @@ public class TrafficController {
     @Operation(summary = "Get traffic incidents with status filter")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Paginated incident list"),
+            @ApiResponse(responseCode = "400", description = "Bad request — invalid status or pagination parameter"),
             @ApiResponse(responseCode = "401", description = "Unauthorized — invalid or missing JWT"),
-            @ApiResponse(responseCode = "403", description = "Forbidden — insufficient permissions")
+            @ApiResponse(responseCode = "403", description = "Forbidden — insufficient permissions"),
+            @ApiResponse(responseCode = "500", description = "Internal server error")
     })
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Page<TrafficIncidentDto>> getIncidents(
@@ -84,8 +88,10 @@ public class TrafficController {
     @Operation(summary = "Get congestion map as GeoJSON FeatureCollection")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "GeoJSON congestion map"),
+            @ApiResponse(responseCode = "400", description = "Bad request"),
             @ApiResponse(responseCode = "401", description = "Unauthorized — invalid or missing JWT"),
-            @ApiResponse(responseCode = "403", description = "Forbidden — insufficient permissions")
+            @ApiResponse(responseCode = "403", description = "Forbidden — insufficient permissions"),
+            @ApiResponse(responseCode = "500", description = "Internal server error")
     })
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<CongestionGeoJsonDto> getCongestionMap() {
@@ -102,7 +108,8 @@ public class TrafficController {
             @ApiResponse(responseCode = "201", description = "Incident created"),
             @ApiResponse(responseCode = "400", description = "Invalid request body"),
             @ApiResponse(responseCode = "401", description = "Unauthorized — invalid or missing JWT"),
-            @ApiResponse(responseCode = "403", description = "Forbidden — requires ADMIN or OPERATOR role")
+            @ApiResponse(responseCode = "403", description = "Forbidden — requires ADMIN or OPERATOR role"),
+            @ApiResponse(responseCode = "500", description = "Internal server error")
     })
     @PreAuthorize("hasAnyRole('ADMIN', 'OPERATOR')")
     public ResponseEntity<TrafficIncidentDto> createIncident(@RequestBody TrafficIncidentDto dto) {
@@ -117,9 +124,11 @@ public class TrafficController {
     @Operation(summary = "Update traffic incident status")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Incident status updated"),
+            @ApiResponse(responseCode = "400", description = "Bad request — invalid status value"),
             @ApiResponse(responseCode = "401", description = "Unauthorized — invalid or missing JWT"),
             @ApiResponse(responseCode = "403", description = "Forbidden — requires ADMIN or OPERATOR role"),
-            @ApiResponse(responseCode = "404", description = "Incident not found")
+            @ApiResponse(responseCode = "404", description = "Incident not found"),
+            @ApiResponse(responseCode = "500", description = "Internal server error")
     })
     @PreAuthorize("hasAnyRole('ADMIN', 'OPERATOR')")
     public ResponseEntity<TrafficIncidentDto> updateIncidentStatus(

@@ -151,6 +151,27 @@ public class AlertService {
         return toDto(alertEventRepository.save(event), Map.of());
     }
 
+    /**
+     * M4-COR-06: Record operator feedback on an AI-generated alert decision.
+     *
+     * @param alertId  target alert UUID
+     * @param operator username of the operator submitting feedback
+     * @param correct  {@code true} when AI was right; {@code false} when wrong
+     * @param comment  free-text operator comment (nullable)
+     * @return updated alert DTO with feedback fields populated
+     */
+    @Transactional
+    public AlertEventDto recordFeedback(UUID alertId, String operator, Boolean correct, String comment) {
+        AlertEvent alert = alertEventRepository.findById(alertId)
+                .orElseThrow(() -> new EntityNotFoundException("Alert not found: " + alertId));
+        alert.setFeedbackCorrect(correct);
+        alert.setFeedbackComment(comment);
+        alert.setFeedbackBy(operator);
+        alert.setFeedbackAt(Instant.now());
+        log.info("[AlertFeedback] alertId={} operator={} correct={}", alertId, operator, correct);
+        return toDto(alertEventRepository.save(alert), Map.of());
+    }
+
     @Scheduled(fixedDelayString = "${uip.cagg.alert-refresh-ms:15000}")
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public void refreshAlertCountSummary() {
@@ -207,6 +228,10 @@ public class AlertService {
                 .acknowledgedBy(a.getAcknowledgedBy())
                 .acknowledgedAt(a.getAcknowledgedAt())
                 .note(a.getNote())
+                .feedbackCorrect(a.getFeedbackCorrect())
+                .feedbackComment(a.getFeedbackComment())
+                .feedbackBy(a.getFeedbackBy())
+                .feedbackAt(a.getFeedbackAt())
                 .build();
     }
 }

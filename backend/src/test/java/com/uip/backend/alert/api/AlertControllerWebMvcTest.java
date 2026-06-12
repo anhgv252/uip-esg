@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Import;
@@ -114,6 +115,88 @@ class AlertControllerWebMvcTest {
     @DisplayName("PUT /{id}/escalate — VIEWER role → 403 Forbidden")
     void escalate_asViewer_returns403() throws Exception {
         mockMvc.perform(put("/api/v1/alerts/{id}/escalate", UUID.randomUUID())
+                .with(csrf())
+                .contentType("application/json")
+                .content("{}"))
+            .andExpect(status().isForbidden());
+    }
+
+    // ─── GET /alerts (queryAlerts) ────────────────────────────────────────────
+
+    @Test
+    @WithMockUser
+    @DisplayName("CT-ALERT-A1: GET /alerts — authenticated returns 200 with paginated results")
+    void queryAlerts_authenticated_returns200() throws Exception {
+        when(alertService.queryAlerts(any(), any(), any(), any(), any(), anyInt(), anyInt()))
+            .thenReturn(new PageImpl<>(List.of(buildDto(UUID.randomUUID(), "OPEN"))));
+
+        mockMvc.perform(get("/api/v1/alerts"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.content").isArray())
+            .andExpect(jsonPath("$.content[0].status").value("OPEN"));
+
+        verify(alertService).queryAlerts(isNull(), isNull(), isNull(), isNull(), isNull(), eq(0), eq(20));
+    }
+
+    @Test
+    @WithMockUser
+    @DisplayName("CT-ALERT-A2: GET /alerts — severity filter forwarded to service")
+    void queryAlerts_withSeverity_forwardsFilter() throws Exception {
+        when(alertService.queryAlerts(any(), any(), any(), any(), any(), anyInt(), anyInt()))
+            .thenReturn(new PageImpl<>(List.of()));
+
+        mockMvc.perform(get("/api/v1/alerts")
+                .param("severity", "CRITICAL"))
+            .andExpect(status().isOk());
+
+        verify(alertService).queryAlerts(isNull(), eq("CRITICAL"), isNull(), isNull(), isNull(), eq(0), eq(20));
+    }
+
+    // ─── PUT /{id}/acknowledge ────────────────────────────────────────────────
+
+    @Test
+    @WithMockUser(roles = "OPERATOR")
+    @DisplayName("CT-ALERT-A3: PUT /{id}/acknowledge — OPERATOR returns 200")
+    void acknowledge_asOperator_returns200() throws Exception {
+        UUID id = UUID.randomUUID();
+        when(alertService.acknowledgeAlert(eq(id), anyString(), any()))
+            .thenReturn(buildDto(id, "ACKNOWLEDGED"));
+
+        mockMvc.perform(put("/api/v1/alerts/{id}/acknowledge", id)
+                .with(csrf())
+                .contentType("application/json")
+                .content("{}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status").value("ACKNOWLEDGED"));
+
+        verify(alertService).acknowledgeAlert(eq(id), anyString(), any());
+    }
+
+    // ─── PUT /{id}/resolve ────────────────────────────────────────────────────
+
+    @Test
+    @WithMockUser(roles = "OPERATOR")
+    @DisplayName("CT-ALERT-A4: PUT /{id}/resolve — OPERATOR returns 200")
+    void resolve_asOperator_returns200() throws Exception {
+        UUID id = UUID.randomUUID();
+        when(alertService.resolveAlert(eq(id), anyString(), any()))
+            .thenReturn(buildDto(id, "RESOLVED"));
+
+        mockMvc.perform(put("/api/v1/alerts/{id}/resolve", id)
+                .with(csrf())
+                .contentType("application/json")
+                .content("{}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status").value("RESOLVED"));
+
+        verify(alertService).resolveAlert(eq(id), anyString(), isNull());
+    }
+
+    @Test
+    @WithMockUser(roles = "VIEWER")
+    @DisplayName("CT-ALERT-A5: PUT /{id}/acknowledge — VIEWER forbidden 403")
+    void acknowledge_asViewer_returns403() throws Exception {
+        mockMvc.perform(put("/api/v1/alerts/{id}/acknowledge", UUID.randomUUID())
                 .with(csrf())
                 .contentType("application/json")
                 .content("{}"))

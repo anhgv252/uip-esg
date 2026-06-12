@@ -154,6 +154,9 @@ dependencies {
     // Pact — consumer-driven contract testing (S11-PACT-01)
     testImplementation 'au.com.dius.pact.consumer:junit5:4.6.14'
     testImplementation 'au.com.dius.pact.provider:junit5:4.6.14'
+    // REST Assured — API contract testing (v3.1-06)
+    testImplementation 'io.rest-assured:rest-assured:5.5.1'
+    testImplementation 'io.rest-assured:spring-mock-mvc:5.5.1'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
     // SpotBugs + FindSecBugs — security-focused static analysis

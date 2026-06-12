@@ -27,14 +27,17 @@ public class ClickHouseRestAnalyticsAdapter implements AnalyticsPort {
 
     private final RestTemplate restTemplate;
     private final String analyticsServiceUrl;
+    private final double co2EmissionFactor;
 
     public ClickHouseRestAnalyticsAdapter(
-            @Value("${uip.analytics-service.url:http://localhost:8082}") String analyticsServiceUrl) {
+            @Value("${uip.analytics-service.url:http://localhost:8082}") String analyticsServiceUrl,
+            @Value("${esg.co2-emission-factor:0.5}") double co2EmissionFactor) {
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
         factory.setConnectTimeout(5_000);
         factory.setReadTimeout(30_000);
         this.restTemplate = new RestTemplate(factory);
         this.analyticsServiceUrl = analyticsServiceUrl;
+        this.co2EmissionFactor = co2EmissionFactor;
     }
 
     @Override
@@ -67,8 +70,9 @@ public class ClickHouseRestAnalyticsAdapter implements AnalyticsPort {
                         EnergyAggregateHttpResponse.BuildingBreakdown::buildingId,
                         EnergyAggregateHttpResponse.BuildingBreakdown::totalKwh));
 
-        // CO2 estimate: 0.5 kg/kWh → 0.0005 tonnes/kWh
-        double co2 = response.totalKwh() * 0.0005;
+        // CO2 estimate: configurable emission factor (default 0.5 kg/kWh Vietnam grid avg)
+        double co2TonnesPerKwh = co2EmissionFactor / 1000.0;  // kg → tonnes
+        double co2 = response.totalKwh() * co2TonnesPerKwh;
 
         return new EsgAggregateResult(response.totalKwh(), co2, kwhPerBuilding, buildingIds);
     }

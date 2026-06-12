@@ -1,6 +1,7 @@
 package com.uip.backend.auth.config;
 
 import com.uip.backend.auth.service.UipUserDetailsService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -27,23 +28,14 @@ import com.uip.backend.tenant.filter.TenantContextFilter;
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
+@RequiredArgsConstructor
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthFilter;
+    @Autowired(required = false)
     private final TenantContextFilter tenantContextFilter;
     private final UipUserDetailsService userDetailsService;
     private final DynamicCorsConfigurationSource dynamicCorsConfigurationSource;
-
-    @Autowired
-    public SecurityConfig(JwtAuthenticationFilter jwtAuthFilter,
-                          @Autowired(required = false) TenantContextFilter tenantContextFilter,
-                          UipUserDetailsService userDetailsService,
-                          DynamicCorsConfigurationSource dynamicCorsConfigurationSource) {
-        this.jwtAuthFilter = jwtAuthFilter;
-        this.tenantContextFilter = tenantContextFilter;
-        this.userDetailsService = userDetailsService;
-        this.dynamicCorsConfigurationSource = dynamicCorsConfigurationSource;
-    }
 
     @Bean
     @Order(2)

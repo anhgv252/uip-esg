@@ -14,8 +14,16 @@ yarn-error.log*
 .env
 .env.*
 !.env.example
+!.env.staging.example
 !.env.uat.example
 !.env.security.example
+
+# Secrets (push notification credentials, service account keys)
+infrastructure/secrets/*.json
+infrastructure/secrets/*.p8
+infrastructure/secrets/*.jks
+infrastructure/secrets/*.keystore
+!infrastructure/secrets/README.md
 
 # Backend (Gradle / Java)
 backend/.gradle/
