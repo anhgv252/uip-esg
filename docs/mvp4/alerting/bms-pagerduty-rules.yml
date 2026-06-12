@@ -1,0 +1,49 @@
+# BMS Command Alert Rules
+# Sprint 5 Task #24 — BMS command monitoring (2 SP)
+# Metrics source: BmsCommandMetrics.java (Micrometer counters + Timer)
+groups:
+  - name: bms-safety-alerts
+    rules:
+      - alert: BmsCommandFailed
+        expr: sum(increase(bms_commands_rejected_total[5m])) > 3
+        for: 1m
+        labels:
+          severity: warning
+          team: operations
+        annotations:
+          summary: "Multiple BMS commands rejected in last 5 minutes"
+          description: "More than 3 BMS commands were rejected within a 5-minute window. Investigate operator actions or system state."
+          runbook_url: "https://wiki.uip.internal/runbooks/bms-command-rejected"
+
+      - alert: BmsOperatorTimeout
+        expr: sum(increase(bms_commands_expired_total[5m])) > 0
+        for: 0m
+        labels:
+          severity: critical
+          team: operations
+        annotations:
+          summary: "BMS command expired without operator response"
+          description: "No operator responded within 30s — command auto-cancelled"
+          runbook_url: "https://wiki.uip.internal/runbooks/bms-operator-timeout"
+
+      - alert: BmsCommandLatencyHigh
+        expr: histogram_quantile(0.95, sum(rate(bms_command_latency_seconds_bucket[5m])) by (le)) > 25
+        for: 2m
+        labels:
+          severity: warning
+          team: operations
+        annotations:
+          summary: "BMS command approval latency p95 > 25 seconds"
+          description: "The 95th percentile of BMS command approval time has exceeded 25 seconds for 2 minutes. Check operator responsiveness and notification delivery."
+          runbook_url: "https://wiki.uip.internal/runbooks/bms-latency-high"
+
+      - alert: BmsUnexpectedState
+        expr: sum(bms_commands_proposed_total) - sum(bms_commands_approved_total) - sum(bms_commands_rejected_total) - sum(bms_commands_expired_total) > 10
+        for: 5m
+        labels:
+          severity: warning
+          team: operations
+        annotations:
+          summary: "More than 10 BMS commands stuck in PENDING state"
+          description: "Command state machine leak detected: proposed - approved - rejected - expired > 10 for 5 minutes. Possible missed state transitions."
+          runbook_url: "https://wiki.uip.internal/runbooks/bms-pending-leak"

@@ -2,6 +2,7 @@ package com.uip.backend.esg.config.analytics;
 
 import com.uip.backend.esg.repository.EsgMetricRepository;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -21,8 +22,11 @@ import org.springframework.context.annotation.Configuration;
 public class AnalyticsAutoConfiguration {
 
     @Bean
-    public AnalyticsPort analyticsPort(EsgMetricRepository metricRepository) {
-        log.info("[Capability] analytics-external=false → TimescaleDbAnalyticsAdapter loaded");
-        return new TimescaleDbAnalyticsAdapter(metricRepository);
+    public AnalyticsPort analyticsPort(
+            EsgMetricRepository metricRepository,
+            @Value("${esg.co2-emission-factor:0.5}") double co2EmissionFactor) {
+        log.info("[Capability] analytics-external=false → TimescaleDbAnalyticsAdapter loaded (co2Factor={} kg/kWh)",
+                co2EmissionFactor);
+        return new TimescaleDbAnalyticsAdapter(metricRepository, co2EmissionFactor);
     }
 }

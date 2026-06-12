@@ -51,7 +51,10 @@ public class EsgController {
     @Operation(summary = "ESG summary aggregation for a given period")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "ESG summary returned"),
-        @ApiResponse(responseCode = "401", description = "Unauthorized — invalid or missing JWT")
+        @ApiResponse(responseCode = "400", description = "Bad request — invalid period/year/quarter parameter"),
+        @ApiResponse(responseCode = "401", description = "Unauthorized — invalid or missing JWT"),
+        @ApiResponse(responseCode = "403", description = "Forbidden — insufficient permissions"),
+        @ApiResponse(responseCode = "500", description = "Internal server error")
     })
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<EsgSummaryDto> getSummary(
@@ -66,7 +69,10 @@ public class EsgController {
     @Operation(summary = "Energy consumption time-series")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Energy metrics returned"),
-        @ApiResponse(responseCode = "401", description = "Unauthorized — invalid or missing JWT")
+        @ApiResponse(responseCode = "400", description = "Bad request — invalid time range parameters"),
+        @ApiResponse(responseCode = "401", description = "Unauthorized — invalid or missing JWT"),
+        @ApiResponse(responseCode = "403", description = "Forbidden — insufficient permissions"),
+        @ApiResponse(responseCode = "500", description = "Internal server error")
     })
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<EsgMetricDto>> getEnergy(
@@ -81,7 +87,10 @@ public class EsgController {
     @Operation(summary = "Carbon emission time-series")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Carbon metrics returned"),
-        @ApiResponse(responseCode = "401", description = "Unauthorized — invalid or missing JWT")
+        @ApiResponse(responseCode = "400", description = "Bad request — invalid time range parameters"),
+        @ApiResponse(responseCode = "401", description = "Unauthorized — invalid or missing JWT"),
+        @ApiResponse(responseCode = "403", description = "Forbidden — insufficient permissions"),
+        @ApiResponse(responseCode = "500", description = "Internal server error")
     })
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<EsgMetricDto>> getCarbon(
@@ -97,7 +106,9 @@ public class EsgController {
     @ApiResponses({
         @ApiResponse(responseCode = "202", description = "Report generation started"),
         @ApiResponse(responseCode = "400", description = "Invalid year/quarter parameters"),
-        @ApiResponse(responseCode = "403", description = "Requires esg:write authority")
+        @ApiResponse(responseCode = "401", description = "Unauthorized — invalid or missing JWT"),
+        @ApiResponse(responseCode = "403", description = "Requires esg:write authority"),
+        @ApiResponse(responseCode = "500", description = "Internal server error")
     })
     public ResponseEntity<EsgReportDto> generateReport(
             @RequestParam(defaultValue = "quarterly") String period,
@@ -112,8 +123,11 @@ public class EsgController {
     @Operation(summary = "Check ESG report generation status")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Report status returned"),
+        @ApiResponse(responseCode = "400", description = "Bad request — invalid report ID format"),
         @ApiResponse(responseCode = "401", description = "Unauthorized — invalid or missing JWT"),
-        @ApiResponse(responseCode = "404", description = "Report not found")
+        @ApiResponse(responseCode = "403", description = "Forbidden — insufficient permissions"),
+        @ApiResponse(responseCode = "404", description = "Report not found"),
+        @ApiResponse(responseCode = "500", description = "Internal server error")
     })
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<EsgReportDto> getReportStatus(@PathVariable UUID id) {
@@ -125,8 +139,11 @@ public class EsgController {
     @Operation(summary = "Download ESG report (XLSX or CSV)")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Report file stream"),
+        @ApiResponse(responseCode = "400", description = "Bad request — invalid report ID or format"),
         @ApiResponse(responseCode = "401", description = "Unauthorized — invalid or missing JWT"),
-        @ApiResponse(responseCode = "404", description = "Report not found")
+        @ApiResponse(responseCode = "403", description = "Forbidden — insufficient permissions"),
+        @ApiResponse(responseCode = "404", description = "Report not found"),
+        @ApiResponse(responseCode = "500", description = "Internal server error")
     })
     @PreAuthorize("isAuthenticated()")
     @SuppressFBWarnings(value = "PATH_TRAVERSAL_IN", justification = "report.getFilePath() is server-written (set by EsgReportGenerator, never from user input); further guarded by getCanonicalFile() + startsWith(baseDir) check")

@@ -1,5 +1,7 @@
 package com.uip.backend.tenant.filter;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.uip.backend.tenant.context.TenantContext;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -31,6 +33,12 @@ import java.nio.charset.StandardCharsets;
 public class TenantContextFilter extends OncePerRequestFilter {
 
     private static final String TENANT_ID_CLAIM = "tenant_id";
+
+    private final ObjectMapper objectMapper;
+
+    public TenantContextFilter(ObjectMapper objectMapper) {
+        this.objectMapper = objectMapper;
+    }
 
     @Override
     protected void doFilterInternal(
@@ -115,20 +123,17 @@ public class TenantContextFilter extends OncePerRequestFilter {
     }
 
     /**
-     * Minimal JSON field extraction for simple string values.
-     * Avoids pulling in a full JSON library just for one claim.
+     * Extract a string field from JSON using Jackson ObjectMapper.
+     * Replaces manual string parsing for correctness (handles escaping, nested objects).
      */
     private String extractJsonField(String json, String key) {
-        String needle = "\"" + key + "\":\"";
-        int start = json.indexOf(needle);
-        if (start < 0) {
+        try {
+            JsonNode node = objectMapper.readTree(json);
+            JsonNode field = node.get(key);
+            return field != null && !field.isNull() ? field.asText() : null;
+        } catch (Exception e) {
+            log.debug("Failed to parse JSON for key={}: {}", key, e.getMessage());
             return null;
         }
-        start += needle.length();
-        int end = json.indexOf("\"", start);
-        if (end < 0) {
-            return null;
-        }
-        return json.substring(start, end);
     }
 }

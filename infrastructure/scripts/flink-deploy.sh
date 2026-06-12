@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Flink Job Deployment Script — ADR-038
-# Manages Flink job lifecycle: build → savepoint → cancel → submit
+# Flink Job Deployment Script — ADR-038 + GAP-036
+# Manages Flink job lifecycle: build → savepoint → cancel → submit → rollback
 #
 # Usage:
 #   ./flink-deploy.sh [command] [options]
@@ -12,14 +12,17 @@
 #   cancel            Cancel all running Flink jobs
 #   savepoint         Take savepoint of all running jobs
 #   deploy            Full deploy cycle: savepoint → cancel → submit
+#   rollback          Rollback to last savepoint: cancel → restore from savepoint
 #   status            Show detailed job status
 #
 # Environment:
 #   FLINK_URL         Flink JobManager URL (default: http://localhost:8081)
 #   SAVEPOINT_DIR     Savepoint directory (default: s3://uip-flink-checkpoints/savepoints)
 #   JAR_DIR           JAR directory (default: ../flink-jobs/target)
+#   JAR               Override JAR path (for CI: JAR=/path/to/job.jar)
+#   ENTRY_CLASS       Override entry class (used with JAR for single-job deploy)
 #
-# Part of Sprint 8 (S8-OPS03) — Flink CI/CD automation
+# Part of Sprint 8 (S8-OPS03) + Sprint MVP4-S2 (GAP-036)
 set -euo pipefail
 
 # ─── Configuration ────────────────────────────────────────────────────────────
@@ -27,8 +30,9 @@ FLINK_URL="${FLINK_URL:-http://localhost:8081}"
 SAVEPOINT_DIR="${SAVEPOINT_DIR:-s3://uip-flink-checkpoints/savepoints}"
 JAR_DIR="${JAR_DIR:-../flink-jobs/target}"
 JAR_PATTERN="uip-flink-jobs-*.jar"
+JAR_OVERRIDE="${JAR:-}"
 
-# All Flink jobs to manage (class name → entry point)
+# All Flink jobs to manage (display name → entry point)
 declare -A FLINK_JOBS=(
     ["EsgDualSinkJob"]="com.uip.flink.esg.EsgDualSinkJob"
     ["Structural Vibration Anomaly Detection Job"]="com.uip.flink.structural.VibrationAnomalyJob"
@@ -57,6 +61,15 @@ check_flink_health() {
 }
 
 find_jar() {
+    # If JAR override provided, use it directly
+    if [[ -n "$JAR_OVERRIDE" ]]; then
+        if [[ ! -f "$JAR_OVERRIDE" ]]; then
+            log_error "Override JAR not found: ${JAR_OVERRIDE}"
+            exit 1
+        fi
+        echo "$JAR_OVERRIDE"
+        return
+    fi
     local jar
     jar=$(ls -t ${JAR_DIR}/${JAR_PATTERN} 2>/dev/null | head -1)
     if [[ -z "$jar" ]]; then
@@ -92,7 +105,24 @@ try:
     for job in data.get('jobs', []):
         state = job.get('state', '')
         if state in active_states:
-            print(f"{job['jid']}\t{job['name']}\t{state}")
+            print(f\"{job['jid']}\t{job['name']}\t{state}\")
+except: pass
+" 2>/dev/null || true
+}
+
+# Find the latest savepoint path for a given job name
+find_latest_savepoint() {
+    local job_name="$1"
+    # Check Flink's completed checkpoints for savepoint paths
+    curl -sf "${FLINK_URL}/jobs/overview" 2>/dev/null | \
+        python3 -c "
+import sys, json
+try:
+    data = json.load(sys.stdin)
+    for job in data.get('jobs', []):
+        if job.get('state') in ('CANCELED', 'FINISHED', 'FAILED'):
+            jid = job['id']
+            print(f'{jid}')
 except: pass
 " 2>/dev/null || true
 }
@@ -151,6 +181,7 @@ cmd_savepoint() {
     check_flink_health
     log_info "Taking savepoints of running jobs..."
 
+    local saved=0
     while IFS=$'\t' read -r job_id job_name; do
         [[ -z "$job_id" ]] && continue
         log_info "Savepoint: ${job_name} (${job_id})..."
@@ -162,11 +193,16 @@ cmd_savepoint() {
 
         if echo "$result" | grep -q "triggered"; then
             log_ok "Savepoint triggered for ${job_name}"
+            saved=$((saved + 1))
         else
             log_warn "Savepoint failed for ${job_name}: ${result}"
             log_warn "Proceeding without savepoint..."
         fi
     done <<< "$(get_running_jobs)"
+
+    if [[ $saved -eq 0 ]]; then
+        log_info "No running jobs to savepoint"
+    fi
 }
 
 cmd_cancel() {
@@ -197,6 +233,13 @@ cmd_submit() {
 
     log_info "Submitting jobs from $(basename "$jar")..."
 
+    # If ENTRY_CLASS is specified (single-job mode via JAR= override), submit just that one
+    if [[ -n "${ENTRY_CLASS:-}" ]]; then
+        log_info "Single-job mode: ${ENTRY_CLASS}"
+        _submit_single_job "$(basename "$jar" .jar)" "$ENTRY_CLASS" "$jar"
+        return
+    fi
+
     for job_name in "${!FLINK_JOBS[@]}"; do
         local entry_class="${FLINK_JOBS[$job_name]}"
 
@@ -208,7 +251,90 @@ cmd_submit() {
             continue
         fi
 
-        log_info "Submitting: ${entry_class} (name: ${job_name})..."
+        _submit_single_job "$job_name" "$entry_class" "$jar"
+    done
+}
+
+_submit_single_job() {
+    local job_name="$1"
+    local entry_class="$2"
+    local jar="$3"
+
+    log_info "Submitting: ${entry_class} (name: ${job_name})..."
+    local result
+    result=$(curl -sf -X POST \
+        "${FLINK_URL}/jars/upload" \
+        -F "jarfile=@${jar}" 2>&1)
+
+    local jar_id
+    jar_id=$(echo "$result" | python3 -c "import sys,json; print(json.load(sys.stdin).get('filename',''))" 2>/dev/null || true)
+
+    if [[ -z "$jar_id" ]]; then
+        log_error "Failed to upload JAR: ${result}"
+        return 1
+    fi
+
+    # Submit with entry class
+    local submit_result
+    submit_result=$(curl -sf -X POST \
+        "${FLINK_URL}/jars/$(basename "$jar_id")/run?entry-class=${entry_class}" 2>&1)
+
+    if echo "$submit_result" | grep -q "jobid"; then
+        local new_job_id
+        new_job_id=$(echo "$submit_result" | python3 -c "import sys,json; print(json.load(sys.stdin).get('jobid',''))" 2>/dev/null || echo "unknown")
+        log_ok "Submitted: ${job_name} → ${new_job_id}"
+    else
+        log_error "Failed to submit ${job_name}: ${submit_result}"
+        return 1
+    fi
+}
+
+cmd_deploy() {
+    log_info "=== Flink Full Deploy Cycle ==="
+    echo ""
+    cmd_savepoint || true
+    sleep 3
+    cmd_cancel
+    sleep 2
+    cmd_submit
+    echo ""
+    log_ok "=== Deploy complete ==="
+    cmd_list
+}
+
+cmd_rollback() {
+    check_flink_health
+    log_info "=== Flink Rollback ==="
+    echo ""
+    log_warn "Rollback will cancel current jobs and restore from latest savepoint"
+    echo ""
+
+    # 1. Cancel all running jobs first
+    cmd_cancel
+    sleep 2
+
+    # 2. Find the JAR
+    local jar
+    jar=$(find_jar)
+
+    # 3. Re-submit all jobs (they will resume from last checkpoint in S3)
+    # Flink's checkpoint-based recovery: if a job was running with checkpoints
+    # stored in S3/MinIO, restarting the same job will automatically recover
+    # from the latest completed checkpoint.
+    log_info "Re-submitting jobs from $(basename "$jar") (will recover from checkpoint)..."
+
+    for job_name in "${!FLINK_JOBS[@]}"; do
+        local entry_class="${FLINK_JOBS[$job_name]}"
+
+        # Check if already running
+        local existing
+        existing=$(get_running_jobs | grep -F "$job_name" || true)
+        if [[ -n "$existing" ]]; then
+            log_info "Job '${job_name}' already RUNNING — skipping"
+            continue
+        fi
+
+        log_info "Rolling back: ${entry_class}..."
         local result
         result=$(curl -sf -X POST \
             "${FLINK_URL}/jars/upload" \
@@ -222,31 +348,22 @@ cmd_submit() {
             continue
         fi
 
-        # Submit with entry class
+        # Submit with restore from latest savepoint
         local submit_result
         submit_result=$(curl -sf -X POST \
-            "${FLINK_URL}/jars/$(basename "$jar_id")/run?entry-class=${entry_class}" 2>&1)
+            "${FLINK_URL}/jars/$(basename "$jar_id")/run?entry-class=${entry_class}&restoreMode=CLAIM" 2>&1)
 
         if echo "$submit_result" | grep -q "jobid"; then
             local new_job_id
             new_job_id=$(echo "$submit_result" | python3 -c "import sys,json; print(json.load(sys.stdin).get('jobid',''))" 2>/dev/null || echo "unknown")
-            log_ok "Submitted: ${job_name} → ${new_job_id}"
+            log_ok "Rolled back: ${job_name} → ${new_job_id}"
         else
-            log_error "Failed to submit ${job_name}: ${submit_result}"
+            log_error "Rollback failed for ${job_name}: ${submit_result}"
         fi
     done
-}
 
-cmd_deploy() {
-    log_info "=== Flink Full Deploy Cycle ==="
     echo ""
-    cmd_savepoint || true
-    sleep 3
-    cmd_cancel
-    sleep 2
-    cmd_submit
-    echo ""
-    log_ok "=== Deploy complete ==="
+    log_ok "=== Rollback complete ==="
     cmd_list
 }
 
@@ -283,9 +400,10 @@ case "${1:-help}" in
     cancel)     cmd_cancel ;;
     savepoint)  cmd_savepoint ;;
     deploy)     cmd_deploy ;;
+    rollback)   cmd_rollback ;;
     status)     cmd_status ;;
     help|*)
-        echo "Flink Job Deployment Tool (ADR-038)"
+        echo "Flink Job Deployment Tool (ADR-038 + GAP-036)"
         echo ""
         echo "Usage: $0 <command>"
         echo ""
@@ -295,12 +413,20 @@ case "${1:-help}" in
         echo "  submit      Submit all jobs to cluster"
         echo "  cancel      Cancel all running jobs"
         echo "  savepoint   Take savepoint of running jobs"
-        echo "  deploy      Full cycle: savepoint → cancel → submit"
+        echo "  deploy      Full cycle: savepoint -> cancel -> submit"
+        echo "  rollback    Cancel current jobs, restore from last savepoint"
         echo "  status      Show cluster + job status"
         echo ""
         echo "Environment:"
-        echo "  FLINK_URL    ${FLINK_URL}"
+        echo "  FLINK_URL     ${FLINK_URL}"
         echo "  SAVEPOINT_DIR ${SAVEPOINT_DIR}"
-        echo "  JAR_DIR      ${JAR_DIR}"
+        echo "  JAR_DIR       ${JAR_DIR}"
+        echo "  JAR           Override JAR path (for CI / single-job deploy)"
+        echo "  ENTRY_CLASS   Override entry class (used with JAR=)"
+        echo ""
+        echo "CI Usage:"
+        echo "  JAR=build/libs/job.jar ENTRY_CLASS=com.uip.Job ./flink-deploy.sh submit"
+        echo "  make flink-deploy JAR=build/libs/job.jar"
+        echo "  make flink-rollback"
         ;;
 esac

@@ -6,6 +6,7 @@ import com.uip.backend.auth.domain.UserRole;
 import com.uip.backend.auth.repository.AppUserRepository;
 import com.uip.backend.auth.service.JwtTokenProvider;
 import com.uip.backend.auth.service.UipUserDetailsService;
+import com.uip.backend.common.logging.PiiMasker;
 import com.uip.backend.common.service.EmailService;
 import com.uip.backend.tenant.api.dto.InviteUserRequest;
 import com.uip.backend.tenant.domain.InviteToken;
@@ -53,7 +54,7 @@ public class InviteService {
 
         emailService.sendInviteEmail(request.email(), token.getToken().toString());
         log.info("Invite created: tenant={} email={} role={} by={}",
-                sanitizeLog(tenantId), sanitizeLog(request.email()),
+                sanitizeLog(tenantId), PiiMasker.maskEmail(request.email()),
                 sanitizeLog(request.role()), sanitizeLog(invitedBy));
     }
 
@@ -87,7 +88,7 @@ public class InviteService {
         String refreshToken = jwtTokenProvider.generateRefreshToken(userDetails);
         long expiresIn = jwtTokenProvider.getJwtProperties().getExpirationMs() / 1000;
 
-        log.info("Invite accepted: email={} tenant={}", token.getEmail(), token.getTenantId());
+        log.info("Invite accepted: email={} tenant={}", PiiMasker.maskEmail(token.getEmail()), token.getTenantId());
         return new AuthResponse(accessToken, refreshToken, "Bearer", expiresIn);
     }
 

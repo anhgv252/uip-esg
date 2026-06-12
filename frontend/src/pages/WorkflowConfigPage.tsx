@@ -832,7 +832,7 @@ export default function WorkflowConfigPage() {
                         </IconButton>
                       </Tooltip>
                       <Tooltip title="Dry-run test (no process started)">
-                        <IconButton size="small" aria-label="Test config" onClick={() => { setTesting(config); setTestOpen(true); }}>
+                        <IconButton size="small" aria-label="Dry-run test" onClick={() => { setTesting(config); setTestOpen(true); }}>
                           <ScienceIcon fontSize="small" />
                         </IconButton>
                       </Tooltip>

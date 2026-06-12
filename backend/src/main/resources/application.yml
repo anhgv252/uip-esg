@@ -158,6 +158,12 @@ claude:
     url: https://api.anthropic.com/v1/messages
     timeout-seconds: 10
 
+# M4-AI-04: AI response caching (Redis DB 2, TTL 300s)
+ai:
+  cache:
+    ttl-seconds: 300
+    redis-database: 2   # dedicated DB — separate from sessions/rate-limiter on DB 0
+
 app:
   invite:
     base-url: ${INVITE_BASE_URL:http://localhost:3000}
@@ -238,6 +244,9 @@ management:
   health:
     mail:
       enabled: false
+  metrics:
+    cache:
+      instrument-enabled: true   # M4-AI-04: auto-instrumentation → cache_gets_total{name="ai-responses",result="hit|miss"}
   tracing:
     sampling:
       probability: 1.0   # 100% in dev; override to 0.1 in staging/prod

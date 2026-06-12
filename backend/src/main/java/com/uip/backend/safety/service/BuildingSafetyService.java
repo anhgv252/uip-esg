@@ -78,9 +78,9 @@ public class BuildingSafetyService {
      */
     public List<VibrationReadingResponse> getVibrationReadings(
             String buildingId, String sensorType, String range) {
-        // TODO (B2-5/B2-6): query sensor_readings WHERE sensor_type = :sensorType
-        //   AND sensors.building_id = :buildingId AND timestamp >= now() - :range
-        //   via SensorReadingRepository native query with raw_payload->>'value' extraction
+        // Structural sensor readings pipeline (B2-5/B2-6) is not yet active.
+        // Returns empty until structural sensors are registered and raw_payload extraction
+        // is implemented via SensorReadingRepository native query.
         return Collections.emptyList();
     }
 

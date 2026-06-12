@@ -1,11 +1,9 @@
-import { lazy, Suspense, useState, useRef, useCallback, useEffect } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import {
   Box,
   Typography,
   Tabs,
   Tab,
-  TextField,
-  MenuItem,
   Chip,
   Paper,
   Table,
@@ -22,20 +20,15 @@ import {
   DialogContent,
   DialogActions,
   Skeleton,
-  Divider,
-  LinearProgress,
-  Stack,
-  Slider,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
+  TextField,
+  MenuItem,
 } from '@mui/material';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import BoltIcon from '@mui/icons-material/Bolt';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
+import DesignServicesIcon from '@mui/icons-material/DesignServices';
+import ViewModuleIcon from '@mui/icons-material/ViewModule';
 import {
   useProcessDefinitions,
   useProcessInstances,
@@ -44,40 +37,30 @@ import {
 } from '@/hooks/useWorkflowData';
 import ProcessInstanceTable from '@/components/workflow/ProcessInstanceTable';
 import InstanceDetailDrawer from '@/components/workflow/InstanceDetailDrawer';
+import TemplateGallery from '@/components/workflow/TemplateGallery';
+import WorkflowWizard from '@/components/workflow/WorkflowWizard';
 import type { ProcessInstance, ProcessDefinition } from '@/api/workflow';
+import type { WorkflowTemplate } from '@/types/workflowTemplate';
 import { useAuth } from '@/hooks/useAuth';
-import { fireWorkflowTrigger } from '@/api/workflowConfig';
-import { apiClient } from '@/api/client';
-import {
-  getWorkflowDefinitions,
-  createWorkflowDefinition,
-  updateWorkflowDefinition,
-  deployWorkflowDefinition,
-  deleteWorkflowDefinition,
-  type WorkflowDefinition,
-} from '@/api/workflow';
-import WorkflowModeler from '@/components/workflow/WorkflowModeler';
-import NodePalette from '@/components/workflow/NodePalette';
-import AiNodeConfigPanel from '@/components/workflow/AiNodeConfigPanel';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import AddIcon from '@mui/icons-material/Add';
-import SaveIcon from '@mui/icons-material/Save';
-import CloudUploadIcon from '@mui/icons-material/CloudUpload';
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
-import DesignServicesIcon from '@mui/icons-material/DesignServices';
 
+// ── Code-split heavy components (v3.1-05) ──────────────────────────────────
 const BpmnViewer = lazy(() => import('@/components/workflow/BpmnViewer'));
+
+// Lazy load heavy tab content to reduce initial bundle
+const LazyDesignerTab = lazy(() => import('@/pages/workflow-tabs/DesignerTab'));
+const LazyLiveDemoTab = lazy(() => import('@/pages/workflow-tabs/LiveDemoTab'));
 
 // ── Definitions tab ─────────────────────────────────────────────────────────
 
 interface StartProcessDialogProps {
   definition: ProcessDefinition;
   onClose: () => void;
+  initialVariablesJson?: string;
 }
 
-function StartProcessDialog({ definition, onClose }: StartProcessDialogProps) {
+function StartProcessDialog({ definition, onClose, initialVariablesJson }: StartProcessDialogProps) {
   const { mutate: start, isPending } = useStartProcess();
-  const [variablesJson, setVariablesJson] = useState('{}');
+  const [variablesJson, setVariablesJson] = useState(initialVariablesJson ?? '{}');
   const [jsonError, setJsonError] = useState<string | null>(null);
 
   const handleSubmit = () => {
@@ -98,7 +81,7 @@ function StartProcessDialog({ definition, onClose }: StartProcessDialogProps) {
       <DialogTitle>Start Process: {definition.name ?? definition.key}</DialogTitle>
       <DialogContent>
         <Typography variant="body2" color="text.secondary" gutterBottom sx={{ mt: 1 }}>
-          Process key: <strong>{definition.key}</strong> · Version {definition.version}
+          Process key: <strong>{definition.key}</strong> &middot; Version {definition.version}
         </Typography>
         <TextField
           fullWidth
@@ -148,7 +131,7 @@ function DefinitionDetail({ definition }: DefinitionDetailProps) {
   return (
     <Box>
       <Typography variant="subtitle2" gutterBottom>
-        {definition.name ?? definition.key} · v{definition.version}
+        {definition.name ?? definition.key} &middot; v{definition.version}
       </Typography>
       {isLoading ? (
         <Skeleton variant="rectangular" height={400} />
@@ -161,13 +144,12 @@ function DefinitionDetail({ definition }: DefinitionDetailProps) {
   );
 }
 
-function DefinitionsTab() {
+function DefinitionsTab({ onStartProcess }: { onStartProcess: (def: ProcessDefinition) => void }) {
   const { data: definitions, isLoading, error } = useProcessDefinitions();
   const { user } = useAuth();
   const isAdmin = user?.role === 'ROLE_ADMIN';
 
   const [selectedDef, setSelectedDef] = useState<ProcessDefinition | null>(null);
-  const [startingDef, setStartingDef] = useState<ProcessDefinition | null>(null);
 
   return (
     <Box sx={{ display: 'flex', gap: 2, mt: 2, flexDirection: { xs: 'column', md: 'row' } }}>
@@ -232,7 +214,8 @@ function DefinitionsTab() {
                         variant="outlined"
                         disabled={def.suspended}
                         startIcon={<PlayArrowIcon />}
-                        onClick={() => setStartingDef(def)}
+                        onClick={() => onStartProcess(def)}
+                        aria-label={`Start process ${def.name ?? def.key}`}
                       >
                         Start
                       </Button>
@@ -249,13 +232,6 @@ function DefinitionsTab() {
       <Box flex={1}>
         <DefinitionDetail definition={selectedDef} />
       </Box>
-
-      {startingDef && (
-        <StartProcessDialog
-          definition={startingDef}
-          onClose={() => setStartingDef(null)}
-        />
-      )}
     </Box>
   );
 }
@@ -319,1173 +295,48 @@ function InstancesTab() {
   );
 }
 
-// ── Live Demo tab ────────────────────────────────────────────────────────────
-
-const DEMO_SCENARIOS = [
-  {
-    key: 'noise',
-    label: 'Khiếu nại tiếng ồn công trình',
-    description: 'Tiếng ồn lớn ban đêm từ công trình xây dựng trái phép, ảnh hưởng nghiêm trọng đến khu dân cư',
-    district: 'D1',
-    requestType: 'NOISE_COMPLAINT',
-  },
-  {
-    key: 'trash',
-    label: 'Rác thải bị đổ trái phép',
-    description: 'Rác thải công nghiệp đổ trái phép bên đường Nguyễn Văn Cừ, mùi hôi lan rộng',
-    district: 'D5',
-    requestType: 'ENVIRONMENTAL_VIOLATION',
-  },
-  {
-    key: 'water',
-    label: 'Vỡ ống nước cấp',
-    description: 'Ống nước cấp bị vỡ tại ngã tư Lý Thường Kiệt, nước tràn ra mặt đường gây ngập cục bộ',
-    district: 'D10',
-    requestType: 'UTILITY_INCIDENT',
-  },
-];
-
-type LogEntry = {
-  id: number;
-  ts: string;
-  icon: 'pending' | 'running' | 'done' | 'ai';
-  label: string;
-  detail?: string;
-};
-
-function ts() {
-  const d = new Date();
-  return d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + '.' + String(d.getMilliseconds()).padStart(3, '0');
-}
-
-function aqiColor(v: number) {
-  if (v > 300) return '#c62828';
-  if (v > 200) return '#e53935';
-  if (v > 150) return '#fb8c00';
-  if (v > 100) return '#fdd835';
-  if (v > 50)  return '#66bb6a';
-  return '#43a047';
-}
-
-function aqiLabel(v: number) {
-  if (v > 300) return 'Hazardous';
-  if (v > 200) return 'Very Unhealthy';
-  if (v > 150) return 'Unhealthy';
-  if (v > 100) return 'Sensitive';
-  if (v > 50)  return 'Moderate';
-  return 'Good';
-}
-
-// ── IoT Sensor Demo section ──────────────────────────────────────────────────
-
-function IoTSensorSection() {
-  const [sensorId, setSensorId]     = useState('ENV-HCM-D1-001');
-  const [aqiValue, setAqiValue]     = useState(175);
-  const [district, setDistrict]     = useState('D1');
-  const [logs, setLogs]             = useState<LogEntry[]>([]);
-  const [running, setRunning]       = useState(false);
-  const [result, setResult]         = useState<Record<string, unknown> | null>(null);
-  const [showPayload, setShowPayload] = useState(false);
-  const [iotPid, setIotPid] = useState<string | null>(null);
-  const logIdRef  = useRef(0);
-  const pollRef   = useRef<ReturnType<typeof setInterval> | null>(null);
-  const logEndRef = useRef<HTMLDivElement>(null);
-
-  const mqttPayload = {
-    '@context': ['https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld'],
-    id: `urn:ngsi-ld:AirQualitySensor:${sensorId}`,
-    type: 'AirQualitySensor',
-    aqi: { type: 'Property', value: aqiValue, unitCode: 'P1' },
-    districtCode: { type: 'Property', value: district },
-    location: { type: 'GeoProperty', value: { type: 'Point', coordinates: [106.6297, 10.8231] } },
-    observedAt: new Date().toISOString(),
-  };
-
-  function addLog(icon: LogEntry['icon'], label: string, detail?: string) {
-    logIdRef.current += 1;
-    const entry = { id: logIdRef.current, ts: ts(), icon, label, detail };
-    setLogs(prev => [...prev, entry]);
-    setTimeout(() => logEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
-  }
-
-  function updateLastLog(label: string, icon: LogEntry['icon'], detail?: string) {
-    setLogs(prev => {
-      const next = [...prev];
-      const last = next[next.length - 1];
-      if (last) next[next.length - 1] = { ...last, label, icon, detail: detail ?? last.detail };
-      return next;
-    });
-  }
-
-  const handleReset = useCallback(() => {
-    if (pollRef.current) clearInterval(pollRef.current);
-    setLogs([]); setResult(null); setRunning(false); setIotPid(null);
-  }, []);
-
-  const handleFire = useCallback(async () => {
-    if (running) return;
-    setLogs([]); setResult(null); setRunning(true);
-    if (pollRef.current) clearInterval(pollRef.current);
-
-    // Step 1: MQTT publish
-    addLog('done', `📡  MQTT Publish → EMQX broker`, `topic: uip/sensors/${sensorId}/telemetry | QoS: 1 | payload: NGSI-LD`);
-    await new Promise(r => setTimeout(r, 450));
-
-    // Step 2: EMQX receive
-    addLog('done', `🔌  EMQX broker nhận message`, `clientId: ${sensorId} | retained: false | ts: ${ts()}`);
-    await new Promise(r => setTimeout(r, 400));
-
-    // Step 3: Redpanda Connect bridge
-    addLog('running', '🔁  Redpanda Connect: MQTT → Kafka bridge...');
-    await new Promise(r => setTimeout(r, 650));
-    updateLastLog('🔁  Redpanda Connect: transform NGSI-LD + publish Kafka', 'done',
-      'input: mqtt_broker | output: kafka_franz | schema: ngsi-ld-v1');
-
-    // Step 4: Kafka
-    await new Promise(r => setTimeout(r, 350));
-    const partition = Math.floor(Math.random() * 6);
-    const offset    = 10000 + Math.floor(Math.random() * 90000);
-    addLog('done', '📨  Kafka topic: ngsi_ld_environment',
-      `partition: ${partition} | offset: ${offset} | key: ${sensorId}`);
-
-    // Step 5: Flink consume
-    await new Promise(r => setTimeout(r, 450));
-    addLog('running', '⚡  Flink EnvironmentFlinkJob: consuming event...', 'group.id: flink-environment-job');
-    await new Promise(r => setTimeout(r, 500));
-    updateLastLog('⚡  Flink: event decoded + watermark assigned', 'done',
-      `event_time: ${new Date().toISOString()} | watermark: T−30s`);
-
-    // Step 6: Flink 30s tumbling window
-    await new Promise(r => setTimeout(r, 600));
-    addLog('running', `📊  Flink 30s tumbling window aggregating...`, `keyBy: districtCode="${district}"`);
-    await new Promise(r => setTimeout(r, 750));
-    updateLastLog(`📊  Flink window result: AQI=${aqiValue} (district ${district})`, 'done',
-      `window: [now−30s, now] | readings: 1 | avg: ${aqiValue} | max: ${aqiValue}`);
-
-    // Step 7: Threshold check
-    await new Promise(r => setTimeout(r, 350));
-    const exceeded = aqiValue > 150;
-
-    if (exceeded) {
-      addLog('done', `🚨  Threshold breach! AQI ${aqiValue} > 150 → AlertEvent generated`,
-        `severity: ${aqiValue > 200 ? 'HIGH' : 'MEDIUM'} | module: ENVIRONMENT`);
-      await new Promise(r => setTimeout(r, 400));
-
-      // Step 8: Publish to alert topic
-      addLog('done', '📤  Flink publish → Kafka: UIP.flink.alert.detected.v1',
-        `key: ${district} | alertType: AQI_THRESHOLD | sensorId: ${sensorId}`);
-      await new Promise(r => setTimeout(r, 500));
-
-      // Step 9: Backend API call (REAL — triggers actual Camunda process)
-      addLog('running', '🔍  GenericKafkaTriggerService: evaluating filter conditions...');
-      let simResult: { processInstanceId: string; alertTriggered: boolean };
-      try {
-        const resp = await apiClient.post<{ processInstanceId: string; alertTriggered: boolean }>(
-          '/simulate/iot-sensor',
-          { sensorType: 'AQI', sensorId, value: aqiValue, district },
-        );
-        simResult = resp.data;
-        setIotPid(simResult.processInstanceId);
-        updateLastLog('🔍  Filter match: module=ENVIRONMENT, AQI>150 → startProcess()', 'done',
-          'processKey: aiC01_aqiCitizenAlert | triggerType: KAFKA');
-      } catch {
-        updateLastLog('❌  Lỗi khi gọi backend simulate API', 'done');
-        setRunning(false);
-        return;
-      }
-
-      // Step 10: Camunda process started
-      await new Promise(r => setTimeout(r, 300));
-      addLog('done', '🏃  Camunda BPMN aiC01_aqiCitizenAlert started',
-        `processInstanceId: ${simResult.processInstanceId}`);
-
-      // Step 11: AI analysis
-      await new Promise(r => setTimeout(r, 400));
-      addLog('running', '🤖  AIAnalysisDelegate: scenarioKey=aiC01_aqiCitizenAlert...',
-        'Calling Claude AI / RuleBasedFallback service');
-
-      // Poll for variables
-      let attempts = 0;
-      pollRef.current = setInterval(async () => {
-        attempts++;
-        try {
-          const vars = await apiClient
-            .get<Record<string, unknown>>(`/workflow/instances/${simResult.processInstanceId}/variables`)
-            .then(r => r.data);
-
-          if (vars?.aiDecision) {
-            clearInterval(pollRef.current!);
-            const conf = Math.round(Number(vars.aiConfidence ?? 0) * 100);
-            updateLastLog(
-              `🤖  AI quyết định: ${vars.aiDecision} (confidence: ${conf}%)`,
-              'ai',
-              String(vars.aiReasoning ?? ''),
-            );
-
-            await new Promise(r => setTimeout(r, 400));
-            const notified = Number(vars.citizensNotified ?? 1500);
-            addLog('done', `📢  AqiCitizenAlertDelegate: SSE notification gửi thành công`,
-              `${notified.toLocaleString()} cư dân quận ${district} được cảnh báo | channel: uip:alerts`);
-
-            await new Promise(r => setTimeout(r, 300));
-            addLog('done', '✅  Pipeline hoàn tất — BPMN EndEvent reached', `notificationSent: true`);
-
-            setResult(vars);
-            setRunning(false);
-          } else if (attempts > 25) {
-            clearInterval(pollRef.current!);
-            updateLastLog('⚠️  Timeout chờ AI result', 'done');
-            setRunning(false);
-          }
-        } catch { /* retry next tick */ }
-      }, 600);
-
-    } else {
-      // Below threshold — no alert
-      addLog('done', `✅  AQI ${aqiValue} ≤ 150 — below threshold, no alert generated`,
-        'Flink: data written to TimescaleDB only. No AlertEvent published.');
-      setRunning(false);
-    }
-  }, [running, sensorId, aqiValue, district]);
-
-  const iconEl = (icon: LogEntry['icon']) => {
-    if (icon === 'done')    return <CheckCircleIcon sx={{ fontSize: 16, color: 'success.main', mt: '2px' }} />;
-    if (icon === 'ai')      return <SmartToyIcon sx={{ fontSize: 16, color: 'primary.main', mt: '2px' }} />;
-    if (icon === 'running') return <CircularProgress size={14} sx={{ mt: '3px' }} />;
-    return <RadioButtonUncheckedIcon sx={{ fontSize: 16, color: 'text.disabled', mt: '2px' }} />;
-  };
-
-  const color = aqiColor(aqiValue);
-  const label = aqiLabel(aqiValue);
-
-  return (
-    <Box sx={{ maxWidth: 860 }}>
-      {/* Sensor config form */}
-      <Paper variant="outlined" sx={{ p: 2.5, mb: 2 }}>
-        <Typography variant="subtitle2" fontWeight={700} gutterBottom>
-          📡 Cấu hình cảm biến IoT
-        </Typography>
-        <Stack spacing={2} mt={1.5}>
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center" flexWrap="wrap">
-            <TextField
-              size="small"
-              label="Sensor ID"
-              value={sensorId}
-              onChange={e => setSensorId(e.target.value)}
-              disabled={running}
-              sx={{ minWidth: 200 }}
-            />
-            <TextField
-              select size="small" label="Quận/Huyện"
-              value={district} onChange={e => setDistrict(e.target.value)}
-              disabled={running} sx={{ minWidth: 140 }}
-            >
-              {['D1', 'D2', 'D3', 'D4', 'D5', 'D7', 'D10', 'D12', 'BinhThanh', 'GoVap'].map(d => (
-                <MenuItem key={d} value={d}>{d}</MenuItem>
-              ))}
-            </TextField>
-            <Chip label="MQTT" size="small" variant="outlined" />
-            <Chip label="NGSI-LD v1" size="small" variant="outlined" color="primary" />
-            <Chip label="AQI Sensor" size="small" color="default" />
-          </Stack>
-
-          {/* AQI Slider */}
-          <Box>
-            <Box display="flex" justifyContent="space-between" alignItems="center" mb={0.5}>
-              <Typography variant="caption" color="text.secondary">Giá trị AQI (0 – 400)</Typography>
-              <Box display="flex" alignItems="center" gap={1}>
-                <Typography variant="h6" fontWeight={700} sx={{ color }}>
-                  {aqiValue}
-                </Typography>
-                <Chip label={label} size="small" sx={{ bgcolor: color, color: '#fff', fontWeight: 600 }} />
-              </Box>
-            </Box>
-            <Slider
-              value={aqiValue}
-              onChange={(_, v) => setAqiValue(v as number)}
-              min={0} max={400} step={5}
-              disabled={running}
-              marks={[
-                { value: 50,  label: '50' },
-                { value: 100, label: '100' },
-                { value: 150, label: '⚠️ 150' },
-                { value: 200, label: '200' },
-                { value: 300, label: '300' },
-              ]}
-              sx={{ color }}
-            />
-            {aqiValue > 150 ? (
-              <MuiAlert severity="warning" sx={{ mt: 1, py: 0.5 }}>
-                AQI {aqiValue} vượt ngưỡng (150) → Flink sẽ phát alert → Camunda BPMN <strong>aiC01_aqiCitizenAlert</strong> được kích hoạt
-              </MuiAlert>
-            ) : (
-              <MuiAlert severity="success" sx={{ mt: 1, py: 0.5 }}>
-                AQI {aqiValue} dưới ngưỡng (150) → Không có alert, Flink chỉ ghi vào TimescaleDB
-              </MuiAlert>
-            )}
-          </Box>
-
-          {/* Quick presets */}
-          <Stack direction="row" spacing={1} flexWrap="wrap">
-            <Typography variant="caption" color="text.secondary" alignSelf="center">Preset:</Typography>
-            {[
-              { label: 'Dưới ngưỡng (120)', val: 120 },
-              { label: 'Ô nhiễm (175)', val: 175 },
-              { label: 'Nguy hiểm (235)', val: 235 },
-            ].map(p => (
-              <Chip key={p.val} label={p.label} size="small" clickable
-                onClick={() => setAqiValue(p.val)} disabled={running}
-                sx={{ bgcolor: aqiColor(p.val), color: '#fff' }} />
-            ))}
-          </Stack>
-
-          {/* MQTT Payload Preview */}
-          <Box>
-            <Button size="small" variant="text" onClick={() => setShowPayload(v => !v)}>
-              {showPayload ? '▾' : '▸'} Xem MQTT Payload (NGSI-LD)
-            </Button>
-            {showPayload && (
-              <Paper variant="outlined" sx={{ p: 1.5, mt: 1, bgcolor: '#0d1117' }}>
-                <Typography variant="caption" color="grey.500" sx={{ fontFamily: 'monospace', display: 'block', mb: 0.5 }}>
-                  {'// MQTT topic: uip/sensors/' + sensorId + '/telemetry  |  broker: emqx:1883'}
-                </Typography>
-                <Box
-                  component="pre"
-                  sx={{ fontFamily: 'monospace', color: '#a5d6a7', fontSize: '0.73rem',
-                        overflowX: 'auto', m: 0, whiteSpace: 'pre-wrap' }}
-                >
-                  {JSON.stringify(mqttPayload, null, 2)}
-                </Box>
-              </Paper>
-            )}
-          </Box>
-
-          <Stack direction="row" spacing={1.5}>
-            <Button
-              variant="contained"
-              color={aqiValue > 150 ? 'error' : 'success'}
-              startIcon={running ? <CircularProgress size={16} color="inherit" /> : <BoltIcon />}
-              onClick={handleFire}
-              disabled={running}
-            >
-              {running ? 'Đang xử lý pipeline...' : 'Bắn sự kiện IoT'}
-            </Button>
-            {logs.length > 0 && !running && (
-              <Button variant="outlined" size="small" onClick={handleReset}>Reset</Button>
-            )}
-          </Stack>
-        </Stack>
-      </Paper>
-
-      {/* Pipeline Console */}
-      {logs.length > 0 && (
-        <Paper variant="outlined" sx={{ p: 0, mb: 2, overflow: 'hidden', border: '1px solid', borderColor: 'divider' }}>
-          <Box sx={{ px: 2, py: 1, bgcolor: 'grey.900', display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: '#ff5f57' }} />
-            <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: '#ffbd2e' }} />
-            <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: '#28c840' }} />
-            <Typography variant="caption" color="grey.400" sx={{ ml: 1, fontFamily: 'monospace' }}>
-              UIP IoT Pipeline — MQTT → Redpanda → Kafka → Flink → Alert → Camunda
-            </Typography>
-          </Box>
-          {running && <LinearProgress sx={{ height: 2 }} />}
-          <Box sx={{ px: 2, py: 1.5, bgcolor: '#0d1117', minHeight: 80 }}>
-            {logs.map(log => (
-              <Box key={log.id} display="flex" alignItems="flex-start" gap={1.5} mb={1}>
-                {iconEl(log.icon)}
-                <Box flex={1}>
-                  <Box display="flex" gap={1.5} alignItems="baseline" flexWrap="wrap">
-                    <Typography variant="caption" sx={{ fontFamily: 'monospace', color: 'grey.500', flexShrink: 0 }}>
-                      {log.ts}
-                    </Typography>
-                    <Typography variant="body2" sx={{
-                      fontFamily: 'monospace',
-                      color: log.icon === 'ai' ? '#64b5f6' : log.icon === 'done' ? '#a5d6a7' : '#fff9c4',
-                      fontWeight: log.icon === 'ai' ? 600 : 400,
-                    }}>
-                      {log.label}
-                    </Typography>
-                  </Box>
-                  {log.detail && (
-                    <Typography variant="caption" sx={{
-                      fontFamily: 'monospace', color: 'grey.500', display: 'block',
-                      mt: 0.25, maxWidth: 700, wordBreak: 'break-all', whiteSpace: 'pre-wrap',
-                    }}>
-                      {log.detail}
-                    </Typography>
-                  )}
-                </Box>
-              </Box>
-            ))}
-            <div ref={logEndRef} />
-          </Box>
-        </Paper>
-      )}
-
-      {/* Alert Result Card */}
-      {result && (
-        <Paper variant="outlined" sx={{ p: 2.5 }}>
-          <Box display="flex" alignItems="center" gap={1} mb={2} flexWrap="wrap">
-            <SmartToyIcon color="error" />
-            <Typography variant="subtitle2" fontWeight={700}>Kết quả xử lý AQI Alert</Typography>
-            {(() => {
-              const conf = Number(result.aiConfidence ?? 0);
-              const ro = conf > 0.85 ? 'AUTO_EXECUTE' : conf >= 0.6 ? 'OPERATOR_QUEUE' : 'ESCALATE';
-              const roColor: 'success' | 'warning' | 'error' = conf > 0.85 ? 'success' : conf >= 0.6 ? 'warning' : 'error';
-              return (
-                <>
-                  <Chip label={`${Math.round(conf * 100)}% confidence`} size="small" color="primary" />
-                  <Chip label={String(result.aiSeverity ?? 'MEDIUM')} size="small"
-                    color={result.aiSeverity === 'HIGH' ? 'error' : 'warning'} />
-                  <Chip label={`⚡ ${ro}`} size="small" color={roColor} variant="outlined" />
-                </>
-              );
-            })()}
-          </Box>
-          <Divider sx={{ mb: 2 }} />
-          <Stack spacing={2}>
-            {/* DecisionRouter Panel */}
-            {(() => {
-              const conf = Number(result.aiConfidence ?? 0);
-              const confPct = Math.min(Math.round(conf * 100), 100);
-              const ro = conf > 0.85 ? 'AUTO_EXECUTE' : conf >= 0.6 ? 'OPERATOR_QUEUE' : 'ESCALATE';
-              const roColor: 'success' | 'warning' | 'error' = conf > 0.85 ? 'success' : conf >= 0.6 ? 'warning' : 'error';
-              const thresholdLabel = conf > 0.85 ? 'conf > 0.85 → AUTO_EXECUTE' : conf >= 0.6 ? '0.60 ≤ conf ≤ 0.85 → OPERATOR_QUEUE' : 'conf < 0.60 → ESCALATE';
-              return (
-                <Paper variant="outlined" sx={{ p: 1.5, bgcolor: 'action.hover' }}>
-                  <Typography variant="caption" fontWeight={700} color="text.secondary" display="block" mb={1.5}>
-                    ⚡ DecisionRouter — Sprint 6 (confidence-based routing)
-                  </Typography>
-                  <Box mb={1.5}>
-                    <Box display="flex" justifyContent="space-between" mb={0.5}>
-                      <Typography variant="caption" color="text.secondary">AI Confidence Score</Typography>
-                      <Typography variant="caption" fontWeight={700} color={`${roColor}.main`}>{confPct}%</Typography>
-                    </Box>
-                    <Box position="relative" sx={{ height: 10, borderRadius: 5, bgcolor: 'grey.300', overflow: 'visible' }}>
-                      <Box sx={{
-                        position: 'absolute', left: 0, top: 0, height: '100%', borderRadius: 5,
-                        width: `${confPct}%`,
-                        bgcolor: conf > 0.85 ? 'success.main' : conf >= 0.6 ? 'warning.main' : 'error.main',
-                        transition: 'width 0.6s ease',
-                      }} />
-                      <Box sx={{ position: 'absolute', left: '60%', top: -3, bottom: -3, width: 2, bgcolor: 'warning.dark', borderRadius: 1 }} />
-                      <Box sx={{ position: 'absolute', left: '85%', top: -3, bottom: -3, width: 2, bgcolor: 'success.dark', borderRadius: 1 }} />
-                    </Box>
-                    <Box display="flex" sx={{ mt: 0.5, position: 'relative', height: 18 }}>
-                      <Typography variant="caption" color="error.main" sx={{ position: 'absolute', left: 0 }}>ESCALATE</Typography>
-                      <Typography variant="caption" color="warning.dark" sx={{ position: 'absolute', left: '60%', transform: 'translateX(-50%)' }}>60%</Typography>
-                      <Typography variant="caption" color="success.dark" sx={{ position: 'absolute', left: '85%', transform: 'translateX(-50%)' }}>85%</Typography>
-                      <Typography variant="caption" color="text.secondary" sx={{ position: 'absolute', right: 0 }}>AUTO</Typography>
-                    </Box>
-                  </Box>
-                  <Stack direction="row" spacing={2} flexWrap="wrap" rowGap={1}>
-                    <Box>
-                      <Typography variant="caption" color="text.secondary" display="block">Routing Outcome</Typography>
-                      <Chip label={`⚡ ${ro}`} size="small" color={roColor} />
-                    </Box>
-                    <Box>
-                      <Typography variant="caption" color="text.secondary" display="block">Ngưỡng áp dụng</Typography>
-                      <Typography variant="caption" fontWeight={600} sx={{ fontFamily: 'monospace', fontSize: '0.7rem' }}>{thresholdLabel}</Typography>
-                    </Box>
-                    <Box>
-                      <Typography variant="caption" color="text.secondary" display="block">Cache</Typography>
-                      <Chip label="Redis TTL 15m" size="small" variant="outlined" />
-                    </Box>
-                    {iotPid && (
-                      <Box>
-                        <Typography variant="caption" color="text.secondary" display="block">Process ID</Typography>
-                        <Typography variant="caption" sx={{ fontFamily: 'monospace', fontSize: '0.7rem', color: 'primary.main' }}>{iotPid}</Typography>
-                      </Box>
-                    )}
-                  </Stack>
-                </Paper>
-              );
-            })()}
-
-            {/* Main fields */}
-            <Box display="flex" gap={2} flexWrap="wrap">
-              <Box flex={1} minWidth={160}>
-                <Typography variant="caption" color="text.secondary" display="block">AI Decision</Typography>
-                <Typography variant="body2" fontWeight={600} color="error.main">{String(result.aiDecision ?? '—')}</Typography>
-              </Box>
-              <Box flex={1} minWidth={160}>
-                <Typography variant="caption" color="text.secondary" display="block">Công dân được cảnh báo</Typography>
-                <Typography variant="body2" fontWeight={600} color="warning.main">
-                  {Number(result.citizensNotified ?? 1500).toLocaleString()} cư dân
-                </Typography>
-              </Box>
-              <Box flex={1} minWidth={120}>
-                <Typography variant="caption" color="text.secondary" display="block">Notification Sent</Typography>
-                <Typography variant="body2" fontWeight={600}>
-                  {result.notificationSent ? '✅ SSE đã gửi' : '—'}
-                </Typography>
-              </Box>
-            </Box>
-
-            {/* AI Reasoning */}
-            <Box>
-              <Typography variant="caption" color="text.secondary" display="block">AI Reasoning</Typography>
-              <Typography variant="body2" sx={{ mt: 0.5, lineHeight: 1.6 }}>{String(result.aiReasoning ?? '—')}</Typography>
-            </Box>
-
-            {/* Recommended actions */}
-            {Array.isArray(result.aiRecommendedActions) && (
-              <Box>
-                <Typography variant="caption" color="text.secondary" display="block" mb={0.5}>Khuyến nghị</Typography>
-                <Stack spacing={0.5}>
-                  {(result.aiRecommendedActions as string[]).map((a, i) => (
-                    <Box key={i} display="flex" gap={1} alignItems="flex-start">
-                      <CheckCircleIcon sx={{ fontSize: 14, color: 'success.main', mt: '3px', flexShrink: 0 }} />
-                      <Typography variant="body2">{a}</Typography>
-                    </Box>
-                  ))}
-                </Stack>
-              </Box>
-            )}
-
-            {/* Raw process variables */}
-            <Accordion disableGutters elevation={0} sx={{ border: '1px solid', borderColor: 'divider', '&:before': { display: 'none' }, borderRadius: 1 }}>
-              <AccordionSummary expandIcon={<ExpandMoreIcon sx={{ fontSize: 18 }} />} sx={{ minHeight: 36, '& .MuiAccordionSummary-content': { margin: '6px 0' } }}>
-                <Typography variant="caption" fontWeight={600}>📊 Raw Process Variables ({Object.keys(result).length} fields)</Typography>
-              </AccordionSummary>
-              <AccordionDetails sx={{ p: 0 }}>
-                <Box component="pre" sx={{ fontFamily: 'monospace', fontSize: '0.7rem', color: '#a5d6a7', bgcolor: '#0d1117', p: 2, m: 0, overflowX: 'auto', maxHeight: 240, overflowY: 'auto' }}>
-                  {JSON.stringify(result, null, 2)}
-                </Box>
-              </AccordionDetails>
-            </Accordion>
-          </Stack>
-        </Paper>
-      )}
-    </Box>
-  );
-}
-
-function LiveDemoTab() {
-  const [demoMode, setDemoMode] = useState<'citizen' | 'iot'>('citizen');
-  const [scenarioIdx, setScenarioIdx] = useState(0);
-  const [customDesc, setCustomDesc] = useState('');
-  const [logs, setLogs] = useState<LogEntry[]>([]);
-  const [running, setRunning] = useState(false);
-  const [result, setResult] = useState<Record<string, unknown> | null>(null);
-  const [processId, setProcessId] = useState<string | null>(null);
-  const logIdRef = useRef(0);
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  const scenario = DEMO_SCENARIOS[scenarioIdx];
-  const description = customDesc || scenario.description;
-
-  function addLog(icon: LogEntry['icon'], label: string, detail?: string) {
-    logIdRef.current += 1;
-    setLogs(prev => [...prev, { id: logIdRef.current, ts: ts(), icon, label, detail }]);
-  }
-
-  function updateLastLog(label: string, icon: LogEntry['icon'], detail?: string) {
-    setLogs(prev => {
-      const next = [...prev];
-      const last = next[next.length - 1];
-      if (last) { next[next.length - 1] = { ...last, label, icon, detail: detail ?? last.detail }; }
-      return next;
-    });
-  }
-
-  const handleReset = useCallback(() => {
-    if (pollRef.current) clearInterval(pollRef.current);
-    setLogs([]);
-    setResult(null);
-    setProcessId(null);
-    setRunning(false);
-    setCustomDesc('');
-  }, []);
-
-  const handleFire = useCallback(async () => {
-    if (running) return;
-    setLogs([]);
-    setResult(null);
-    setProcessId(null);
-    setRunning(true);
-
-    // Step 1: received
-    addLog('done', '📡  Sự kiện nhận được', `requestType: ${scenario.requestType} | district: ${scenario.district}`);
-
-    // Step 2: fire to backend
-    await new Promise(r => setTimeout(r, 400));
-    addLog('running', '⚙️  Đang khởi tạo BPMN process...');
-    let pid: string;
-    try {
-      const resp = await fireWorkflowTrigger('aiC02_citizenServiceRequest', {
-        description,
-        district: scenario.district,
-        requestType: scenario.requestType,
-      });
-      pid = resp.processInstanceId;
-      setProcessId(pid);
-      updateLastLog('⚙️  Camunda process khởi tạo thành công', 'done', `processInstanceId: ${pid}`);
-    } catch {
-      updateLastLog('❌  Lỗi khi gọi workflow trigger', 'done');
-      setRunning(false);
-      return;
-    }
-
-    // Step 3: AI analysis
-    await new Promise(r => setTimeout(r, 500));
-    addLog('running', '🤖  AI đang phân tích yêu cầu...', 'Gọi Claude AI / Rule Engine');
-
-    // Poll for variables
-    let attempts = 0;
-    pollRef.current = setInterval(async () => {
-      attempts++;
-      try {
-        const vars = await apiClient
-          .get<Record<string, unknown>>(`/workflow/instances/${pid}/variables`)
-          .then(r => r.data);
-
-        if (vars?.aiDecision) {
-          clearInterval(pollRef.current!);
-
-          const conf = typeof vars.aiConfidence === 'number' ? Math.round(vars.aiConfidence * 100) : 50;
-          updateLastLog(
-            `🤖  AI phân loại: ${vars.aiDecision} (confidence: ${conf}%)`,
-            'ai',
-            String(vars.aiReasoning ?? ''),
-          );
-
-          await new Promise(r => setTimeout(r, 300));
-          addLog('done', `🏢  Chuyển xử lý → Phòng ${vars.department ?? 'GENERAL'}`, `Priority: ${vars.priority ?? 'MEDIUM'}`);
-
-          await new Promise(r => setTimeout(r, 300));
-          addLog('done', '✅  Yêu cầu đã xử lý xong', `requestId: ${vars.requestId ?? 'N/A'}`);
-
-          setResult(vars);
-          setRunning(false);
-        } else if (attempts > 20) {
-          clearInterval(pollRef.current!);
-          updateLastLog('⚠️  Timeout chờ kết quả AI', 'done');
-          setRunning(false);
-        }
-      } catch { /* retry */ }
-    }, 600);
-  }, [running, scenario, description]);
-
-  const iconEl = (icon: LogEntry['icon']) => {
-    if (icon === 'done') return <CheckCircleIcon sx={{ fontSize: 16, color: 'success.main', mt: '2px' }} />;
-    if (icon === 'ai') return <SmartToyIcon sx={{ fontSize: 16, color: 'primary.main', mt: '2px' }} />;
-    if (icon === 'running') return <CircularProgress size={14} sx={{ mt: '3px' }} />;
-    return <RadioButtonUncheckedIcon sx={{ fontSize: 16, color: 'text.disabled', mt: '2px' }} />;
-  };
-
-  return (
-    <Box sx={{ mt: 2 }}>
-      {/* Mode selector */}
-      <Stack direction="row" spacing={1} mb={2.5}>
-        <Button
-          variant={demoMode === 'citizen' ? 'contained' : 'outlined'}
-          startIcon={<AccountTreeIcon />}
-          onClick={() => setDemoMode('citizen')}
-          size="small"
-        >
-          🏙️ Yêu cầu công dân
-        </Button>
-        <Button
-          variant={demoMode === 'iot' ? 'contained' : 'outlined'}
-          color={demoMode === 'iot' ? 'error' : 'inherit'}
-          startIcon={<BoltIcon />}
-          onClick={() => setDemoMode('iot')}
-          size="small"
-        >
-          📡 Cảm biến IoT
-        </Button>
-      </Stack>
-
-      {demoMode === 'iot' ? (
-        <IoTSensorSection />
-      ) : (
-      <Box sx={{ maxWidth: 860 }}>
-      {/* Event Form */}
-      <Paper variant="outlined" sx={{ p: 2.5, mb: 2 }}>
-        <Typography variant="subtitle2" gutterBottom fontWeight={700}>
-          🎬 Mô phỏng sự kiện công dân thực tế
-        </Typography>
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} mt={1.5} alignItems="flex-start">
-          <TextField
-            select
-            size="small"
-            label="Loại sự kiện"
-            value={scenarioIdx}
-            onChange={e => { setScenarioIdx(Number(e.target.value)); setCustomDesc(''); }}
-            sx={{ minWidth: 240 }}
-            disabled={running}
-          >
-            {DEMO_SCENARIOS.map((s, i) => (
-              <MenuItem key={s.key} value={i}>{s.label}</MenuItem>
-            ))}
-          </TextField>
-          <TextField
-            size="small"
-            fullWidth
-            label="Mô tả (có thể chỉnh sửa)"
-            value={customDesc || scenario.description}
-            onChange={e => setCustomDesc(e.target.value)}
-            disabled={running}
-            multiline
-            rows={2}
-          />
-        </Stack>
-        <Stack direction="row" spacing={1.5} mt={2}>
-          <Button
-            variant="contained"
-            color="error"
-            startIcon={running ? <CircularProgress size={16} color="inherit" /> : <BoltIcon />}
-            onClick={handleFire}
-            disabled={running}
-          >
-            {running ? 'Đang xử lý...' : 'Fire Event'}
-          </Button>
-          {logs.length > 0 && !running && (
-            <Button variant="outlined" size="small" onClick={handleReset}>
-              Reset
-            </Button>
-          )}
-        </Stack>
-      </Paper>
-
-      {/* Live Console */}
-      {logs.length > 0 && (
-        <Paper
-          variant="outlined"
-          sx={{
-            p: 0,
-            mb: 2,
-            overflow: 'hidden',
-            border: '1px solid',
-            borderColor: 'divider',
-          }}
-        >
-          <Box sx={{ px: 2, py: 1, bgcolor: 'grey.900', display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: '#ff5f57' }} />
-            <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: '#ffbd2e' }} />
-            <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: '#28c840' }} />
-            <Typography variant="caption" color="grey.400" sx={{ ml: 1, fontFamily: 'monospace' }}>
-              UIP AI Workflow Engine — Live Event Console
-            </Typography>
-          </Box>
-          {running && <LinearProgress sx={{ height: 2 }} />}
-          <Box sx={{ px: 2, py: 1.5, bgcolor: '#1a1a2e', minHeight: 80 }}>
-            {logs.map(log => (
-              <Box key={log.id} display="flex" alignItems="flex-start" gap={1.5} mb={1}>
-                {iconEl(log.icon)}
-                <Box flex={1}>
-                  <Box display="flex" gap={1.5} alignItems="baseline" flexWrap="wrap">
-                    <Typography
-                      variant="caption"
-                      sx={{ fontFamily: 'monospace', color: 'grey.500', flexShrink: 0 }}
-                    >
-                      {log.ts}
-                    </Typography>
-                    <Typography
-                      variant="body2"
-                      sx={{
-                        fontFamily: 'monospace',
-                        color: log.icon === 'ai' ? '#64b5f6' : log.icon === 'done' ? '#a5d6a7' : '#fff9c4',
-                        fontWeight: log.icon === 'ai' ? 600 : 400,
-                      }}
-                    >
-                      {log.label}
-                    </Typography>
-                  </Box>
-                  {log.detail && (
-                    <Typography
-                      variant="caption"
-                      sx={{
-                        fontFamily: 'monospace',
-                        color: 'grey.500',
-                        display: 'block',
-                        mt: 0.25,
-                        ml: 0,
-                        maxWidth: 680,
-                        wordBreak: 'break-all',
-                        whiteSpace: 'pre-wrap',
-                      }}
-                    >
-                      {log.detail}
-                    </Typography>
-                  )}
-                </Box>
-              </Box>
-            ))}
-          </Box>
-        </Paper>
-      )}
-
-      {/* AI Decision Card */}
-      {result && (
-        <Paper variant="outlined" sx={{ p: 2.5 }}>
-          <Box display="flex" alignItems="center" gap={1} mb={2} flexWrap="wrap">
-            <SmartToyIcon color="primary" />
-            <Typography variant="subtitle2" fontWeight={700}>Kết quả phân tích AI</Typography>
-            {(() => {
-              const conf = Number(result.aiConfidence ?? 0);
-              const ro = conf > 0.85 ? 'AUTO_EXECUTE' : conf >= 0.6 ? 'OPERATOR_QUEUE' : 'ESCALATE';
-              const roColor: 'success' | 'warning' | 'error' = conf > 0.85 ? 'success' : conf >= 0.6 ? 'warning' : 'error';
-              return (
-                <>
-                  <Chip label={`${Math.round(conf * 100)}% confidence`} size="small" color="primary" />
-                  <Chip label={String(result.aiSeverity ?? 'MEDIUM')} size="small"
-                    color={result.aiSeverity === 'HIGH' || result.aiSeverity === 'CRITICAL' ? 'error' : 'warning'} />
-                  <Chip label={`⚡ ${ro}`} size="small" color={roColor} variant="outlined" />
-                </>
-              );
-            })()}
-          </Box>
-          <Divider sx={{ mb: 2 }} />
-          <Stack spacing={2}>
-            {/* DecisionRouter Panel */}
-            {(() => {
-              const conf = Number(result.aiConfidence ?? 0);
-              const confPct = Math.min(Math.round(conf * 100), 100);
-              const ro = conf > 0.85 ? 'AUTO_EXECUTE' : conf >= 0.6 ? 'OPERATOR_QUEUE' : 'ESCALATE';
-              const roColor: 'success' | 'warning' | 'error' = conf > 0.85 ? 'success' : conf >= 0.6 ? 'warning' : 'error';
-              const thresholdLabel = conf > 0.85 ? 'conf > 0.85 → AUTO_EXECUTE' : conf >= 0.6 ? '0.60 ≤ conf ≤ 0.85 → OPERATOR_QUEUE' : 'conf < 0.60 → ESCALATE';
-              return (
-                <Paper variant="outlined" sx={{ p: 1.5, bgcolor: 'action.hover' }}>
-                  <Typography variant="caption" fontWeight={700} color="text.secondary" display="block" mb={1.5}>
-                    ⚡ DecisionRouter — Sprint 6 (confidence-based routing)
-                  </Typography>
-                  <Box mb={1.5}>
-                    <Box display="flex" justifyContent="space-between" mb={0.5}>
-                      <Typography variant="caption" color="text.secondary">AI Confidence Score</Typography>
-                      <Typography variant="caption" fontWeight={700} color={`${roColor}.main`}>{confPct}%</Typography>
-                    </Box>
-                    <Box position="relative" sx={{ height: 10, borderRadius: 5, bgcolor: 'grey.300', overflow: 'visible' }}>
-                      <Box sx={{
-                        position: 'absolute', left: 0, top: 0, height: '100%', borderRadius: 5,
-                        width: `${confPct}%`,
-                        bgcolor: conf > 0.85 ? 'success.main' : conf >= 0.6 ? 'warning.main' : 'error.main',
-                        transition: 'width 0.6s ease',
-                      }} />
-                      <Box sx={{ position: 'absolute', left: '60%', top: -3, bottom: -3, width: 2, bgcolor: 'warning.dark', borderRadius: 1 }} />
-                      <Box sx={{ position: 'absolute', left: '85%', top: -3, bottom: -3, width: 2, bgcolor: 'success.dark', borderRadius: 1 }} />
-                    </Box>
-                    <Box display="flex" sx={{ mt: 0.5, position: 'relative', height: 18 }}>
-                      <Typography variant="caption" color="error.main" sx={{ position: 'absolute', left: 0 }}>ESCALATE</Typography>
-                      <Typography variant="caption" color="warning.dark" sx={{ position: 'absolute', left: '60%', transform: 'translateX(-50%)' }}>60%</Typography>
-                      <Typography variant="caption" color="success.dark" sx={{ position: 'absolute', left: '85%', transform: 'translateX(-50%)' }}>85%</Typography>
-                      <Typography variant="caption" color="text.secondary" sx={{ position: 'absolute', right: 0 }}>AUTO</Typography>
-                    </Box>
-                  </Box>
-                  <Stack direction="row" spacing={2} flexWrap="wrap" rowGap={1}>
-                    <Box>
-                      <Typography variant="caption" color="text.secondary" display="block">Routing Outcome</Typography>
-                      <Chip label={`⚡ ${ro}`} size="small" color={roColor} />
-                    </Box>
-                    <Box>
-                      <Typography variant="caption" color="text.secondary" display="block">Ngưỡng áp dụng</Typography>
-                      <Typography variant="caption" fontWeight={600} sx={{ fontFamily: 'monospace', fontSize: '0.7rem' }}>{thresholdLabel}</Typography>
-                    </Box>
-                    <Box>
-                      <Typography variant="caption" color="text.secondary" display="block">Cache</Typography>
-                      <Chip label="Redis TTL 15m" size="small" variant="outlined" />
-                    </Box>
-                    {processId && (
-                      <Box>
-                        <Typography variant="caption" color="text.secondary" display="block">Process ID</Typography>
-                        <Typography variant="caption" sx={{ fontFamily: 'monospace', fontSize: '0.7rem', color: 'primary.main' }}>{processId}</Typography>
-                      </Box>
-                    )}
-                  </Stack>
-                </Paper>
-              );
-            })()}
-
-            {/* Main decision fields */}
-            <Box display="flex" gap={2} flexWrap="wrap">
-              <Box flex={1} minWidth={160}>
-                <Typography variant="caption" color="text.secondary" display="block">Quyết định</Typography>
-                <Typography variant="body2" fontWeight={600}>{String(result.aiDecision ?? '—')}</Typography>
-              </Box>
-              <Box flex={1} minWidth={160}>
-                <Typography variant="caption" color="text.secondary" display="block">Phòng ban tiếp nhận</Typography>
-                <Typography variant="body2" fontWeight={600} color="primary.main">{String(result.department ?? '—')}</Typography>
-              </Box>
-              <Box flex={1} minWidth={120}>
-                <Typography variant="caption" color="text.secondary" display="block">Ưu tiên</Typography>
-                <Typography variant="body2" fontWeight={600}>{String(result.priority ?? '—')}</Typography>
-              </Box>
-            </Box>
-
-            {/* AI reasoning */}
-            <Box>
-              <Typography variant="caption" color="text.secondary" display="block">Lý giải của AI</Typography>
-              <Typography variant="body2" sx={{ mt: 0.5, lineHeight: 1.6 }}>{String(result.aiReasoning ?? '—')}</Typography>
-            </Box>
-
-            {/* Recommended actions */}
-            {Array.isArray(result.aiRecommendedActions) && (
-              <Box>
-                <Typography variant="caption" color="text.secondary" display="block" mb={0.5}>Hành động được đề xuất</Typography>
-                <Stack spacing={0.5}>
-                  {(result.aiRecommendedActions as string[]).map((a, i) => (
-                    <Box key={i} display="flex" gap={1} alignItems="flex-start">
-                      <CheckCircleIcon sx={{ fontSize: 14, color: 'success.main', mt: '3px', flexShrink: 0 }} />
-                      <Typography variant="body2">{a}</Typography>
-                    </Box>
-                  ))}
-                </Stack>
-              </Box>
-            )}
-
-            {/* Auto-response text */}
-            <Box>
-              <Typography variant="caption" color="text.secondary">Auto-response gửi công dân: </Typography>
-              <Typography variant="caption" fontStyle="italic">"{String(result.autoResponseText ?? '')}"</Typography>
-            </Box>
-
-            {/* Raw process variables */}
-            <Accordion disableGutters elevation={0} sx={{ border: '1px solid', borderColor: 'divider', '&:before': { display: 'none' }, borderRadius: 1 }}>
-              <AccordionSummary expandIcon={<ExpandMoreIcon sx={{ fontSize: 18 }} />} sx={{ minHeight: 36, '& .MuiAccordionSummary-content': { margin: '6px 0' } }}>
-                <Typography variant="caption" fontWeight={600}>📊 Raw Process Variables ({Object.keys(result).length} fields)</Typography>
-              </AccordionSummary>
-              <AccordionDetails sx={{ p: 0 }}>
-                <Box component="pre" sx={{ fontFamily: 'monospace', fontSize: '0.7rem', color: '#a5d6a7', bgcolor: '#0d1117', p: 2, m: 0, overflowX: 'auto', maxHeight: 240, overflowY: 'auto' }}>
-                  {JSON.stringify(result, null, 2)}
-                </Box>
-              </AccordionDetails>
-            </Accordion>
-          </Stack>
-        </Paper>
-      )}
-    </Box>
-      )}
-    </Box>
-  );
-}
-
-// ── Designer tab ──────────────────────────────────────────────────────────────
-
-function DesignerTab() {
-  const [definitions, setDefinitions] = useState<WorkflowDefinition[]>([]);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [selectedXml, setSelectedXml] = useState<string | null>(null);
-  const [selectedName, setSelectedName] = useState('');
-  const [selectedDesc, setSelectedDesc] = useState('');
-  const [selectedNodeId, _setSelectedNodeId] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [deploying, setDeploying] = useState(false);
-  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
-  const [snackbar, setSnackbar] = useState<{ msg: string; severity: 'success' | 'error' | 'info' } | null>(null);
-
-  // Load workflow definitions
-  useEffect(() => {
-    getWorkflowDefinitions({ page: 0, size: 50 })
-      .then((page) => setDefinitions(page.content))
-      .catch(() => setSnackbar({ msg: 'Failed to load workflows', severity: 'error' }));
-  }, []);
-
-  const handleNew = async () => {
-    const name = `Workflow ${definitions.length + 1}`;
-    const defaultXml = `<?xml version="1.0" encoding="UTF-8"?>
-<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
-                  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
-                  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
-                  id="Definitions_1" targetNamespace="http://bpmn.io/schema/bpmn">
-  <bpmn:process id="${name.replace(/\s/g, '_')}" isExecutable="true">
-    <bpmn:startEvent id="StartEvent_1" name="Start" />
-  </bpmn:process>
-  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
-    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="${name.replace(/\s/g, '_')}">
-      <bpmndi:BPMNShape id="_BPMNShape_StartEvent_1" bpmnElement="StartEvent_1">
-        <dc:Bounds x="173" y="102" width="36" height="36" />
-      </bpmndi:BPMNShape>
-    </bpmndi:BPMNPlane>
-  </bpmndi:BPMNDiagram>
-</bpmn:definitions>`;
-
-    try {
-      const created = await createWorkflowDefinition({ name, bpmnXml: defaultXml });
-      setDefinitions((prev) => [created, ...prev]);
-      selectWorkflow(created);
-      setSnackbar({ msg: 'New workflow created', severity: 'success' });
-    } catch {
-      setSnackbar({ msg: 'Failed to create workflow', severity: 'error' });
-    }
-  };
-
-  const selectWorkflow = (wf: WorkflowDefinition) => {
-    setSelectedId(wf.id);
-    setSelectedXml(wf.bpmnXml);
-    setSelectedName(wf.name);
-    setSelectedDesc(wf.description ?? '');
-  };
-
-  const handleSave = async (xml: string) => {
-    if (!selectedId) return;
-    setSaving(true);
-    try {
-      const updated = await updateWorkflowDefinition(selectedId, {
-        name: selectedName,
-        description: selectedDesc,
-        bpmnXml: xml,
-      });
-      // Update list
-      setDefinitions((prev) => prev.map((d) => (d.id === selectedId ? updated : d)));
-      setSnackbar({ msg: `Saved (v${updated.version})`, severity: 'success' });
-    } catch {
-      setSnackbar({ msg: 'Save failed', severity: 'error' });
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleDeploy = async () => {
-    if (!selectedId) return;
-    setDeploying(true);
-    try {
-      await deployWorkflowDefinition(selectedId);
-      setSnackbar({ msg: 'Deployed to Camunda!', severity: 'success' });
-    } catch {
-      setSnackbar({ msg: 'Deploy failed', severity: 'error' });
-    } finally {
-      setDeploying(false);
-    }
-  };
-
-  const handleDelete = () => {
-    if (!selectedId) return;
-    setDeleteConfirmOpen(true);
-  };
-
-  const handleDeleteConfirmed = async () => {
-    setDeleteConfirmOpen(false);
-    if (!selectedId) return;
-    try {
-      await deleteWorkflowDefinition(selectedId);
-      setDefinitions((prev) => prev.filter((d) => d.id !== selectedId));
-      setSelectedId(null);
-      setSelectedXml(null);
-      setSnackbar({ msg: 'Workflow deleted', severity: 'info' });
-    } catch {
-      setSnackbar({ msg: 'Delete failed', severity: 'error' });
-    }
-  };
-
-  return (
-    <Box sx={{ mt: 2 }}>
-      {/* Toolbar */}
-      <Stack direction="row" spacing={1.5} mb={2} flexWrap="wrap" alignItems="center">
-        <Button variant="contained" size="small" startIcon={<AddIcon />} onClick={handleNew}>
-          New Workflow
-        </Button>
-        <Button
-          variant="outlined" size="small" startIcon={<SaveIcon />}
-          disabled={!selectedId || saving}
-          onClick={() => window.dispatchEvent(new Event('bpmn-save'))}
-        >
-          {saving ? 'Saving...' : 'Save'}
-        </Button>
-        <Button
-          variant="outlined" size="small" color="success" startIcon={<CloudUploadIcon />}
-          disabled={!selectedId || deploying}
-          onClick={handleDeploy}
-        >
-          {deploying ? 'Deploying...' : 'Deploy'}
-        </Button>
-        <Button
-          variant="outlined" size="small" color="error" startIcon={<DeleteOutlineIcon />}
-          disabled={!selectedId}
-          onClick={handleDelete}
-        >
-          Delete
-        </Button>
-        {selectedId && (
-          <Chip label={selectedName} size="small" color="primary" variant="outlined" />
-        )}
-      </Stack>
-
-      <Box display="flex" gap={2} flexDirection={{ xs: 'column', md: 'row' }}>
-        {/* Workflow list */}
-        <Box sx={{ width: { xs: '100%', md: 200 }, flexShrink: 0 }}>
-          <Paper variant="outlined" sx={{ p: 1, maxHeight: 520, overflow: 'auto' }}>
-            <Typography variant="caption" fontWeight={700} color="text.secondary" gutterBottom display="block" px={0.5}>
-              Workflows
-            </Typography>
-            {definitions.length === 0 && (
-              <Typography variant="body2" color="text.secondary" px={0.5} py={1}>
-                No workflows yet
-              </Typography>
-            )}
-            <Stack spacing={0.5}>
-              {definitions.map((wf) => (
-                <Box
-                  key={wf.id}
-                  onClick={() => selectWorkflow(wf)}
-                  sx={{
-                    p: 0.75,
-                    borderRadius: 1,
-                    cursor: 'pointer',
-                    bgcolor: selectedId === wf.id ? 'action.selected' : 'transparent',
-                    '&:hover': { bgcolor: 'action.hover' },
-                  }}
-                >
-                  <Typography variant="body2" fontSize="0.8rem" noWrap>{wf.name}</Typography>
-                  <Typography variant="caption" color="text.secondary">v{wf.version}</Typography>
-                </Box>
-              ))}
-            </Stack>
-          </Paper>
-        </Box>
-
-        {/* BPMN Modeler */}
-        <Box flex={1}>
-          <WorkflowModeler
-            initialXml={selectedXml}
-            onSave={handleSave}
-            height={520}
-          />
-        </Box>
-
-        {/* Right panel: Palette + AI Config */}
-        <Box sx={{ width: { xs: '100%', md: 200 }, flexShrink: 0 }}>
-          <Stack spacing={2}>
-            <NodePalette />
-            <AiNodeConfigPanel selectedNodeId={selectedNodeId} />
-          </Stack>
-        </Box>
-      </Box>
-
-      {/* Snackbar */}
-      {snackbar && (
-        <MuiAlert
-          severity={snackbar.severity}
-          sx={{ mt: 2 }}
-          onClose={() => setSnackbar(null)}
-        >
-          {snackbar.msg}
-        </MuiAlert>
-      )}
-
-      <Dialog open={deleteConfirmOpen} onClose={() => setDeleteConfirmOpen(false)} maxWidth="xs" fullWidth>
-        <DialogTitle>Delete Workflow?</DialogTitle>
-        <DialogContent>
-          <Typography variant="body2">
-            Are you sure you want to delete <strong>{selectedName || 'this workflow'}</strong>?
-            This action cannot be undone.
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDeleteConfirmOpen(false)}>Cancel</Button>
-          <Button variant="contained" color="error" startIcon={<DeleteOutlineIcon />} onClick={handleDeleteConfirmed}>
-            Delete
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </Box>
-  );
-}
-
 // ── Main page ────────────────────────────────────────────────────────────────
 
 export default function AiWorkflowPage() {
   const [tab, setTab] = useState(0);
+  const [startingDef, setStartingDef] = useState<ProcessDefinition | null>(null);
+  const [startingDefInitialVars, setStartingDefInitialVars] = useState('{}');
+  const [wizardOpen, setWizardOpen] = useState(false);
+  const { mutateAsync: startProcessAsync, isPending: isStartPending } = useStartProcess();
+
+  const handleStartProcess = (def: ProcessDefinition) => {
+    setStartingDefInitialVars('{}');
+    setStartingDef(def);
+  };
+
+  const handleSelectTemplate = (template: WorkflowTemplate) => {
+    const defaultVars: Record<string, unknown> = {};
+    for (const param of template.params) {
+      if (param.defaultValue !== undefined) {
+        defaultVars[param.key] = param.defaultValue;
+      }
+    }
+    const syntheticDef: ProcessDefinition = {
+      id: template.bpmnKey,
+      key: template.bpmnKey,
+      name: template.name,
+      tenantId: null,
+      version: 1,
+      deploymentId: '',
+      suspended: false,
+    };
+    setStartingDefInitialVars(JSON.stringify(defaultVars, null, 2));
+    setStartingDef(syntheticDef);
+  };
+
+  // Returns a Promise so the wizard can show success/error state internally.
+  // The wizard is responsible for closing itself via the success screen's Close button.
+  const handleWizardDeploy = async (
+    template: WorkflowTemplate,
+    variables: Record<string, unknown>,
+  ): Promise<void> => {
+    await startProcessAsync({ processKey: template.bpmnKey, variables });
+  };
 
   return (
     <Box>
@@ -1500,31 +351,80 @@ export default function AiWorkflowPage() {
           icon={<AccountTreeIcon />}
           iconPosition="start"
           sx={{ minHeight: 48 }}
+          aria-label="View process instances"
         />
         <Tab
           label="Process Definitions"
           icon={<SmartToyIcon />}
           iconPosition="start"
           sx={{ minHeight: 48 }}
+          aria-label="View process definitions"
+        />
+        <Tab
+          label="Templates"
+          icon={<ViewModuleIcon />}
+          iconPosition="start"
+          sx={{ minHeight: 48 }}
+          aria-label="Browse workflow templates"
         />
         <Tab
           label="Designer"
           icon={<DesignServicesIcon />}
           iconPosition="start"
-          sx={{ minHeight: 48, color: tab === 2 ? 'secondary.main' : undefined }}
+          sx={{ minHeight: 48, color: tab === 3 ? 'secondary.main' : undefined }}
+          aria-label="Open BPMN workflow designer"
         />
         <Tab
           label="Live Demo"
           icon={<BoltIcon />}
           iconPosition="start"
-          sx={{ minHeight: 48, color: tab === 3 ? 'error.main' : undefined }}
+          sx={{ minHeight: 48, color: tab === 4 ? 'error.main' : undefined }}
+          aria-label="Open live demo simulations"
         />
       </Tabs>
 
       {tab === 0 && <InstancesTab />}
-      {tab === 1 && <DefinitionsTab />}
-      {tab === 2 && <DesignerTab />}
-      {tab === 3 && <LiveDemoTab />}
+      {tab === 1 && <DefinitionsTab onStartProcess={handleStartProcess} />}
+      {tab === 2 && (
+        <Box>
+          <Box display="flex" justifyContent="flex-end" mt={1} mb={0}>
+            <Button
+              variant="contained"
+              startIcon={<BoltIcon />}
+              onClick={() => setWizardOpen(true)}
+              aria-label="Open new workflow wizard"
+            >
+              New Workflow
+            </Button>
+          </Box>
+          <TemplateGallery onSelectTemplate={handleSelectTemplate} />
+        </Box>
+      )}
+      {tab === 3 && (
+        <Suspense fallback={<Skeleton variant="rectangular" height={520} sx={{ mt: 2 }} />}>
+          <LazyDesignerTab />
+        </Suspense>
+      )}
+      {tab === 4 && (
+        <Suspense fallback={<CircularProgress sx={{ display: 'block', mx: 'auto', mt: 4 }} />}>
+          <LazyLiveDemoTab />
+        </Suspense>
+      )}
+
+      {startingDef && (
+        <StartProcessDialog
+          definition={startingDef}
+          initialVariablesJson={startingDefInitialVars}
+          onClose={() => setStartingDef(null)}
+        />
+      )}
+
+      <WorkflowWizard
+        open={wizardOpen}
+        onClose={() => setWizardOpen(false)}
+        onDeploy={handleWizardDeploy}
+        isPending={isStartPending}
+      />
     </Box>
   );
 }

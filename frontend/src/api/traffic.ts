@@ -73,3 +73,22 @@ export const updateIncidentStatus = (id: string, status: string) =>
       params: { status },
     })
     .then((r) => r.data)
+
+// ── Traffic Flow API (GAP-029) ─────────────────────────────────────────
+
+export interface TrafficFlowDto {
+  intersectionId: string
+  timestamp: string
+  avgSpeed: number
+  vehicleCount: number
+  congestionLevel: 'FREE' | 'MODERATE' | 'HEAVY' | 'STANDSTILL'
+}
+
+export const getTrafficFlow = (params?: {
+  intersection?: string
+  from?: string
+  to?: string
+}) =>
+  apiClient
+    .get<TrafficFlowDto[]>('/traffic/flow', { params })
+    .then((r) => r.data)

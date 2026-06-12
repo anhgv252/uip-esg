@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { useTheme } from '@mui/material/styles';
 import {
   ComposedChart,
   Line,
@@ -32,13 +33,18 @@ function toChartPoint(p: ForecastPoint) {
   };
 }
 
+/**
+ * Energy forecast chart with confidence bands and anomaly detection.
+ * Uses MUI theme palette tokens instead of raw hex colors (GAP-027).
+ */
 export function ForecastChart({ points, isFallback, mape, height = 400 }: ForecastChartProps) {
+  const theme = useTheme();
   const data = useMemo(() => points.map(toChartPoint), [points]);
   const anomalies = useMemo(() => data.filter((d) => d.isAnomaly), [data]);
 
   if (data.length === 0) {
     return (
-      <div style={{ height, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#888' }}>
+      <div style={{ height, display: 'flex', alignItems: 'center', justifyContent: 'center', color: theme.palette.text.disabled }}>
         No forecast data available
       </div>
     );
@@ -46,14 +52,14 @@ export function ForecastChart({ points, isFallback, mape, height = 400 }: Foreca
 
   return (
     <div>
-      <div style={{ display: 'flex', gap: 16, marginBottom: 8, fontSize: 13, color: '#666' }}>
+      <div style={{ display: 'flex', gap: 16, marginBottom: 8, fontSize: 13, color: theme.palette.text.secondary }}>
         {mape != null && <span>MAPE: {(mape * 100).toFixed(1)}%</span>}
-        {isFallback && <span style={{ color: '#f59e0b' }}>Fallback mode (naive)</span>}
-        {anomalies.length > 0 && <span style={{ color: '#ef4444' }}>{anomalies.length} anomalies</span>}
+        {isFallback && <span style={{ color: theme.palette.warning.main }}>Fallback mode (naive)</span>}
+        {anomalies.length > 0 && <span style={{ color: theme.palette.error.main }}>{anomalies.length} anomalies</span>}
       </div>
       <ResponsiveContainer width="100%" height={height}>
         <ComposedChart data={data} margin={{ top: 5, right: 20, bottom: 5, left: 10 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+          <CartesianGrid strokeDasharray="3 3" stroke={theme.palette.divider} />
           <XAxis
             dataKey="timestamp"
             type="number"
@@ -70,7 +76,7 @@ export function ForecastChart({ points, isFallback, mape, height = 400 }: Foreca
             type="monotone"
             dataKey="upper"
             stroke="none"
-            fill="#3b82f6"
+            fill={theme.palette.primary.main}
             fillOpacity={0.1}
             name="Upper CI"
             legendType="none"
@@ -79,7 +85,7 @@ export function ForecastChart({ points, isFallback, mape, height = 400 }: Foreca
             type="monotone"
             dataKey="lower"
             stroke="none"
-            fill="#3b82f6"
+            fill={theme.palette.primary.main}
             fillOpacity={0.1}
             name="Lower CI"
             legendType="none"
@@ -89,7 +95,7 @@ export function ForecastChart({ points, isFallback, mape, height = 400 }: Foreca
           <Line
             type="monotone"
             dataKey="actual"
-            stroke="#6b7280"
+            stroke={theme.palette.text.secondary}
             strokeWidth={1.5}
             dot={false}
             connectNulls={false}
@@ -100,7 +106,7 @@ export function ForecastChart({ points, isFallback, mape, height = 400 }: Foreca
           <Line
             type="monotone"
             dataKey="predicted"
-            stroke="#3b82f6"
+            stroke={theme.palette.primary.main}
             strokeWidth={2}
             dot={false}
             name="Forecast"
@@ -111,7 +117,7 @@ export function ForecastChart({ points, isFallback, mape, height = 400 }: Foreca
             <Scatter
               data={anomalies}
               dataKey="actual"
-              fill="#ef4444"
+              fill={theme.palette.error.main}
               shape="diamond"
               name="Anomaly"
             />

@@ -71,4 +71,22 @@ public class AlertEvent implements TenantAware {
     /** Building associated with this alert — set by structural/BMS consumers for safety score correlation. */
     @Column(name = "building_id", length = 100)
     private String buildingId;
+
+    // ─── Operator feedback (M4-COR-06) ───────────────────────────────────────
+
+    /** {@code true} = operator confirmed AI was correct; {@code false} = AI was wrong. */
+    @Column(name = "feedback_correct")
+    private Boolean feedbackCorrect;
+
+    /** Free-text comment from the operator. */
+    @Column(name = "feedback_comment", columnDefinition = "TEXT")
+    private String feedbackComment;
+
+    /** Username of the operator who submitted feedback. */
+    @Column(name = "feedback_by", length = 100)
+    private String feedbackBy;
+
+    /** Timestamp when feedback was submitted. */
+    @Column(name = "feedback_at")
+    private java.time.Instant feedbackAt;
 }

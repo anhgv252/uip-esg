@@ -27,13 +27,15 @@ public class NotificationController {
      *
      * Client reconnect: use EventSource with retry logic on error.
      *
-     * @deprecated Use {@link AlertStreamController#streamAlerts()} instead —
-     *             canonical URL is GET /api/v1/alerts/stream.
-     *             This endpoint is kept for backward compatibility and will be removed in v3.1.
+     * @deprecated Use /api/v2/notifications via FCM/APNs pipeline instead.
+     *             This endpoint delivers SSE over HTTP/1.1 only.
+     *             The v2 pipeline supports Web Push (VAPID), FCM (Android), and APNs (iOS)
+     *             with persistent delivery guarantees and offline buffering.
+     *             Migration guide: docs/migration/notification-v1-to-v2.md
      */
     @Deprecated
     @GetMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    @Operation(summary = "Subscribe to real-time alert notifications via SSE (DEPRECATED — use /api/v1/alerts/stream)")
+    @Operation(summary = "Subscribe to real-time alert notifications via SSE (DEPRECATED — use /api/v2/notifications via FCM/APNs pipeline)")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "SSE stream established"),
             @ApiResponse(responseCode = "401", description = "Unauthorized — invalid or missing JWT"),

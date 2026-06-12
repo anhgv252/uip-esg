@@ -57,6 +57,9 @@ export default defineConfig({
     alias: {
       '@': resolve(__dirname, './src'),
     },
+    // Force single React instance — prevents "Invalid hook call" when root node_modules
+    // has react (React Native) while frontend node_modules has react-dom
+    dedupe: ['react', 'react-dom', '@tanstack/react-query'],
   },
   server: {
     port: 3000,
@@ -81,6 +84,8 @@ export default defineConfig({
         manualChunks: {
           vendor: ['react', 'react-dom', 'react-router-dom'],
           mui: ['@mui/material', '@mui/icons-material'],
+          bpmn: ['bpmn-js'],
+          recharts: ['recharts'],
         },
       },
     },
@@ -91,6 +96,12 @@ export default defineConfig({
     setupFiles: ['./src/test/setup.ts'],
     onUnhandledRejection: 'warn',
     exclude: ['node_modules', 'dist', 'e2e/**'],
+    // Inline @tanstack/react-query so it resolves the same React instance as test files
+    server: {
+      deps: {
+        inline: ['@tanstack/react-query'],
+      },
+    },
     coverage: {
       provider: 'v8',
       reporter: ['text', 'lcov'],

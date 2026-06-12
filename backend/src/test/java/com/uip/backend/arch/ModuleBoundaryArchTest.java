@@ -215,9 +215,15 @@ class ModuleBoundaryArchTest {
     // ─────────────────────────────────────────────────────────────────────────
 
     @Test
-    @DisplayName("alert repository must only be accessed within alert module")
+    @DisplayName("alert repository must only be accessed within alert module (exception: ai feedback loop)")
     void alertRepository_mustOnlyBeAccessedWithin_alertModule() {
-        noClasses().that().resideOutsideOfPackage(BASE + ".alert..")
+        // ADR-046: Incident Feedback Loop (ai.feedback) reads 30-day alert feedback data
+        // to generate trigger suggestions. This is a documented cross-module read port —
+        // ai.feedback reads alert feedback state but never writes alert domain objects.
+        // Same exception pattern as forecast.. → esg.repository (ADR-032 D6).
+        noClasses().that()
+                .resideOutsideOfPackage(BASE + ".alert..")
+                .and().resideOutsideOfPackage(BASE + ".ai.feedback..")  // ADR-046 feedback loop
                 .should().accessClassesThat().resideInAPackage(BASE + ".alert.repository..")
                 .check(classes);
     }

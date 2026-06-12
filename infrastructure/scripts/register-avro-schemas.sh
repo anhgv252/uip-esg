@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Avro Schema Auto-Registration Script — Sprint 8 (S8-OPS06)
+# Avro Schema Auto-Registration Script — Sprint 8 (S8-OPS06) + GAP-037
 # Registers all Avro schemas into Apicurio Schema Registry on deploy.
 # Idempotent: re-running doesn't fail if schemas already exist.
 #
@@ -8,23 +8,41 @@
 #
 # Environment:
 #   APICURIO_URL  Apicurio Registry URL (default: http://localhost:8087/apis/registry/v2)
-#   SCHEMA_DIR    Avro schema directory (default: auto-detected from script location)
+#   SCHEMA_DIR    Avro schema directory (default: auto-detected from backend src)
 #
-# Part of Sprint 8 — Avro auto-registration (EA P1 automation gap fix)
+# Auto-detection:
+#   Scans SCHEMA_DIR for all *.avsc files and registers them.
+#   Artifact ID = filename without .avsc extension, converted to kebab-case.
+#   Example: SensorReadingEvent.avsc → artifact ID: sensor-reading-event
+#
+# Part of Sprint 8 + MVP4-S2 (GAP-037) — Avro auto-registration automation
 set -euo pipefail
 
 # ─── Configuration ────────────────────────────────────────────────────────────
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 APICURIO_URL="${1:-${APICURIO_URL:-http://localhost:8087/apis/registry/v2}}"
-SCHEMA_DIR="${SCHEMA_DIR:-${SCRIPT_DIR}/../../backend/src/main/resources/avro}"
 
-# Schema definitions: artifactId → filename
-declare -A SCHEMAS=(
-    ["sensor-reading-event"]="SensorReadingEvent.avsc"
-    ["bms-reading-event"]="BmsReadingEvent.avsc"
-    ["alert-detected-event"]="AlertDetectedEvent.avsc"
-    ["hourly-rollup-event"]="HourlyRollupEvent.avsc"
-)
+# Auto-detect schema directory: try multiple locations
+detect_schema_dir() {
+    local candidates=(
+        "${SCHEMA_DIR:-}"
+        "${SCRIPT_DIR}/../../backend/src/main/resources/avro"
+        "${SCRIPT_DIR}/../../../backend/src/main/resources/avro"
+        "./backend/src/main/resources/avro"
+    )
+
+    for dir in "${candidates[@]}"; do
+        if [[ -n "$dir" ]] && [[ -d "$dir" ]]; then
+            echo "$dir"
+            return
+        fi
+    done
+
+    # Return empty — will error later
+    echo ""
+}
+
+SCHEMA_DIR="${SCHEMA_DIR:-$(detect_schema_dir)}"
 
 # ─── Colors ───────────────────────────────────────────────────────────────────
 GREEN='\033[0;32m'
@@ -37,6 +55,15 @@ log_info()  { echo -e "${BLUE}[INFO]${NC} $*"; }
 log_ok()    { echo -e "${GREEN}[OK]${NC} $*"; }
 log_warn()  { echo -e "${YELLOW}[WARN]${NC} $*"; }
 log_error() { echo -e "${RED}[ERROR]${NC} $*"; }
+
+# ─── Convert PascalCase/camelCase to kebab-case ──────────────────────────────
+to_kebab_case() {
+    local input="$1"
+    # Remove .avsc extension if present
+    input="${input%.avsc}"
+    # Insert hyphen before uppercase letters, then lowercase everything
+    echo "$input" | sed 's/\([A-Z]\)/-\1/g' | sed 's/^-//' | tr '[:upper:]' '[:lower:]'
+}
 
 # ─── Health Check ─────────────────────────────────────────────────────────────
 
@@ -64,14 +91,14 @@ check_apicurio_health() {
 
 register_schema() {
     local artifact_id="$1"
-    local schema_file="${SCHEMA_DIR}/$2"
+    local schema_file="$2"
 
     if [[ ! -f "$schema_file" ]]; then
         log_error "Schema file not found: ${schema_file}"
         return 1
     fi
 
-    log_info "Registering: ${artifact_id} ← ${schema_file}"
+    log_info "Registering: ${artifact_id} <- $(basename "$schema_file")"
 
     # Check if artifact already exists
     local existing
@@ -90,7 +117,7 @@ register_schema() {
         if [[ $? -eq 0 ]]; then
             local version
             version=$(echo "$result" | python3 -c "import sys,json; print(json.load(sys.stdin).get('version','?'))" 2>/dev/null || echo "?")
-            log_ok "Updated: ${artifact_id} → version ${version}"
+            log_ok "Updated: ${artifact_id} -> version ${version}"
         else
             # If content identical, Apicurio returns 409 — that's OK (idempotent)
             if echo "$result" | grep -q "409\|Conflict\|already exists"; then
@@ -112,7 +139,7 @@ register_schema() {
         if [[ $? -eq 0 ]]; then
             local version
             version=$(echo "$result" | python3 -c "import sys,json; print(json.load(sys.stdin).get('version','1'))" 2>/dev/null || echo "1")
-            log_ok "Registered: ${artifact_id} → version ${version}"
+            log_ok "Registered: ${artifact_id} -> version ${version}"
         else
             log_error "Failed to register ${artifact_id}: ${result}"
             return 1
@@ -139,29 +166,69 @@ except:
 " 2>/dev/null || echo "  (unable to list)"
 }
 
+# ─── Auto-discover schemas ───────────────────────────────────────────────────
+discover_schemas() {
+    local schema_dir="$1"
+
+    if [[ -z "$schema_dir" || ! -d "$schema_dir" ]]; then
+        log_error "Schema directory not found: ${schema_dir:-<empty>}"
+        log_error "Set SCHEMA_DIR env var or run from project root"
+        exit 1
+    fi
+
+    local found=0
+    for avsc_file in "${schema_dir}"/*.avsc; do
+        [[ -f "$avsc_file" ]] || continue
+        found=$((found + 1))
+    done
+
+    if [[ $found -eq 0 ]]; then
+        log_error "No .avsc files found in ${schema_dir}"
+        exit 1
+    fi
+
+    log_info "Discovered ${found} schema(s) in ${schema_dir}"
+}
+
 # ─── Main ─────────────────────────────────────────────────────────────────────
 
-echo "╔══════════════════════════════════════════════════════════╗"
-echo "║   Avro Schema Auto-Registration (S8-OPS06)             ║"
-echo "╚══════════════════════════════════════════════════════════╝"
+echo "=========================================================="
+echo "   Avro Schema Auto-Registration (GAP-037)"
+echo "=========================================================="
 echo ""
 
 check_apicurio_health
 echo ""
 
-log_info "Registering ${#SCHEMAS[@]} schemas from ${SCHEMA_DIR}..."
+# Auto-discover all .avsc files
+discover_schemas "$SCHEMA_DIR"
+echo ""
+
+log_info "Registering schemas from ${SCHEMA_DIR}..."
 echo ""
 
 local_failed=0
-for artifact_id in "${!SCHEMAS[@]}"; do
-    register_schema "$artifact_id" "${SCHEMAS[$artifact_id]}" || local_failed=$((local_failed + 1))
+local_registered=0
+local_unchanged=0
+
+for avsc_file in "${SCHEMA_DIR}"/*.avsc; do
+    [[ -f "$avsc_file" ]] || continue
+
+    filename=$(basename "$avsc_file")
+    artifact_id=$(to_kebab_case "$filename")
+
+    if register_schema "$artifact_id" "$avsc_file"; then
+        local_registered=$((local_registered + 1))
+    else
+        local_failed=$((local_failed + 1))
+    fi
 done
 
 echo ""
 if [[ $local_failed -eq 0 ]]; then
-    log_ok "All ${#SCHEMAS[@]} schemas registered successfully"
+    log_ok "All ${local_registered} schemas registered successfully"
 else
-    log_error "${local_failed}/${#SCHEMAS[@]} schemas failed to register"
+    log_error "${local_failed} schema(s) failed to register"
     exit 1
 fi
 

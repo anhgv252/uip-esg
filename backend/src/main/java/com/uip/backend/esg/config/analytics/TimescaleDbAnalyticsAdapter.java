@@ -2,7 +2,6 @@ package com.uip.backend.esg.config.analytics;
 
 import com.uip.backend.esg.domain.EsgMetric;
 import com.uip.backend.esg.repository.EsgMetricRepository;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 import java.time.Instant;
@@ -18,10 +17,20 @@ import java.util.stream.Collectors;
  * Bị replace bởi ClickHouseRestAnalyticsAdapter khi analytics-external=true.
  */
 @Slf4j
-@RequiredArgsConstructor
 public class TimescaleDbAnalyticsAdapter implements AnalyticsPort {
 
     private final EsgMetricRepository metricRepository;
+    private final double co2EmissionFactor;
+
+    /**
+     * @param metricRepository    ESG metric repo
+     * @param co2EmissionFactor   kg CO2 per kWh (default 0.5 — Vietnam grid average)
+     */
+    public TimescaleDbAnalyticsAdapter(EsgMetricRepository metricRepository,
+                                       double co2EmissionFactor) {
+        this.metricRepository = metricRepository;
+        this.co2EmissionFactor = co2EmissionFactor;
+    }
 
     @Override
     public EsgAggregateResult queryEnergyAggregate(
@@ -49,8 +58,9 @@ public class TimescaleDbAnalyticsAdapter implements AnalyticsPort {
                     }
                   ));
 
-        // CO2 estimate: 0.5 kg/kWh → 0.0005 tonnes/kWh (grid emission factor, Vietnam avg)
-        double totalCo2 = totalKwh != null ? totalKwh * 0.0005 : 0.0;
+        // CO2 estimate: configurable emission factor (default 0.5 kg/kWh Vietnam grid avg)
+        double co2TonnesPerKwh = co2EmissionFactor / 1000.0;  // kg → tonnes
+        double totalCo2 = totalKwh != null ? totalKwh * co2TonnesPerKwh : 0.0;
 
         return new EsgAggregateResult(
                 totalKwh != null ? totalKwh : 0.0,

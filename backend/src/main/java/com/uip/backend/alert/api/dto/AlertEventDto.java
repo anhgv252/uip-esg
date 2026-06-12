@@ -27,4 +27,10 @@ public class AlertEventDto {
     private String  acknowledgedBy;   // username string — không phải UUID
     private Instant acknowledgedAt;
     private String  note;
+
+    // ─── Operator feedback (M4-COR-06) ───────────────────────────────────────
+    private Boolean  feedbackCorrect;
+    private String   feedbackComment;
+    private String   feedbackBy;
+    private Instant  feedbackAt;
 }

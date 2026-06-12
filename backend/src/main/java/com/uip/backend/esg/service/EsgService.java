@@ -22,6 +22,7 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import com.uip.backend.esg.dto.EsgAnomalyDto;
+import com.uip.backend.tenant.repository.TenantConfigRepository;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -42,6 +43,7 @@ public class EsgService {
     private final EsgReportGenerator   reportGenerator;
     private final CacheKeyBuilder      cacheKeyBuilder;
     private final AnalyticsPort        analyticsPort;
+    private final TenantConfigRepository tenantConfigRepository;
 
     // ─── Summary ──────────────────────────────────────────────────────────────
 
@@ -157,6 +159,24 @@ public class EsgService {
         return reportGenerator.resolveAdapter(format).getFileExtension();
     }
 
+    // ─── Water Intensity (ISO 37120 GDP proxy) ────────────────────────────────
+
+    /**
+     * ISO 37120 water intensity: total_water_m3 per GDP proxy.
+     *
+     * <p>GDP proxy = sampleCount * 1000. When sampleCount is unavailable (null),
+     * proxy defaults to 1 so the returned value equals total water m3 directly.</p>
+     *
+     * @param tenantId tenant context
+     * @param year     reporting year (ANNUAL period)
+     * @return water intensity (m3 / GDP proxy) or 0.0 when no water data is available
+     */
+    public double getWaterIntensity(String tenantId, int year) {
+        EsgSummaryDto summary = getSummary(tenantId, "ANNUAL", year, 0);
+        long gdpProxy = summary.getSampleCount() != null ? summary.getSampleCount() * 1000L : 1L;
+        return summary.getTotalWaterM3() != null ? summary.getTotalWaterM3() / gdpProxy : 0.0;
+    }
+
     // ─── Anomaly Detection (M03/M04 scheduler) ─────────────────────────────────
 
     private static final double ANOMALY_THRESHOLD_RATIO = 1.3;
@@ -222,12 +242,37 @@ public class EsgService {
         }
     }
 
-    /** ISO 37120: water intensity = total water / population. Population from raw_payload or config. */
-    private Double calculateWaterIntensity(String tenantId, Double totalWaterM3, int year) {
+    /**
+     * ISO 37120: water intensity = total_water_m3 / population_served.
+     *
+     * <p>Population sourced from tenant_config with key "population_served_{year}".
+     * Returns null when population metadata is unavailable or zero.</p>
+     */
+    Double calculateWaterIntensity(String tenantId, Double totalWaterM3, int year) {
         if (totalWaterM3 == null || totalWaterM3 == 0) return null;
-        // TODO: Read population from building metadata or tenant config when available
-        // For now, return null — metric available when population data is integrated
-        return null;
+
+        String configKey = "population_served_" + year;
+        List<com.uip.backend.tenant.domain.TenantConfigEntry> configs =
+                tenantConfigRepository.findByTenantId(tenantId);
+
+        double population = configs.stream()
+                .filter(c -> configKey.equals(c.getConfigKey()))
+                .mapToDouble(c -> {
+                    try { return Double.parseDouble(c.getConfigValue()); }
+                    catch (NumberFormatException e) { return 0.0; }
+                })
+                .findFirst().orElse(0.0);
+
+        if (population <= 0) {
+            log.debug("No population data for tenant={} year={} key={} — water intensity unavailable",
+                    tenantId, year, configKey);
+            return null;
+        }
+
+        double intensity = totalWaterM3 / population;
+        log.info("Water intensity calculated: tenant={} year={} water={}m3 pop={} intensity={:.2f}m3/person",
+                tenantId, year, totalWaterM3, population, intensity);
+        return intensity;
     }
 
     private Instant[] quarterRange(int year, int quarter) {

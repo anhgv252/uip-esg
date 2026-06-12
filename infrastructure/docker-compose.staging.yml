@@ -52,6 +52,17 @@ services:
         {"uip":{"capabilities":{"analytics-external":true,"analytics-transport":"rest","multi-tenancy":true},"analytics-service":{"url":"http://analytics-service:8081"}}}
       MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: health,info,prometheus
       MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS: never
+      # Push notification credentials (P0-1 MVP4 Sprint 1)
+      PUSH_FCM_ENABLED: ${PUSH_FCM_ENABLED:-false}
+      FCM_SERVICE_ACCOUNT_KEY: ${FCM_SERVICE_ACCOUNT_KEY:-}
+      PUSH_APNS_ENABLED: ${PUSH_APNS_ENABLED:-false}
+      APNS_CERTIFICATE_PATH: ${APNS_CERTIFICATE_PATH:-}
+      APNS_CERTIFICATE_PASSWORD: ${APNS_CERTIFICATE_PASSWORD:-}
+      APNS_TOPIC: ${APNS_TOPIC:-com.uip.operatormobile}
+      APNS_PRODUCTION: ${APNS_PRODUCTION:-false}
+    volumes:
+      # Mount push notification credential files (read-only)
+      - ./secrets:/opt/uip/secrets:ro
     deploy:
       resources:
         limits:

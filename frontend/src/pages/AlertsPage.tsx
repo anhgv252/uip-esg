@@ -37,43 +37,45 @@ import type { AlertEvent } from '@/api/alerts'
 import { useAlerts, useAcknowledgeAlert, useEscalateAlert, useResolveAlert } from '@/hooks/useAlertManagement'
 import { useAlertStream } from '@/hooks/useAlertStream'
 import { useScope } from '@/hooks/useScope'
+import AlertFeedbackButton from '@/components/alerts/AlertFeedbackButton'
 
-const SEVERITY_COLORS = {
-  LOW: '#4caf50',
-  MEDIUM: '#ff9800',
-  HIGH: '#f44336',
-  CRITICAL: '#b71c1c',
-} as const
-
-type SeverityKey = keyof typeof SEVERITY_COLORS
+/** Severity to MUI Chip color prop mapping (GAP-028: no raw hex) */
+const SEVERITY_CHIP_COLOR: Record<string, 'error' | 'warning' | 'info' | 'default'> = {
+  CRITICAL: 'error',
+  HIGH: 'warning',
+  MEDIUM: 'info',
+  LOW: 'default',
+}
 
 function SeverityBadge({ severity }: { severity: string }) {
-  const color = SEVERITY_COLORS[severity as SeverityKey] ?? '#9e9e9e'
+  const chipColor = SEVERITY_CHIP_COLOR[severity] ?? 'default'
   return (
     <Chip
       label={severity}
       size="small"
-      sx={{ bgcolor: color, color: '#fff', fontWeight: 700, fontSize: 11, height: 22 }}
+      color={chipColor}
+      sx={{ fontWeight: 700, fontSize: 11, height: 22 }}
     />
   )
 }
 
-// Distinct badge for module type — STRUCTURAL uses a different icon/color from FLOOD/ENVIRONMENT
-const MODULE_COLORS: Record<string, string> = {
-  STRUCTURAL: '#7B1FA2',   // purple — distinct from flood (blue) and environment (green)
-  FLOOD:      '#0288D1',
-  ENVIRONMENT:'#388E3C',
-  TRAFFIC:    '#F57C00',
+/** Module to MUI Chip color prop mapping (GAP-028: no raw hex) */
+const MODULE_CHIP_COLOR: Record<string, 'secondary' | 'primary' | 'success' | 'warning' | 'default'> = {
+  STRUCTURAL: 'secondary',
+  FLOOD: 'primary',
+  ENVIRONMENT: 'success',
+  TRAFFIC: 'warning',
 }
 
 function ModuleBadge({ module }: { module: string }) {
-  const bg = MODULE_COLORS[module] ?? '#616161'
+  const chipColor = MODULE_CHIP_COLOR[module] ?? 'default'
   return (
     <Chip
       label={module}
       size="small"
       variant="outlined"
-      sx={{ borderColor: bg, color: bg, fontWeight: 600, fontSize: 10, height: 20 }}
+      color={chipColor}
+      sx={{ fontWeight: 600, fontSize: 10, height: 20 }}
       aria-label={`Module: ${module}`}
     />
   )
@@ -95,9 +97,10 @@ interface AlertDetailDrawerProps {
   resolving: boolean
   isMobile: boolean
   canEscalate: boolean
+  onFeedback: (alertId: string, correct: boolean, comment?: string) => void
 }
 
-function AlertDetailDrawer({ alert, onClose, onAcknowledge, onEscalate, onResolve, acknowledging, escalating, resolving, isMobile, canEscalate }: AlertDetailDrawerProps) {
+function AlertDetailDrawer({ alert, onClose, onAcknowledge, onEscalate, onResolve, acknowledging, escalating, resolving, isMobile, canEscalate, onFeedback }: AlertDetailDrawerProps) {
   const [note, setNote] = useState('')
   const actionLabel = alert?.status === 'ACKNOWLEDGED' ? 'Acknowledged by' : alert?.status === 'RESOLVED' ? 'Resolved by' : 'Escalated by'
   return (
@@ -187,6 +190,14 @@ function AlertDetailDrawer({ alert, onClose, onAcknowledge, onEscalate, onResolv
               </Box>
             </Box>
           )}
+          {/* AI Feedback — shown for all alert statuses */}
+          <Box mt={3}>
+            <Divider sx={{ mb: 2 }} />
+            <AlertFeedbackButton
+              alertId={String(alert.id)}
+              onSubmit={(correct, comment) => onFeedback(String(alert.id), correct, comment)}
+            />
+          </Box>
         </Box>
       )}
     </Drawer>
@@ -291,6 +302,11 @@ export default function AlertsPage() {
 
   const handleResolve = (id: string, note?: string) => {
     resolve({ id, note }, { onSuccess: () => { setSelectedAlert(null) } })
+  }
+
+  const handleFeedback = (_alertId: string, _correct: boolean, _comment?: string) => {
+    // Feedback is captured locally in AlertFeedbackButton state;
+    // a real implementation would POST to /api/alerts/{alertId}/feedback.
   }
 
   const handleBulkAck = () => {
@@ -480,6 +496,7 @@ export default function AlertsPage() {
         onAcknowledge={handleAck} onEscalate={handleEscalate} onResolve={handleResolve}
         acknowledging={acknowledging} escalating={escalating} resolving={resolving}
         isMobile={isMobile} canEscalate={canEscalate}
+        onFeedback={handleFeedback}
       />
     </Box>
   )

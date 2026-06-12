@@ -1,5 +1,6 @@
 package com.uip.backend.common.service;
 
+import com.uip.backend.common.logging.PiiMasker;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -28,9 +29,9 @@ public class EmailService {
                 + "This invitation expires in 48 hours.");
         try {
             mailSender.send(message);
-            log.info("Invite email sent: recipient={}", toEmail);
+            log.info("Invite email sent: recipient={}", PiiMasker.maskEmail(toEmail));
         } catch (Exception e) {
-            log.warn("Invite email not sent (mail server unavailable): recipient={}, reason={}", toEmail, e.getMessage());
+            log.warn("Invite email not sent (mail server unavailable): recipient={}, reason={}", PiiMasker.maskEmail(toEmail), e.getMessage());
         }
     }
 }
