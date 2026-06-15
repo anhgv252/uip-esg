@@ -391,9 +391,10 @@
 | Thư mục | Nội dung |
 |---------|---------|
 | `project/` | Sprint plans chi tiết (S1-S6), demo scripts, roadmap |
-| `architecture/` | ADR-041 đến ADR-046, system updates |
-| `qa/` | Test strategies, performance plans |
+| `docs/adr/` | **ADR-041 đến ADR-046** (nằm ở `docs/adr/` chuẩn repo, không phải `docs/mvp4/architecture/`). Xem ADR-041 AI Cost, ADR-042 Correlation, ADR-043 BMS Safety, ADR-044 Self-Service, ADR-045 Welford, ADR-046 Feedback Loop |
+| `qa/` | Test strategies, performance plans *(chưa có nội dung — TODO: test-strategy.md)* |
 | `reports/` | Sprint reviews, code reviews, gate review |
+| `uat/` | UAT sign-off: sprint4 correlation/template, sprint5 BMS-safety/wizard |
 
 ---
 

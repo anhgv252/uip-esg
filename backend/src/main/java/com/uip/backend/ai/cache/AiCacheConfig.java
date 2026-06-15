@@ -105,6 +105,21 @@ public class AiCacheConfig {
         return new ConcurrentMapCacheManager();
     }
 
+    /**
+     * No-op fallback for tests that disable caching entirely via
+     * {@code spring.cache.type=none}. Without this bean, {@link AiInferenceService}'s
+     * {@code @Qualifier("aiResponseCacheManager")} dependency has nothing to wire and
+     * the ApplicationContext fails to load (see feedback_mvp4_config_bugs — full
+     * @SpringBootTest surfaced this). ConcurrentMapCacheManager is cheap and correct
+     * here: caching is already semantically disabled by the test profile, the bean
+     * merely satisfies the DI contract.
+     */
+    @Bean(CACHE_MANAGER_BEAN)
+    @ConditionalOnProperty(name = "spring.cache.type", havingValue = "none")
+    public CacheManager aiResponseNoOpCacheManager() {
+        return new ConcurrentMapCacheManager();
+    }
+
     // ─── Config values (injected on the outer @Configuration class) ───────────
 
     @Value("${spring.data.redis.host:localhost}")
