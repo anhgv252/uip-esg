@@ -28,19 +28,19 @@
 ## Sprint 6 (Oct 13-24) — 4 SP
 
 ### Task #27 — MVP4 Summary + MVP5 Roadmap + Stakeholder demo
-**ID:** MVP4 Close-out | **SP:** 4 | **Priority:** P0 (FINAL)
+**ID:** MVP4 Close-out | **SP:** 4 | **Priority:** P0 (FINAL) | **Status:** PARTIAL — draft artifacts done 2026-06-15, finalize pending QA Gate #26
 
-| Item | SP | Chi tiết |
-|------|-----|---------|
-| MVP4 Summary report | 1.5 | Document: deliverables completed, KPIs achieved vs target, lessons learned, tech debt carried over, team velocity actual vs planned |
-| MVP5 Roadmap draft | 1.5 | Plan next phase: K8s migration, NL→BPMN (Vietnamese natural language), scale >20 buildings, Series A trigger. Timeline: Q1 2027 |
-| Stakeholder demo + sign-off | 1 | City authority + investor demo: AI cost optimization demo, correlation engine demo, operator self-service demo. Collect sign-off |
+| Item | SP | Chi tiết | Status |
+|------|-----|---------|--------|
+| MVP4 Summary report | 1.5 | Document: deliverables completed, KPIs achieved vs target, lessons learned, tech debt carried over, team velocity actual vs planned | ⏳ DRAFT done ([`reports/mvp4-summary-draft.md`](../reports/mvp4-summary-draft.md)) — KPIs to be filled after G1/G2/G5 gate run |
+| MVP5 Roadmap draft | 1.5 | Plan next phase: K8s migration, NL→BPMN (Vietnamese natural language), scale >20 buildings, Series A trigger. Timeline: Q1 2027 | ✅ DRAFT done ([`reports/mvp5-roadmap-draft.md`](../reports/mvp5-roadmap-draft.md)) |
+| Stakeholder demo + sign-off | 1 | City authority + investor demo: AI cost optimization demo, correlation engine demo, operator self-service demo. Collect sign-off | ⏳ Script done ([`reports/mvp4-stakeholder-demo-script.md`](../reports/mvp4-stakeholder-demo-script.md)) — execute after QA gate |
 
 **Acceptance Criteria:**
-- [ ] MVP4 Summary: all KPIs documented vs target
-- [ ] MVP5 Roadmap: timeline + features + resource estimate
-- [ ] Stakeholder demo done, sign-off obtained
-- [ ] **DECLARE MVP4 DONE** (after QA gate #26 PASS)
+- [ ] MVP4 Summary: all KPIs documented vs target *(pending G1/G2/G5 measurement)*
+- [x] MVP5 Roadmap: timeline + features + resource estimate
+- [ ] Stakeholder demo done, sign-off obtained *(pending QA gate + scheduling)*
+- [ ] **DECLARE MVP4 DONE** (after QA gate #26 PASS) — currently 4/10 gates PASS (G3, G4, G7, G8); 6 require staging/pilot per [`reports/mvp4-staging-gate-runbook.md`](../reports/mvp4-staging-gate-runbook.md)
 
 **Dependencies:** Task #26 (QA Gate) DONE
 **Blocks:** None (this is the final task)

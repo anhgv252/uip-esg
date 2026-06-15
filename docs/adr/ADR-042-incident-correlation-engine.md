@@ -108,11 +108,11 @@ Adjacent to the CEP job, `BaselineDriftDetector` tracks a 7-day rolling AQI base
 
 ## References
 
-- `backend/src/main/java/com/uip/backend/ai/` — correlation, payload, drift components
-- `flink-jobs/src/main/java/com/uip/flink/` — CEP job source
+- `backend/src/main/java/com/uip/backend/correlation/` — `CorrelationService` (in-app scoring + persistence API), `CorrelationScoringService`, `CorrelatedPayloadBuilder`, DLQ consumer
+- `flink-jobs/src/main/java/com/uip/flink/correlation/IncidentCorrelationJob.java` — **real Flink CEP producer (backfilled 2026-06-15)**. The Decision section names the job `IncidentCorrelationFlinkJob`; the implemented class is `IncidentCorrelationJob` (in the `correlation` package). The job reads `UIP.flink.alert.detected.v1`, applies CEP `timesOrMore(3).within(30s)` keyed by `buildingId`, and emits `correlated.incidents`. See `docs/mvp4/reports/mvp4-cor01-correlation-review.md`.
 - `docs/mvp4/uat/sprint4-correlation-test-results.md`
 - `docs/mvp4/README.md` §2 Trụ 2, §9 ADR-042
 
 ---
 
-*Authored 2026-06-12 — MVP4 Sprint 4 retrospective, documented in Sprint 6 close-out.*
+*Authored 2026-06-12 — MVP4 Sprint 4 retrospective, documented in Sprint 6 close-out. References revised 2026-06-15 after the doc-vs-code audit backfilled the real Flink CEP job (previously only the in-app `CorrelationService` existed).*
