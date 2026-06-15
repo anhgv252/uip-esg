@@ -1,0 +1,94 @@
+groups:
+
+  # ── MVP4 Sprint 5: BMS Auto-Command Safety Alerts ─────────────────────────────
+  # Source: Task #24 (DevOps) — BMS command monitoring
+  # Metrics emitted by: backend/src/main/java/com/uip/backend/bms/BmsCommandMetrics.java
+  #   bms_commands_proposed_total{building_id}
+  #   bms_commands_approved_total{building_id}
+  #   bms_commands_rejected_total{building_id}
+  #   bms_commands_expired_total{building_id}   ← operator did not respond within 30s
+  #   bms_command_latency_seconds{building_id}  ← Timer: proposed → approved
+  #
+  # BR-010 safety constraint: no BMS command executes without operator approval.
+  # These alerts ensure safety-critical failures surface to on-call immediately.
+  - name: mvp4-bms-command-safety
+    interval: 30s
+    rules:
+
+      # ── CRITICAL: Operator timeout on safety-critical BMS command ──────────────
+      # An EVACUATE/HVAC_OFF/SPRINKLER_ON command expired because the operator did
+      # not approve within 30s. The command was NOT executed (safety held), but the
+      # situation that triggered it is still live and unaddressed.
+      # Threshold: any expired command in the last 5 min — page immediately.
+      - alert: BmsCommandOperatorTimeout
+        expr: increase(bms_commands_expired_total[5m]) > 0
+        for: 0m
+        labels:
+          severity: critical
+          team: bms
+          sprint: "mvp4-s5"
+          safety: "br-010"
+        annotations:
+          summary: "BMS command expired — operator did not approve within 30s (building {{ $labels.building_id }})"
+          description: >
+            A safety-critical BMS command for building {{ $labels.building_id }} expired
+            without operator approval. The command was correctly NOT executed (BR-010 held),
+            but the triggering incident remains unaddressed. Investigate:
+            (1) was the operator on-call and reachable? (2) did the push notification deliver?
+            (3) is this a real incident needing manual intervention?
+          runbook: "docs/mvp4/project/pilot-monitoring.md"
+
+      # ── CRITICAL: BMS command failure rate ─────────────────────────────────────
+      # Operators are approving commands but the BMS is rejecting them (NAK) or the
+      # writeProperty call is failing. Indicates BACnet connectivity issue or wrong
+      # object mapping — auto-commands will not take effect even when approved.
+      # Threshold: >20% of approved commands failing over 10 min, min 3 failures.
+      - alert: BmsCommandFailureRateHigh
+        expr: >
+          (
+            sum(rate(bms_commands_rejected_total[10m])) by (building_id)
+            /
+            clamp_min(sum(rate(bms_commands_approved_total[10m])) by (building_id), 0.01)
+          ) > 0.2
+          and
+          sum(increase(bms_commands_rejected_total[10m])) by (building_id) > 3
+        for: 2m
+        labels:
+          severity: critical
+          team: bms
+          sprint: "mvp4-s5"
+        annotations:
+          summary: "BMS command failure rate >20% (building {{ $labels.building_id }})"
+          description: >
+            More than 20% of approved BMS commands for building {{ $labels.building_id }}
+            are being rejected over the last 10 minutes. Operators approve but the BMS
+            does not execute. Check: (1) BACnet device reachable; (2) object type/instance
+            mapping in TriggerConfig payload; (3) BacnetIpAdapter error logs.
+          runbook: "docs/mvp4/project/pilot-monitoring.md"
+
+      # ── WARNING: Operator confirmation rate dropping ───────────────────────────
+      # Operators are ignoring or rejecting most commands — either alert fatigue
+      # (false positives too high) or the AI is proposing inappropriate commands.
+      # Not safety-critical but signals correlation tuning issue.
+      # Threshold: approval rate <50% over 1h with min 10 proposed commands.
+      - alert: BmsOperatorConfirmationRateLow
+        expr: >
+          (
+            sum(rate(bms_commands_approved_total[1h])) by (building_id)
+            /
+            clamp_min(sum(rate(bms_commands_proposed_total[1h])) by (building_id), 0.01)
+          ) < 0.5
+          and
+          sum(increase(bms_commands_proposed_total[1h])) by (building_id) > 10
+        for: 5m
+        labels:
+          severity: warning
+          team: bms
+          sprint: "mvp4-s5"
+        annotations:
+          summary: "Operator confirmation rate <50% (building {{ $labels.building_id }})"
+          description: >
+            Operators approve fewer than half of proposed BMS commands for building
+            {{ $labels.building_id }}. Likely causes: alert fatigue (review false-positive
+            rate in correlation engine) or inappropriate AI proposals (review TriggerConfig).
+          runbook: "docs/mvp4/project/pilot-monitoring.md"

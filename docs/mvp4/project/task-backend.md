@@ -112,7 +112,7 @@
 - [x] Analytics-service ≥50% coverage (AnalyticsAdapterCoverageTest 10 tests)
 - [x] OpenAPI spec có error responses cho all endpoints (EsgController + TrafficController)
 - [x] ISO 37120 water intensity calculated correctly (EsgService.getWaterIntensity)
-- [ ] gRPC IT PASS với real analytics-service *(deferred — Testcontainers gRPC setup phức tạp)*
+- [~] gRPC IT PASS với real analytics-service *(**DEFERRED — accepted 2026-06-15**, see [docs/mvp4/reports/gap-010-grpc-it-deferral.md](../reports/gap-010-grpc-it-deferral.md). Mitigated by AnalyticsServiceConsumerPactTest + AnalyticsAdapterCoverageTest + AnalyticsPortMutualExclusivityIT)*
 - [x] AI batching: DistrictAggregationConfig configured + tests GREEN
 - [x] Model routing: Haiku/Sonnet selection working (ModelRouter 9 tests)
 - [x] Token budgeting: maxTokens enforced (TokenBudgetService 10 tests)
