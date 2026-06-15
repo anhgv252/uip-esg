@@ -90,36 +90,40 @@
 
 ### Procedure
 
-1. **Plan exists:** `backend/src/test/resources/jmeter/uip-1000vu-plan.jmx` (1000 VU, 60s ramp, 300s hold).
+1. **Plan validated (2026-06-15):** `backend/src/test/resources/jmeter/uip-1000vu-plan.jmx` — well-formed XML, 1 ThreadGroup (1000 threads, 60s ramp, 360s total = 60 ramp + 300 hold ✓), 3 GET samplers (`/api/v1/esg/summary`, `/api/v1/traffic/incidents`, `/api/v1/environment/aqi/current`), 3 ResponseAssertions, `on_sample_error=continue`. Ready to run.
 
-2. **Run on staging:**
+2. **⚠️ Pre-run auth check:** the 3 samplers are GET-only with **no login/auth sampler** in the plan. If these endpoints require JWT on staging, the plan will 401. Before running, either:
+   - Add an HTTP Header Manager with a pre-generated staging JWT (`Authorization: Bearer <token>`), or
+   - Confirm the endpoints are permitAll in `SecurityConfig` (verify via `curl -I https://staging/api/v1/esg/summary` returns 200, not 401).
+   If they are permitAll on staging, no change needed.
+
+3. **Run on staging:**
    ```bash
    jmeter -n -t backend/src/test/resources/jmeter/uip-1000vu-plan.jmx \
           -l results.jtl -e -o report/
    ```
 
-3. **Read HTML report** (`report/index.html`):
+4. **Read HTML report** (`report/index.html`):
    - Statistics → p95 latency (target < 500ms).
    - Error % (target < 1%).
    - Throughput (target > 500 RPS).
 
-4. **Compare vs S2 baseline** (documented in `sprint2-pact-contracts.md` / perf records).
+5. **Compare vs S2 baseline** (documented in `sprint2-pact-contracts.md` / perf records).
 
 ### Common failures
 - p95 > 500ms → check Tomcat thread pool / HikariCP sizing (see `feedback_mvp2_demo_and_perf_lessons.md`); verify read-heavy endpoints cached.
-- Error spike → check rate limiter (`X-RateLimit-Remaining`), JWT validation hot path.
+- Error spike → check rate limiter (`X-RateLimit-Remaining`), JWT validation hot path, or the auth gap in step 2.
 
 ---
 
 ## G4 note — Pact provider test re-enable
 
-`BackendProviderPactTest` is `@Disabled` because no `provider: backend` pact files exist (consumer tests only generate backend-as-consumer pacts). To re-enable:
-
+`BackendProviderPactTest` is `@Disabled` because no `provider: backend` pact files exist (consumer tests only generate backend-as-consumer pacts). Full wiring procedure: [`g4-pact-broker-ci-wiring.md`](g4-pact-broker-ci-wiring.md). Summary:
 1. Frontend + mobile apps must publish `provider: backend` contracts to a Pact broker.
-2. Set `pactbroker.url` in CI (no broker config exists today — `grep PACT_BROKER backend/build.gradle` returns empty).
+2. Set `pactbroker.url` in CI (no broker config exists today — `grep PACT_BROKER .github/` returns empty).
 3. Remove `@Disabled` from `backend/src/test/java/com/uip/backend/contract/BackendProviderPactTest.java`.
 
-Until then, G4 passes on the strength of 42 `@Tag("contract")` REST Assured tests + consumer-side Pact tests; provider verification is a CI hardening task (not a code defect).
+Until then, G4 passes on the strength of 42 `@Tag("contract")` REST Assured tests + consumer-side Pact tests; provider verification is a CI hardening task scoped to MVP5 (K8s multi-service contracts).
 
 ---
 
