@@ -2,7 +2,7 @@ package com.uip.backend.auth.config;
 
 import com.uip.backend.auth.service.UipUserDetailsService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
@@ -32,8 +32,11 @@ import com.uip.backend.tenant.filter.TenantContextFilter;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthFilter;
-    @Autowired(required = false)
-    private final TenantContextFilter tenantContextFilter;
+    // ObjectProvider so the context still loads when multi-tenancy is disabled
+    // (TenantContextFilter is @ConditionalOnProperty multi-tenancy=true). A plain
+    // @Autowired(required=false) field does NOT work with Lombok's
+    // @RequiredArgsConstructor — the generated constructor still requires the bean.
+    private final ObjectProvider<TenantContextFilter> tenantContextFilterProvider;
     private final UipUserDetailsService userDetailsService;
     private final DynamicCorsConfigurationSource dynamicCorsConfigurationSource;
 
@@ -102,6 +105,7 @@ public class SecurityConfig {
             )
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
+        TenantContextFilter tenantContextFilter = tenantContextFilterProvider.getIfAvailable();
         if (tenantContextFilter != null) {
             http.addFilterAfter(tenantContextFilter, JwtAuthenticationFilter.class);
         }

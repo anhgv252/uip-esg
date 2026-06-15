@@ -183,6 +183,20 @@ test {
     finalizedBy jacocoTestReport
 }
 
+// Copy consumer-generated Pact files into the test classpath so that
+// BackendProviderPactTest (@PactFolder("pacts")) can find them. Consumer tests
+// (NotificationServiceConsumerPactTest, AnalyticsServiceConsumerPactTest) write to
+// build/pacts/; this task mirrors them into build/resources/test/pacts/ which is on
+// the test runtime classpath. Idempotent — no-op if no pact files exist yet.
+tasks.register('copyPactFiles', Copy) {
+    from layout.buildDirectory.dir('pacts')
+    into layout.buildDirectory.dir('resources/test/pacts')
+    include '*.json'
+}
+tasks.named('test') {
+    dependsOn 'copyPactFiles'
+}
+
 def jacocoExclusions = [
     // Lombok-generated: DTOs, domain entities (getters/setters không được unit test)
     '**/api/dto/**',

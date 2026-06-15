@@ -185,9 +185,12 @@ class Sprint11ApiRegressionIntegrationTest {
         @Test
         @DisplayName("Constructor @Value has fallback to localhost:8082")
         void analyticsServiceUrl_hasDefault() throws Exception {
-            var ctor = ClickHouseRestAnalyticsAdapter.class.getConstructor(String.class);
-            Parameter param = ctor.getParameters()[0];
-            Value valueAnnotation = param.getAnnotation(Value.class);
+            // Constructor signature is (String analyticsServiceUrl, double co2EmissionFactor)
+            // — the co2 param was added by GAP-007 (CO2 emission factor configurable).
+            var ctor = ClickHouseRestAnalyticsAdapter.class
+                    .getConstructor(String.class, double.class);
+            Parameter urlParam = ctor.getParameters()[0];
+            Value valueAnnotation = urlParam.getAnnotation(Value.class);
 
             assertThat(valueAnnotation).isNotNull();
             assertThat(valueAnnotation.value())
