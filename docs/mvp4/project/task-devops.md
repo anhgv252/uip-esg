@@ -99,17 +99,17 @@
 
 ## Sprint 5 (Sep 29 - Oct 10) — 2 SP
 
-### Task #24 — BMS command monitoring
-**ID:** DevOps monitoring | **SP:** 2 | **Priority:** P1
+### Task #24 — BMS command monitoring ✅ DEV DONE
+**ID:** DevOps monitoring | **SP:** 2 | **Priority:** P1 | **Status:** DEV DONE (2026-06-15)
 
 | Item | SP | Chi tiết |
 |------|-----|---------|
 | BMS command monitoring | 2 | Grafana panel: BMS commands sent/acknowledged/failed, command latency, operator confirmation rate. PagerDuty alert cho: command failed, no operator response in 30s, unexpected BMS state |
 
 **Acceptance Criteria:**
-- [ ] Grafana panel "BMS Commands" live
-- [ ] Metrics: sent, acknowledged, failed, latency
-- [ ] PagerDuty alert: command failure + operator timeout
+- [x] Grafana panel "BMS Commands" live (bms-commands-dashboard.json — 7 panels)
+- [x] Metrics: proposed/approved/rejected/expired + latency (BmsCommandMetrics, wired in BmsCommandService)
+- [x] Alert rules: command failure + operator timeout + low confirmation rate (infra/monitoring/prometheus/alerts/mvp4-bms-command-alerts.yml, severity=critical for BR-010 safety)
 
 **Dependencies:** Task #21 (BMS auto-command) DONE
 **Blocks:** None

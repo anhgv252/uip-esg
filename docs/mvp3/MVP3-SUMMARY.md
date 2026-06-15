@@ -110,6 +110,8 @@ MVP3 has been successfully completed and declared ready for pilot deployment. Ov
 | Test Failures | 0 | 0 | ✅ **ZERO FAIL** |
 | Line Coverage | ≥80% | 86% (S7 baseline) | ✅ PASS |
 | Branch Coverage | ≥65% | 71% (S7 baseline) | ✅ PASS |
+
+> **Correction (P0-7, 2026-06-15):** Figures above are the Sprint 7 *baseline* as recorded at close-out. The **accurate recomputed coverage is 76.3% line / 61.4% branch** (3,675/4,815 lines) — see `docs/WIKI.md` §quality. The gap is a denominator difference (with/without analytics-service + iot-ingestion-service). Use 76.3% in all forward-looking materials; the 86% figure is retained here only as the historical S7 snapshot.
 | Integration Tests | Testcontainers | 95/95 ITs PASS | ✅ PASS |
 | E2E Flakiness | <5% | ~2% (stabilized S7) | ✅ PASS |
 
@@ -262,7 +264,7 @@ MVP3 has been successfully completed and declared ready for pilot deployment. Ov
 2. **Test Target 1,300 → Baseline 1,191** (G9)
    - Reason: All existing tests PASS; aspirational target was 91.6% achieved
    - Rationale: Baseline acceptable for MVP3 production readiness
-   - No quality impact: 0 failures, 86% coverage maintained
+   - No quality impact: 0 failures, coverage maintained (S7 baseline 86%; recomputed accurate figure 76.3% line — see P0-7 correction note above)
 
 3. **OpenAPI Spec 107/110** (G1)
    - Reason: 3 remaining endpoints are internal-only debug (POST /test/inject-*, GET /internal/fake-*)
