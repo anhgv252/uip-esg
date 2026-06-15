@@ -16,10 +16,10 @@
 |---|---|
 | `./gradlew compileTestJava` | ✅ BUILD SUCCESSFUL |
 | `./gradlew test` (AI + Correlation + BMS unit) | ✅ BUILD SUCCESSFUL (MVP4 core green) |
-| Full `./gradlew test` (all unit) | ✅ **1,714 tests, 0 failed, 3 skipped** (Pact provider test disabled pending CI broker) |
+| Full `./gradlew test` (all unit) | ✅ **1,726 tests, 0 failed, 4 skipped** (Pact provider test disabled pending CI broker; +12 from M4-AI-01/M4-COR-01 backfill 2026-06-15) |
 | Full regression (unit + IT + contract + E2E) | ✅ PASS — all failures resolved (see §0.1–§0.3) |
 | JMeter 1000 VU | ⏳ Pending — `uip-1000vu-plan.jmx` ready, run on staging |
-| OWASP dependency-check | ⏳ Pending — plugin wired (v12.1.0), run `./gradlew dependencyCheck` |
+| OWASP dependency-check | ✅ **PASS** (2026-06-15) — `./gradlew dependencyCheckAggregate` BUILD SUCCESSFUL, 0 active CVEs CVSS≥7.0 after gRPC 1.71 + protobuf 3.25.5 upgrade + 2 FP suppressions. See G9. |
 
 ### 0.1 MVP4 regression fix applied this review (6 → 4 failures)
 
@@ -57,14 +57,14 @@ Result: EsgServiceIT + EsgReportApiIT now PASS. This is the same class of bug as
 ### G1 — AI cost < $1/ngày @ 10K sensors
 - **Verify:** Grafana `docs/mvp4/grafana/ai-cost-dashboard.json`, panel "Cost today (USD)"
 - **How to run:** Simulate 10K sensors (perf harness), observe 24h cumulative cost from `ai_cost_usd_total`
-- **Status:** ⏳ Pending load simulation. Metrics wired: `AiCostMetrics` (ai_tokens_input/output_total, ai_cost_usd_total, ai_requests_total). Optimization stack in place: batching (DistrictAggregationConfig) + routing (ModelRouter Haiku/Sonnet) + caching (AiCacheConfig TTL 300s) + budget (TokenBudgetService).
+- **Status:** ⏳ Pending load simulation. Metrics wired: `AiCostMetrics` (ai_tokens_input/output_total, ai_cost_usd_total, ai_requests_total). Optimization stack in place: **batching (`flink-jobs/.../DistrictAggregationJob` — real Flink job, backfilled 2026-06-15, see [mvp4-ai01-batching-review.md](mvp4-ai01-batching-review.md))** + routing (ModelRouter Haiku/Sonnet) + caching (AiCacheConfig TTL 300s) + budget (TokenBudgetService). The Flink job emits to `ai.district.aggregations`, consumed by `DistrictAggregationConsumer` — the first real caller of `AiInferenceService`. Code path is now complete end-to-end; only the load measurement remains.
 - **Expected:** ~$0.60/day (83x reduction from $50 unoptimized)
 
 ### G2 — False positive < 5% on 30-day data
 - **Verify:** `docs/mvp4/uat/sprint4-correlation-test-results.md` + correlation E2E
 - **Boundary verified:** 2-sensor score 0.556 < 0.6 threshold → no false correlation
-- **Status:** ⏳ Boundary PASS; 30-day pilot measurement pending
-- **Tests:** CorrelationE2ETest 8 PASS, CorrelationServiceTest 8 PASS
+- **Status:** ⏳ Boundary PASS; 30-day pilot measurement pending. **Real Flink CEP producer now in place (`flink-jobs/.../IncidentCorrelationJob`, backfilled 2026-06-15, see [mvp4-cor01-correlation-review.md](mvp4-cor01-correlation-review.md))** — previously only an in-app `CorrelationService` with zero callers existed. Code path complete; measurement remains.
+- **Tests:** CorrelationE2ETest 8 PASS, CorrelationServiceTest 8 PASS, IncidentCorrelationJobTest 12 PASS
 
 ### G3 — ≥10 templates operator-verifiable
 - **Verify:** `docs/mvp4/uat/sprint4-template-uat.md`
@@ -97,10 +97,13 @@ Result: EsgServiceIT + EsgReportApiIT now PASS. This is the same class of bug as
 - **Status:** ✅ PASS — APPROVED (Gate G8)
 
 ### G9 — OWASP 0 Critical, 0 High CVEs
-- **Verify:** `build/reports/dependency-check/report.html`
-- **Command:** `cd backend && ./gradlew dependencyCheck`
-- **Config:** plugin v12.1.0, suppressions at `config/dependency-check-suppressions.xml`
-- **Status:** ⏳ Pending scan run
+- **Verify:** `build/reports/dependency-check/dependency-check-report.json`
+- **Command:** `cd backend && ./gradlew dependencyCheckAggregate` (note: `dependencyCheck` is ambiguous — use `dependencyCheckAggregate`)
+- **Config:** plugin v12.1.0, `failBuildOnCVSS = 7.0`, suppressions at `config/dependency-check-suppressions.xml`
+- **Status:** ✅ **PASS — 0 active CVEs CVSS ≥ 7.0 (52 suppressed, all documented false-positives / accepted-risk).**
+  - **Fix applied 2026-06-15** (see [`mvp4-g9-owasp-fix-review.md`](mvp4-g9-owasp-fix-review.md)): upgraded `io.grpc:*` → 1.71.0 + `com.google.protobuf:*` → 3.25.5 via `resolutionStrategy.eachDependency` force. Cleared 5 real CVEs (CVE-2024-11407, CVE-2023-33953, CVE-2023-44487, CVE-2023-4785 on grpc; CVE-2024-7254 on protobuf).
+  - 2 residual CVEs (CVE-2026-33186 grpc-go, CVE-2026-0994 protobuf-Python) confirmed **false positives** (CPE ecosystem mismatch — Go/Python advisories matched to Java artifacts) and suppressed with rationale, same pattern as existing hamba/avro + OpenTelemetry-Go suppressions.
+  - Regression intact: 1,726 tests, 0 failures.
 
 ### G10 — Pilot uptime ≥99.5% for 30 consecutive days
 - **Verify:** Prometheus uptime metrics
@@ -115,15 +118,15 @@ Result: EsgServiceIT + EsgReportApiIT now PASS. This is the same class of bug as
 | G1 | AI cost < $1/day @ 10K | ⏳ load sim pending |
 | G2 | False positive < 5% | ⏳ 30-day data pending (boundary PASS) |
 | G3 | ≥10 templates | ✅ PASS |
-| G4 | Regression ≥1,500, 0 fail | ✅ PASS (1,714 tests, 0 fail) |
+| G4 | Regression ≥1,500, 0 fail | ✅ PASS (1,726 tests, 0 fail) |
 | G5 | 1000 VU JMeter | ⏳ staging run pending |
 | G6 | iOS + Android live | ⏳ submission pending |
 | G7 | BMS safety | ✅ PASS |
 | G8 | SA review | ✅ PASS |
-| G9 | OWASP 0 crit/high | ⏳ scan pending |
+| G9 | OWASP 0 crit/high | ✅ PASS — 0 active CVSS≥7 (gRPC 1.71 + protobuf 3.25.5 + 2 FP suppressions, 2026-06-15) |
 | G10 | Pilot uptime 99.5%/30d | ⏳ 30-day measurement pending |
 
-**Verdict:** **CANNOT DECLARE MVP4 DONE YET.** 4/10 gates PASS (G3, G4, G7, G8). 6/10 require real-environment execution that is out of scope for code review. All code and artifacts are in place to execute them.
+**Verdict:** **CANNOT DECLARE MVP4 DONE YET — but the only code-resolvable blocker (G9) is now cleared.** 5/10 gates PASS (G3, G4, G7, G8, G9), 0 FAIL, 5/10 require real-environment execution (G1/G2/G5/G6/G10) per [`mvp4-staging-gate-runbook.md`](mvp4-staging-gate-runbook.md). Remaining gates are staging + 30-day pilot + app-store submission — out of code scope.
 
 ---
 
@@ -136,8 +139,10 @@ cd backend && ./gradlew test                          # unit (Docker up for ITs)
 # G5 — JMeter 1000 VU (on staging)
 jmeter -n -t backend/src/test/resources/jmeter/uip-1000vu-plan.jmx -l results.jtl -e -o report/
 
-# G9 — OWASP
-cd backend && ./gradlew dependencyCheck
+# G9 — OWASP (note: dependencyCheckAggregate, not dependencyCheck which is ambiguous)
+cd backend && ./gradlew dependencyCheckAggregate
+# To inspect the HTML report despite failBuildOnCVSS=7.0:
+cd backend && ./gradlew dependencyCheckAggregate -DfailBuildOnCVSS=0   # then open build/reports/dependency-check/report.html
 
 # G1 — AI cost (simulate 10K sensors, observe Grafana 24h)
 # G2 — false positive (30-day pilot data → correlation re-analysis)

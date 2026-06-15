@@ -102,7 +102,7 @@
 | GAP-013 NotificationController deprecation | 1 | Document migration path hoặc remove nếu unused. Add `@Deprecated(forRemoval=true)` + Javadoc |
 | GAP-022 bms.mqtt coverage 21%→60% | 3 | Viết tests cho MQTT publish/subscribe paths, connection handling, retry logic |
 | GAP-023 kafka.producer error paths 22%→60% | 2 | Viết tests cho: serialization failure, broker unavailable, timeout, retry exhausted |
-| **M4-AI-01 District-level Flink batching** | 5 | Flink job: group sensor events by `districtCode` + 60s tumbling window → batch AI call. Giảm 600K→50 calls/min |
+| **M4-AI-01 District-level Flink batching** | 5 | Flink job: group sensor events by `districtCode` + 60s tumbling window → batch AI call. Giảm 600K→50 calls/min. **Real Flink job implemented (2026-06-15):** `flink-jobs/.../ai/DistrictAggregationJob.java` + `DistrictAggregationFunction` + backend `DistrictAggregationConsumer` (first real caller of AiInferenceService). See [docs/mvp4/reports/mvp4-ai01-batching-review.md](../reports/mvp4-ai01-batching-review.md) |
 | **M4-AI-02 Model routing** | 3 | `aiModelTier` field trong TriggerConfig. Tier 1 → Claude Haiku (nhanh/rẻ), Tier 2 → Claude Sonnet (chính xác) |
 | **M4-AI-05 Token budgeting** | 2 | `maxTokens` config trong TriggerConfig. Prompt optimization: trim context, reduce examples |
 
@@ -132,7 +132,7 @@
 | Item | SP | Chi tiết |
 |------|-----|---------|
 | M4-AI-03 Smart pre-filter | 5 | Rule-based filter: xử lý 80% cases (known patterns, thresholds). Chỉ escalate uncertain events (confidence < 0.7) đến AI. Critical events (flood, fire) bypass luôn |
-| M4-COR-01 IncidentCorrelationFlinkJob | 8 | **START.** Flink CEP: 30s window per building, detect ≥3 sensor types triggering cùng lúc → merge thành 1 incident. Correlation scoring. Dùng Flink CEP library |
+| M4-COR-01 IncidentCorrelationFlinkJob | 8 | **START.** Flink CEP: 30s window per building, detect ≥3 sensor types triggering cùng lúc → merge thành 1 incident. Correlation scoring. Dùng Flink CEP library. **Real Flink CEP job implemented (2026-06-15):** `flink-jobs/.../correlation/IncidentCorrelationJob.java` reads `UIP.flink.alert.detected.v1`, keyBy buildingId, CEP `timesOrMore(3).within(30s)` → emits `correlated.incidents` (consumed by existing `CorrelationDlqHandler`). See [docs/mvp4/reports/mvp4-cor01-correlation-review.md](../reports/mvp4-cor01-correlation-review.md) |
 | M4-COR-06 Operator feedback API | (included) | REST API: `POST /api/v1/alerts/{id}/feedback` — `{"correct": true/false, "comment": "..."}`. Store feedback cho AI training |
 
 **Acceptance Criteria:**
