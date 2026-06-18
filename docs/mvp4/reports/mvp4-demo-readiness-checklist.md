@@ -35,6 +35,7 @@
   - [ ] `bms-commands-dashboard.json` (backup for Demo 2 if BMS comes up).
 - [ ] **Prometheus scraping backend** `/actuator/prometheus` (mgmt port 8086, basic auth `prometheus:prometheus-dev-scrape`). Verify `ai_cost_usd_total`, `ai_cache_hits_total`, `ai_batched_events_consumed_total` all return values.
 - [ ] **Frontend build**: `cd frontend && npm run build` → 0 TypeScript errors. Run `npm run dev` for live demo or serve the production build.
+- [ ] **⚠️ Vite dev cache cleared** (found 2026-06-18): `rm -rf frontend/node_modules/.vite` before demo day. The Vite dev server crashes with `createTheme_default is not a function` (MUI pre-bundle interop bug) on a stale `.vite` cache, serving a blank `#root`. **Production build (`vite preview`) is unaffected** — if in doubt, demo from the production build. See [`mvp4-inner-browser-demo-2026-06-18.md`](mvp4-inner-browser-demo-2026-06-18.md).
 - [ ] **WorkflowWizard smoke** (Demo 3): open Gallery → pick "Flood Alert" → Form → Review → Deploy. Confirm 10 templates load.
 - [ ] **Mobile demo device** (Demo 3 / G6): charged, push notification tested (FCM/APNs credentials valid), offline banner dismissible.
 
