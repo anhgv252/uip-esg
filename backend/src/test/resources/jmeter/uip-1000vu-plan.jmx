@@ -79,6 +79,26 @@ Targets: p95 &lt; 500ms, error rate &lt; 1%, throughput &gt; 500 RPS</stringProp
         </HeaderManager>
         <hashTree/>
 
+        <!-- Constant Throughput Timer — paces the 1000 VU to avoid socket exhaustion.
+             Without this timer the plan fires at max throughput (~17K req/s on a
+             single-instance backend), which exceeds the ~680 RPS single-instance
+             ceiling (see MEMORY project_mvp2_1000vu_fix) and triggers
+             SocketException/NoHttpResponseException regardless of MVP4 code health.
+
+             Target: 600 req/s across the whole thread group = 36000 req/min.
+             calcMode=2 → throughput is "all active threads in current thread group".
+             Override at runtime via -Jthroughput_per_min=NNNN if cluster staging
+             (3+ replicas) can sustain more. -->
+        <ConstantThroughputTimer guiclass="TestBeanGUI" testclass="ConstantThroughputTimer"
+                                 testname="Pace 600 req/s (36000/min)" enabled="true">
+          <doubleProp>
+            <name>throughput</name>
+            <value>36000</value>
+          </doubleProp>
+          <intProp name="calcMode">2</intProp>
+        </ConstantThroughputTimer>
+        <hashTree/>
+
         <!-- ─────────────────────────────────────────────────────────────── -->
         <!-- Sampler 1: GET /api/v1/esg/summary                              -->
         <!-- ─────────────────────────────────────────────────────────────── -->
