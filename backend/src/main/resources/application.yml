@@ -304,6 +304,7 @@ apicurio:
 logging:
   level:
     com.uip: INFO
+    com.uip.backend.ai.flink.DistrictAggregationConsumer: DEBUG
     org.springframework.security: WARN
     org.hibernate.SQL: WARN
 

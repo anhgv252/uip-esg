@@ -252,7 +252,7 @@ public class AiInferenceService {
      */
     @Cacheable(
             value         = AiCacheConfig.CACHE_NAME,
-            key           = "#event.districtCode + ':' + #event.sensorType + ':' + T(com.uip.backend.ai.AiInferenceService).bucket(#event.maxValue)",
+            key           = "#event.districtCode + ':' + #event.sensorType + ':' + (#event.maxValue < 10 ? 'lt10' : (#event.maxValue < 50 ? '10-50' : (#event.maxValue < 100 ? '50-100' : (#event.maxValue < 500 ? '100-500' : (#event.maxValue < 1000 ? '500-1000' : 'gte1000')))))",
             cacheManager  = "aiResponseCacheManager",
             condition     = "#event != null && #event.districtCode != null"
     )

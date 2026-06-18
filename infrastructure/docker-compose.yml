@@ -595,10 +595,10 @@ services:
     deploy:
       resources:
         limits:
-          memory: 512m
+          memory: 768m
           cpus: '0.75'
         reservations:
-          memory: 256m
+          memory: 512m
     depends_on:
       timescaledb:
         condition: service_healthy

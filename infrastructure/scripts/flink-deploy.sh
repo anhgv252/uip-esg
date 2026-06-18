@@ -36,6 +36,8 @@ JAR_OVERRIDE="${JAR:-}"
 declare -A FLINK_JOBS=(
     ["EsgDualSinkJob"]="com.uip.flink.esg.EsgDualSinkJob"
     ["Structural Vibration Anomaly Detection Job"]="com.uip.flink.structural.VibrationAnomalyJob"
+    ["District Aggregation Job"]="com.uip.flink.ai.DistrictAggregationJob"
+    ["Incident Correlation Job"]="com.uip.flink.correlation.IncidentCorrelationJob"
 )
 
 # ─── Colors ───────────────────────────────────────────────────────────────────

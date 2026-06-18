@@ -127,9 +127,21 @@
 
 **Acceptance Criteria:**
 - [ ] All 10 gates PASS
-- [ ] Regression: ≥1,500 tests, 0 failures
+  - [x] G3 — ≥10 templates PASS
+  - [x] G4 — Regression ≥1,500 tests, 0 failures PASS (1,726 tests, 0 fail, 3 skipped as of 2026-06-16)
+  - [x] G7 — BMS safety PASS (Tester sign-off 2026-06-16)
+  - [x] G8 — SA Code Review APPROVED
+  - [x] G9 — OWASP 0 Critical/High PASS (grpc 1.71 + protobuf 3.25.5, 2026-06-15)
+  - [ ] G5 — 1000 VU JMeter (requires staging run)
+  - [ ] G1 — AI cost < $1/day (requires staging run)
+  - [ ] G2 — False positive < 5% (requires 30-day pilot)
+  - [ ] G10 — Pilot uptime 99.5%/30d (requires 30-day pilot)
+  - [ ] G6 — iOS + Android apps live (requires DevOps ops)
+- [x] Regression: ≥1,500 tests, 0 failures ✅
 - [ ] Performance: p95 < 500ms @ 1000 VU
 - [ ] **DECLARE MVP4 DONE**
+
+**Status Note:** 5/10 gates PASS as of 2026-06-16; G5/G1 require staging run; G2/G10 require 30-day pilot; G6 requires DevOps ops. Tester UAT sign-off complete for G3/G7 (2026-06-16).
 
 **Dependencies:** Task #25 DONE
 **Blocks:** Task #27 (PM declares MVP4 DONE)

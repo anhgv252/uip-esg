@@ -13,6 +13,7 @@ import org.apache.flink.connector.kafka.sink.KafkaSink;
 import org.apache.flink.connector.kafka.source.KafkaSource;
 import org.apache.flink.connector.kafka.source.enumerator.initializer.OffsetsInitializer;
 import org.apache.flink.contrib.streaming.state.EmbeddedRocksDBStateBackend;
+import org.apache.flink.runtime.state.storage.FileSystemCheckpointStorage;
 import org.apache.flink.streaming.api.CheckpointingMode;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.windowing.time.Time;
@@ -92,7 +93,9 @@ public class IncidentCorrelationJob {
 
         env.enableCheckpointing(30_000, CheckpointingMode.EXACTLY_ONCE);
         env.setStateBackend(new EmbeddedRocksDBStateBackend(true));
-        env.getCheckpointConfig().setCheckpointStorage("file:///flink/checkpoints");
+        String checkpointDir = System.getenv().getOrDefault("S3_CHECKPOINT_DIR",
+                "s3://uip-flink-checkpoints/checkpoints");
+        env.getCheckpointConfig().setCheckpointStorage(new FileSystemCheckpointStorage(checkpointDir));
 
         // --- Source ---
         KafkaSource<String> source = KafkaSource.<String>builder()
@@ -118,7 +121,8 @@ public class IncidentCorrelationJob {
         var alertStream = env.fromSource(
                 source,
                 WatermarkStrategy.<String>forBoundedOutOfOrderness(Duration.ofSeconds(10))
-                        .withTimestampAssigner((raw, ts) -> System.currentTimeMillis()),
+                        .withTimestampAssigner((raw, ts) -> System.currentTimeMillis())
+                        .withIdleness(Duration.ofSeconds(30)),
                 "Alert Events Source (Incident Correlation)"
         )
         .map(IncidentCorrelationJob::parseAlert)
@@ -139,7 +143,7 @@ public class IncidentCorrelationJob {
 
         patternStream
                 .process(new CorrelationPatternProcessFunction(MIN_SENSOR_TYPES, MIN_SCORE))
-                .map(MAPPER::writeValueAsString)
+                .map(inc -> MAPPER.writeValueAsString(inc))
                 .sinkTo(sink)
                 .name("Kafka " + SINK_TOPIC + " Sink");
 
