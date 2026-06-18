@@ -36,10 +36,12 @@ Automated drive-through of the MVP4 frontend using Playwright + Chromium (headle
 | Aspect | Finding |
 |---|---|
 | Symptom | `npm run dev` (Vite :3000) serves a blank page — `#root` empty, 0 inputs, 0 buttons |
-| Root cause | `PAGEERROR: createTheme_default is not a function` — Vite dev pre-bundle/ESM interop fails to resolve `createTheme` from `@mui/material/styles`. The named import exists in source (`frontend/src/theme/index.ts:1`) but the dev-bundled artifact exposes it incorrectly. |
-| Production impact | **None** — `vite preview` (production build) loads the same pages with **0 page errors** and full data. |
-| Workaround used for this demo | Ran `vite preview --port 4173` instead of `vite`. |
-| Recommended fix (separate task) | `rm -rf frontend/node_modules/.vite` to clear the pre-bundle cache, then `npm run dev`. If it recurs, pin MUI version or add an explicit `optimizeDeps.include: ['@mui/material/styles']` in `vite.config.ts`. This is a **dev-experience bug**, not a release blocker — production build is unaffected. |
+| Root cause | **MUI version drift.** `package.json` declares `@mui/material: ^5.15.14`, but the lockfile resolves the range up to **5.18.0**. MUI 5.18.0's `package.json` `exports` map **lacks a `./styles` entry**, so esbuild's dev pre-bundle cannot find the ESM entry for the named `createTheme` export and falls back to a broken CJS interop → runtime `createTheme_default is not a function`. Confirmed: `node -e "...package.json..."` shows `exports['./styles'] === undefined` on 5.18.0. |
+| What did NOT fix it | `rm -rf frontend/node_modules/.vite` (cache clear), and `optimizeDeps.include: ['@mui/material/styles', 'react', ...]` in vite.config.ts — both tried 2026-06-18, crash persists. The breakage is in MUI 5.18's exports map, not Vite's cache. |
+| Production impact | **None** — `vite build` (Rollup) resolves the export correctly; `vite preview` loads the same pages with **0 page errors** and full data. |
+| Workaround used for this demo | Ran `vite preview --port 4173` (production build) instead of `vite`. |
+| Decision (2026-06-18) | **Demo from the production build**, not the dev server. A comment recording the root cause + permanent fix was added to `vite.config.ts` `optimizeDeps`. |
+| Permanent fix (separate dependency task, NOT MVP4) | Pin `@mui/material` and `@mui/icons-material` to an exact `5.15.x` (e.g. `5.15.20`) in `frontend/package.json`, regenerate the lockfile, reinstall. This is a **dev-experience bug** for MUI 5.18 — not a release blocker since production is unaffected. |
 
 ---
 
