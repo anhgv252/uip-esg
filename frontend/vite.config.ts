@@ -52,6 +52,18 @@ export default defineConfig({
   optimizeDeps: {
     // Prevent duplicate emotion/MUI instances when HMR cache is warm
     dedupe: ['@emotion/react', '@emotion/styled', '@mui/material'],
+    // NOTE (2026-06-18): the Vite DEV server crashes with
+    // `createTheme_default is not a function` (blank #root) because the
+    // lockfile resolves `^5.15.14` up to @mui/material 5.18.0, whose
+    // package.json `exports` map lacks a `./styles` entry — esbuild's
+    // pre-bundle then fails to find the ESM entry for the named
+    // `createTheme` export and falls back to a broken CJS interop.
+    // `include: ['@mui/material/styles', ...]` does NOT fix it (tried).
+    // The PRODUCTION build (`vite build` / `vite preview`) is unaffected —
+    // Rollup resolves the export correctly. So for live demos and staging,
+    // serve the production build, not the dev server. Permanent fix: pin
+    // @mui/material (and @mui/icons-material) to an exact 5.15.x in a
+    // follow-up dependency task. See mvp4-inner-browser-demo-2026-06-18.md.
   },
   resolve: {
     alias: {
