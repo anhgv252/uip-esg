@@ -125,7 +125,9 @@ Caching removes the residual ~20 duplicate calls/min where a district's AQI buck
 
 ## References
 
-- `backend/src/main/java/com/uip/backend/ai/flink/DistrictAggregationConfig.java`
+- `flink-jobs/src/main/java/com/uip/flink/ai/DistrictAggregationJob.java` — **real Flink batching job (backfilled 2026-06-15)**. The earlier reference to `DistrictAggregationConfig` alone was a doc-vs-code gap: that class is only the `@ConfigurationProperties` holder; the executable tumbling-window job that actually performs the district rollup lives in `flink-jobs`. See `docs/mvp4/reports/mvp4-ai01-batching-review.md`.
+- `backend/src/main/java/com/uip/backend/ai/flink/DistrictAggregationConfig.java` — config (window size, cap, output topic)
+- `backend/src/main/java/com/uip/backend/ai/flink/DistrictAggregationConsumer.java` — consumes `ai.district.aggregations`, first real caller of `AiInferenceService`
 - `backend/src/main/java/com/uip/backend/ai/routing/ModelRouter.java`
 - `backend/src/main/java/com/uip/backend/ai/budget/TokenBudgetService.java`
 - `backend/src/main/java/com/uip/backend/ai/cache/AiCacheConfig.java`, `AqiRangeBucket.java`

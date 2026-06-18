@@ -34,6 +34,24 @@ configurations {
     compileOnly {
         extendsFrom annotationProcessor
     }
+    // Force-align toàn bộ io.grpc:* về 1.71.0 để clear 5 CVEs OWASP.
+    // Without force, firebase-admin:9.2.0 → google-cloud-storage:2.22.4 kéo
+    // grpc-xds/alts/grpclb/services/grpc-rls về 1.55.1 (chứa CVE-2023-33953, CVE-2023-44487,
+    // CVE-2023-4785, CVE-2026-33186). Force áp dụng cho mọi config (compile/runtime/test).
+    all {
+        resolutionStrategy.eachDependency { details ->
+            if (details.requested.group == 'io.grpc') {
+                details.useVersion '1.71.0'
+                details.because 'OWASP 2026-06-15: clear CVE-2026-33186 (CVSS 9.1), CVE-2024-11407, CVE-2023-33953, CVE-2023-44487, CVE-2023-4785'
+            }
+            // protobuf runtime & util — clear CVE-2024-7254 + CVE-2026-0994 (cả hai CVSS 7.5)
+            if (details.requested.group == 'com.google.protobuf' &&
+                details.requested.name.startsWith('protobuf-java')) {
+                details.useVersion '3.25.5'
+                details.because 'OWASP 2026-06-15: clear CVE-2024-7254, CVE-2026-0994'
+            }
+        }
+    }
 }
 
 // OPEN CVEs — fix versions not yet published to Maven Central as of 2026-05-06.
@@ -104,9 +122,14 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-cache'
 
     // gRPC client — ADR-012 internal transport to analytics-service
+    // Versions bumped 1.63.0 → 1.71.0 to clear 5 OWASP CVEs (CVE-2026-33186 CVSS 9.1,
+    // CVE-2024-11407, CVE-2023-33953, CVE-2023-44487, CVE-2023-4785).
+    // resolutionStrategy.force below aligns ALL io.grpc modules (including transitive
+    // grpc-xds/alts/grpclb/services pulled by firebase-admin → google-cloud-storage at
+    // 1.55.1) to a single 1.71.0 — version drift was the root cause of the CVEs.
     implementation 'net.devh:grpc-client-spring-boot-starter:3.1.0.RELEASE'
-    implementation 'io.grpc:grpc-protobuf:1.63.0'
-    implementation 'io.grpc:grpc-stub:1.63.0'
+    implementation 'io.grpc:grpc-protobuf:1.71.0'
+    implementation 'io.grpc:grpc-stub:1.71.0'
     compileOnly 'jakarta.annotation:jakarta.annotation-api:2.1.1'
     compileOnly 'javax.annotation:javax.annotation-api:1.3.2'
 
@@ -317,8 +340,10 @@ tasks.register('coverageUnit') {
 
 // ─── Protobuf / gRPC code generation (ADR-012) ────────────────────────────────
 protobuf {
-    protoc { artifact = 'com.google.protobuf:protoc:3.25.3' }
-    plugins { grpc { artifact = 'io.grpc:protoc-gen-grpc-java:1.63.0' } }
+    // protoc 3.25.3 → 3.25.5 đồng bộ với protobuf runtime (clear CVE-2024-7254, CVE-2026-0994).
+    // protoc-gen-grpc-java 1.63.0 → 1.71.0 khớp với io.grpc runtime.
+    protoc { artifact = 'com.google.protobuf:protoc:3.25.5' }
+    plugins { grpc { artifact = 'io.grpc:protoc-gen-grpc-java:1.71.0' } }
     generateProtoTasks { all()*.plugins { grpc {} } }
 }
 

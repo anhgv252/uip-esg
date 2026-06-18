@@ -1,0 +1,22 @@
+# G1 AI Cost Staging Measurement — 2026-06-18
+# Source: Prometheus via /actuator/prometheus (basic auth prometheus:prometheus-dev-scrape)
+# Pipeline verified end-to-end: Flink DistrictAggregationJob RUNNING (source: ngsi_ld_environment, sink: ai.district.aggregations)
+# DistrictAggregationConsumer consumed 148 events (counter ai_batched_events_consumed_total)
+
+ai_batched_events_consumed_total = 148
+ai_batched_events_error_total    = 0
+ai_cache_hits_total              = 83
+ai_cache_misses_total            = 65
+ai_cache_hit_rate                = 56.1%   (PASS: >= 50%)
+ai_cost_usd_total                = 0.00845 USD (model=haiku)
+ai_tokens_input_total            = 3027
+ai_tokens_output_total           = 6157
+ai_requests_total{model=haiku,status=success} = 65
+ai_requests_total{model=cache,status=cache_hit} = 83
+
+# Cost extrapolation 24h (conservative: 10% misses)
+# Steady state keys: 10 districts x 6 AQI buckets = 60 unique cache keys.
+# After warmup (60 first-miss), subsequent hits cost ~0.
+# Worst-case 24h (10% misses): 1440 misses x $0.000130 = $0.187 -> PASS (< $1)
+
+# CLAUDE_API_KEY validated: returns 200 OK on real Anthropic API (4 successful requests observed).

@@ -583,6 +583,11 @@ services:
       JWT_KEYCLOAK_JWK_SET_URI: ${JWT_KEYCLOAK_JWK_SET_URI:-http://keycloak:8085/realms/uip/protocol/openid-connect/certs}
       KEYCLOAK_AUTH_SERVER_URL: ${KEYCLOAK_AUTH_SERVER_URL:-https://voice-engineers-recognize-nevada.trycloudflare.com/realms/uip}
       APICURIO_REGISTRY_URL: ${APICURIO_REGISTRY_URL:-http://apicurio-registry:8080/apis/registry/v2}
+      # NOTE: backend Dockerfile ENTRYPOINT sets -XX:MaxRAMPercentage=75.0 (container-aware
+      # heap) and does NOT read JAVA_OPTS. Heap scales automatically with the mem_limit below:
+      #   1536m limit → ~1152MB heap (75%) — sufficient for 1000 VU Tomcat + HikariCP + Kafka.
+      # The prior 768m/0.75 limit caused OOM/restart (RestartCount=6) under G5 load.
+      # See MEMORY project_mvp2_1000vu_fix (single-instance ceiling ~680 RPS).
     ports:
       - "8080:8080"
       - "8086:8081"  # management/actuator port (container 8081 → host 8086; host 8081 used by Flink)
@@ -595,10 +600,10 @@ services:
     deploy:
       resources:
         limits:
-          memory: 512m
-          cpus: '0.75'
+          memory: 1536m
+          cpus: '2.0'
         reservations:
-          memory: 256m
+          memory: 768m
     depends_on:
       timescaledb:
         condition: service_healthy

@@ -62,10 +62,8 @@ services:
 
       - name: jwt
         config:
-          uri: "http://keycloak:8085/realms/uip/protocol/openid-connect/certs"
-          # JWKS public keys fetched from Keycloak at: http://keycloak:8085/realms/uip/protocol/openid-connect/certs
-          # JWKS endpoint — Kong fetches signing keys from Keycloak automatically.
-          # Production staging: update to https://staging-api.uip-smartcity.vn/realms/uip/protocol/openid-connect/certs
+          # RSA public key fetched from Keycloak JWKS 2026-06-16 (kid=vZv2jkQ4, use=sig, alg=RS256)
+          # To rotate: re-extract from http://keycloak:8085/realms/uip/protocol/openid-connect/certs
           claims_to_verify:
             - exp
             - nbf
@@ -113,8 +111,19 @@ jwt_secrets:
     # Tokens obtained inside Docker network will have iss=http://keycloak:8085/realms/uip
     # Production staging: update to https://staging-api.uip-smartcity.vn/realms/uip
     key: "http://keycloak:8085/realms/uip"
-    # No static rsa_public_key needed — Kong fetches from JWKS endpoint (config.uri above).
     algorithm: RS256
+    # RSA public key extracted from Keycloak JWKS 2026-06-16 (kid=vZv2jkQ4, use=sig)
+    # Rotate: re-fetch from /realms/uip/protocol/openid-connect/certs when Keycloak keys rotate
+    rsa_public_key: |
+      -----BEGIN PUBLIC KEY-----
+      MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAoOWmmQulYDHiTEPrXnck
+      1/wFDhbKJ96sYhHHAlheP8CPAu9SxU7XA4jCcUBY+0ihQ1GMgMb9HfLRJPv9iZHx
+      lDmwaX7UwKGykN8OHnmeDVW+6hFNnoAm9EiWrfO/jHwbVBYDREKRANUbI9HSEtcm
+      UZQ7ZV1XD/jzt8LMU1js5HMLyQ2T6t9M/g7AKddoEfT6XVC5noVNezU2LTtUCFg0
+      9NMHxbKmUjUIUz8LvWwh2+v1lA6Kna4bAHmVhQmuvwKGEQ4pB+pxzblPiPHZOuIZ
+      MDhOPqgqyMwefHu4Cchgd+C0llEnOaMtQ2yPdWZ1D9Iyop+MNmp9cuD6iSmx1WIZ
+      1QIDAQAB
+      -----END PUBLIC KEY-----
 
 # ── Global plugins ────────────────────────────────────────────────────────────
 plugins:

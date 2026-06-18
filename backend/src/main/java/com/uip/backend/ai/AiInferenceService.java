@@ -140,6 +140,69 @@ public class AiInferenceService {
         return response;
     }
 
+    // ─── Generic batched entry point (M4-AI-01) ──────────────────────────────
+
+    /**
+     * M4-AI-01: Analyses a batched {@link com.uip.backend.ai.flink.DistrictAggregationEvent}
+     * emitted by the Flink district-aggregation job. Routes AQI events to the
+     * dedicated {@link #analyzeAqiWithMetrics} path (preserving AQI-specific
+     * bucketing + advisory prompt); all other sensor types use
+     * {@link #analyzeGenericConditions}.
+     *
+     * <p>Cache key for non-AQI types:
+     * {@code districtCode + ':' + sensorType + ':' + valueRange} where
+     * {@code valueRange} is a coarse bucket of {@code maxValue}.</p>
+     */
+    public AiAnalysisResponse analyzeBatch(com.uip.backend.ai.flink.DistrictAggregationEvent event) {
+        if (event == null || event.districtCode() == null) {
+            log.warn("[AiInference] Batch event missing district — skipping");
+            return AiAnalysisResponse.fallback(null, "unknown");
+        }
+        if ("AQI".equalsIgnoreCase(event.sensorType())) {
+            return analyzeAqiWithMetrics(event.districtCode(), event.maxValue());
+        }
+        return analyzeGenericWithMetrics(event);
+    }
+
+    /**
+     * Pre-checks the cache before delegating to {@link #analyzeGenericConditions}
+     * via the Spring proxy, mirroring {@link #analyzeAqiWithMetrics}'s hit/miss
+     * metric recording.
+     */
+    public AiAnalysisResponse analyzeGenericWithMetrics(
+            com.uip.backend.ai.flink.DistrictAggregationEvent event) {
+        String valueRange = bucket(event.maxValue());
+        String cacheKey   = event.districtCode() + ":" + event.sensorType() + ":" + valueRange;
+        Cache cache       = aiResponseCacheManager.getCache(AiCacheConfig.CACHE_NAME);
+        boolean preExisted = (cache != null && cache.get(cacheKey) != null);
+
+        AiAnalysisResponse response = self.analyzeGenericConditions(event);
+
+        if (preExisted) {
+            metrics.recordHit();
+            costMetrics.recordCacheHit("default");
+            log.debug("[AiInference] Cache HIT (generic): district={} type={} range={}",
+                    event.districtCode(), event.sensorType(), valueRange);
+        } else {
+            metrics.recordMiss();
+        }
+        return response;
+    }
+
+    /**
+     * Coarse value bucketing for non-AQI sensor types (so readings within the
+     * same magnitude share a cached response). AQI uses the EPA-aligned
+     * {@link AqiRangeBucket}; other types use this simple linear bucket.
+     */
+    static String bucket(double value) {
+        if (value < 10)    return "lt10";
+        if (value < 50)    return "10-50";
+        if (value < 100)   return "50-100";
+        if (value < 500)   return "100-500";
+        if (value < 1000)  return "500-1000";
+        return "gte1000";
+    }
+
     // ─── @Cacheable method (must be called through Spring proxy) ─────────────
 
     /**
@@ -182,6 +245,42 @@ public class AiInferenceService {
         }
     }
 
+    /**
+     * M4-AI-01: Generic inference path for non-AQI sensor types. Same cache +
+     * budget + fallback semantics as {@link #analyzeAqiConditions} but with a
+     * type-aware prompt and a different cache key shape.
+     */
+    @Cacheable(
+            value         = AiCacheConfig.CACHE_NAME,
+            key           = "#event.districtCode + ':' + #event.sensorType + ':' + (#event.maxValue < 10 ? 'lt10' : (#event.maxValue < 50 ? '10-50' : (#event.maxValue < 100 ? '50-100' : (#event.maxValue < 500 ? '100-500' : (#event.maxValue < 1000 ? '500-1000' : 'gte1000')))))",
+            cacheManager  = "aiResponseCacheManager",
+            condition     = "#event != null && #event.districtCode != null"
+    )
+    public AiAnalysisResponse analyzeGenericConditions(
+            com.uip.backend.ai.flink.DistrictAggregationEvent event) {
+        log.info("[AiInference] Calling Claude API (generic): district={} type={} max={} avg={} count={}",
+                event.districtCode(), event.sensorType(), event.maxValue(), event.avgValue(), event.count());
+
+        String valueRange = bucket(event.maxValue());
+
+        if (!tokenBudgetService.isWithinBudget(0)) {
+            log.warn("[AiInference] Token budget exceeded — returning fallback");
+            return AiAnalysisResponse.fallback(event.districtCode(), valueRange);
+        }
+
+        if (!org.springframework.util.StringUtils.hasText(apiKey)) {
+            log.warn("[AiInference] CLAUDE_API_KEY not configured — returning fallback");
+            return AiAnalysisResponse.fallback(event.districtCode(), valueRange);
+        }
+
+        try {
+            return callClaudeApiGeneric(event, valueRange);
+        } catch (RestClientException e) {
+            log.error("[AiInference] Claude API call (generic) failed: {}", e.getMessage());
+            return AiAnalysisResponse.fallback(event.districtCode(), valueRange);
+        }
+    }
+
     // ─── Private helpers ──────────────────────────────────────────────────────
 
     private AiAnalysisResponse callClaudeApi(String districtCode, double aqi) {
@@ -218,6 +317,49 @@ public class AiInferenceService {
         costMetrics.recordCall(model, "default", usage[0], usage[1]);
 
         return new AiAnalysisResponse(districtCode, aqiRange, recommendation, model,
+                System.currentTimeMillis());
+    }
+
+    /**
+     * M4-AI-01: Generic Claude call for non-AQI sensor types. Builds a
+     * type-aware advisory prompt from the aggregated event and reuses the
+     * same routing/budget/metric machinery as the AQI path.
+     */
+    private AiAnalysisResponse callClaudeApiGeneric(
+            com.uip.backend.ai.flink.DistrictAggregationEvent event, String valueRange) {
+        // Higher complexity tier for unusual readings (very high max vs avg = outlier cluster)
+        String complexity = (event.maxValue() > 2 * Math.max(event.avgValue(), 0.001)) ? "MEDIUM" : "LOW";
+        String model    = modelRouter.selectModel(200, complexity);
+
+        String prompt = String.format(
+                "District %s reports %d %s readings (max %.2f, avg %.2f, range %s). " +
+                "Provide a concise 2-sentence operational advisory.",
+                event.districtCode(), event.count(), event.sensorType(),
+                event.maxValue(), event.avgValue(), valueRange);
+
+        Map<String, Object> requestBody = Map.of(
+                "model",      model,
+                "max_tokens", 200,
+                "messages",   List.of(Map.of("role", "user", "content", prompt))
+        );
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.set("x-api-key", apiKey);
+        headers.set("anthropic-version", "2023-06-01");
+
+        ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
+                apiUrl,
+                HttpMethod.POST,
+                new HttpEntity<>(requestBody, headers),
+                new ParameterizedTypeReference<>() {}
+        );
+
+        String recommendation = extractText(response.getBody());
+        int[] usage = extractTokenUsage(response.getBody());
+        costMetrics.recordCall(model, "default", usage[0], usage[1]);
+
+        return new AiAnalysisResponse(event.districtCode(), valueRange, recommendation, model,
                 System.currentTimeMillis());
     }
 

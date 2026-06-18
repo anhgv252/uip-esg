@@ -45,6 +45,40 @@
     </suppress>
 
     <!--
+    CVE-2026-33186 (CVSS 9.1): gRPC-Go HTTP/2 :path authorization bypass
+    Affected: grpc-go < 1.79.3 (Go language implementation)
+    Advisory: GHSA-p77j-4mvh-x3m3 — explicitly "gRPC-Go is the Go language implementation"
+    OWASP matched the advisory against io.grpc:* (Java) via CPE cpe:2.3:a:grpc:grpc
+    Reason: This project uses grpc-java (io.grpc:* 1.71.0), NOT grpc-go. The :path
+            pseudo-header routing logic in question lives in the Go server impl;
+            the Java Netty/gRPC server has different HTTP/2 routing. Same CPE-mismatch
+            class as CVE-2023-37475 (hamba/avro Go) and CVE-2026-39883 (OTel-Go) above.
+    Reviewed: 2026-06-15 by Security Team (during G9 OWASP fix)
+    -->
+    <suppress>
+        <notes>False positive: CVE-2026-33186 affects grpc-go (Go), not io.grpc (Java). CPE grpc:grpc mismatch.</notes>
+        <packageUrl regex="true">pkg:maven/io\.grpc.*</packageUrl>
+        <cve>CVE-2026-33186</cve>
+    </suppress>
+
+    <!--
+    CVE-2026-0994 (CVSS 7.5): protobuf Python json_format.ParseDict() recursion DoS
+    Affected: google.protobuf Python package — json_format.ParseDict() with nested Any messages
+    Fix PR: github.com/protocolbuffers/protobuf#25239 (Python-only change)
+    OWASP matched against com.google.protobuf:protobuf-java* (Java) via CPE
+    Reason: json_format.ParseDict is a Python API; protobuf-java has no equivalent
+            Python json_format module. The Java JSON parsing uses JsonFormat
+            (com.google.protobuf.util.JsonFormat) which is a different codebase not
+            affected by the Python recursion-depth bug. Same CPE-mismatch class.
+    Reviewed: 2026-06-15 by Security Team (during G9 OWASP fix)
+    -->
+    <suppress>
+        <notes>False positive: CVE-2026-0994 affects protobuf Python json_format.ParseDict, not protobuf-java.</notes>
+        <packageUrl regex="true">pkg:maven/com\.google\.protobuf.*</packageUrl>
+        <cve>CVE-2026-0994</cve>
+    </suppress>
+
+    <!--
     ═══════════════════════════════════════════════════════════════════════
     ACCEPTED RISK — fix version not yet published to Maven Central
     ═══════════════════════════════════════════════════════════════════════
