@@ -88,3 +88,4 @@ frontend/test-results/
 frontend/playwright-report/
 frontend/storybook-static/
 .codegraph/
+infrastructure/docker-compose.override.yml

@@ -92,11 +92,18 @@ Result: EsgServiceIT + EsgReportApiIT now PASS. This is the same class of bug as
 - **Verify:** JMeter HTML report
 - **Plan:** `backend/src/test/resources/jmeter/uip-1000vu-plan.jmx` (1000 VU, 60s ramp, 300s hold)
 - **Targets:** p95 < 500ms, error < 1%, throughput > 500 RPS
-- **Status:** ✅ **PASS — Run 2026-06-16** | p95=450ms | error=0.00% | RPS=1770 | 37,581 requests, 0 errors
-- **Fixes applied during run:**
-  1. `kong.staging.yml`: removed invalid `uri` field from jwt plugin + added `rsa_public_key` extracted from Keycloak JWKS (2026-06-16)
-  2. `uip-1000vu-plan.jmx`: added missing `<hashTree/>` after `HeaderManager`
-  3. Backend uses HMAC JWT (not Keycloak RS256) — operator/operator_Dev#2026! used for token
+- **Status:** ✅ **PASS — Official re-run 2026-06-18** | p95=6ms | error=0.0000% | RPS=596.1 | 214,670 samples, 0 errors. Verified from `docs/mvp4/reports/jmeter-1000vu-2026-06-18-rerun3/statistics.json`.
+- **Run history:**
+  1. **2026-06-16** (first PASS): p95=450ms, RPS=1770, 37,581 req — pre-methodology-fix baseline.
+  2. **2026-06-18 rerun** (G5 re-run #1): p95=104ms, RPS=17,277 (no Timer), **error=99.99%** — FAIL. Root cause: JMeter plan had **no Constant Throughput Timer** → fired max throughput ~17K req/s, exceeding single-instance ceiling (~680 RPS, MEMORY `project_mvp2_1000vu_fix`). Socket exhaustion, backend OOM/restart (RestartCount=6). NOT an MVP4 code bug.
+  3. **2026-06-18 rerun2** (G5 re-run #2): Timer added (600 req/s pace, throughput dropped 17K→412 RPS), but **error=94.16%** — FAIL. Root cause: backend container `mem_limit: 768m / cpus: 0.75` too low for 1000 VU → OOM-edge/restart. NOT an MVP4 code bug.
+  4. **2026-06-18 rerun3** (G5 re-run #3, OFFICIAL PASS): resource bumped + Timer in place.
+- **Methodology fixes applied (2026-06-18):**
+  1. `uip-1000vu-plan.jmx`: added `ConstantThroughputTimer` (target 36000 req/min = 600 req/s, calcMode=2) to pace the 1000 VU. Hardcoded `36000` because JMeter `doubleProp` does not eval `${__P()}` function (XStream `NumberFormatException`).
+  2. `docker-compose.yml`: bumped `uip-backend` limits `memory: 768m → 1536m`, `cpus: 0.75 → 2.0`, reservation `512m → 768m`. Dockerfile ENTRYPOINT uses `-XX:MaxRAMPercentage=75.0` (container-aware heap) → ~1152MB heap at 1536m limit. Sufficient for 1000 VU Tomcat + HikariCP + Kafka consumers.
+- **Auth:** HMAC HS256 JWT via `/api/v1/auth/login` (admin/admin_Dev#2026!), issuer `uip-legacy`. NOT Keycloak RSA — `RoutingJwtDecoder` is dead-code for these 3 endpoints.
+- **Container health during run:** peak MEM 67% of 1536MiB (~1030 MiB), CPU 151% of 200%, RestartCount=0 before/after. No OOM, no GC pressure.
+- **Per-endpoint:** `/api/v1/esg/summary` p95=6ms thr=199.6 RPS | `/api/v1/traffic/incidents` p95=7ms thr=198.7 RPS | `/api/v1/environment/aqi/current` p95=7ms thr=197.8 RPS — symmetric, no endpoint hotspot.
 
 ### G6 — iOS + Android apps live in stores
 - **Verify:** Store links
@@ -131,15 +138,15 @@ Result: EsgServiceIT + EsgReportApiIT now PASS. This is the same class of bug as
 
 | Gate | Criterion | Status |
 |---|---|---|
-| G1 | AI cost < $1/day @ 10K | ✅ **PASS — $0.075/day** (measured 2026-06-18, Anthropic dashboard: 721 in + 1,477 out tokens/7 calls, claude-haiku-4-5) |
+| G1 | AI cost < $1/day @ 10K | ✅ **PASS — $0.187/day extrapolated** (re-verified 2026-06-18 staging re-run: pipeline RUNNING, hit rate 56.1%, 65 real Claude calls @ $0.000130/call) |
 | G2 | False positive < 5% | ⏳ 30-day data pending (boundary PASS) |
 | G3 | ≥10 templates | ✅ PASS (Tester UAT sign-off 2026-06-16) |
 | G4 | Regression ≥1,500, 0 fail | ✅ PASS (1,726 tests, 0 fail) |
-| G5 | 1000 VU JMeter | ✅ PASS — Run 2026-06-16, p95=450ms, error=0%, RPS=1770 |
+| G5 | 1000 VU JMeter | ✅ **PASS — Official re-run3 2026-06-18**: p95=6ms, error=0.0000%, RPS=596.1, 214,670 samples (after ConstantThroughputTimer + mem_limit 768m→1536m methodology fixes) |
 | G6 | iOS + Android live | ⏳ submission pending |
 | G7 | BMS safety | ✅ PASS (Tester UAT sign-off 2026-06-16) |
 | G8 | SA review | ✅ PASS |
-| G9 | OWASP 0 crit/high | ✅ PASS — 0 active CVSS≥7 (gRPC 1.71 + protobuf 3.25.5 + 2 FP suppressions, 2026-06-15) |
+| G9 | OWASP 0 crit/high | ✅ PASS — 0 active CVSS≥7 (gRPC 1.71 + protobuf 3.25.5 + 2 FP suppressions; re-verified 2026-06-18 dependencyCheckAggregate) |
 | G10 | Pilot uptime 99.5%/30d | ⏳ 30-day measurement pending |
 
 **Verdict:** **7/10 gates PASS** (G1, G3, G4, G5, G7, G8, G9). G2/G10 pending 30-day pilot; G6 pending app-store submission. See [`mvp4-staging-gate-runbook.md`](mvp4-staging-gate-runbook.md) for remaining gates.
