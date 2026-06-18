@@ -80,7 +80,7 @@ ADR-041 (AI Cost), ADR-042 (Correlation), ADR-043 (BMS Safety), ADR-044 (Self-Se
 | Operator self-service adoption | ≥ 80% | 10/10 templates verified | ✅ G3 PASS — UAT sign-off 2026-06-16 |
 | Correlated incident detection | < 60s | 30s CEP window | ✅ IncidentCorrelationJob live |
 | BMS command latency (auto) | < 5s | Implemented + tested | ✅ G7 PASS |
-| 1000 VU p95 latency | < 500ms | **450ms** | ✅ G5 PASS (2026-06-16) |
+| 1000 VU p95 latency | < 500ms | **6ms** | ✅ G5 PASS — official re-run 2026-06-18 (214,670 samples, error 0%, RPS 596; after ConstantThroughputTimer + backend resource bump) |
 | Pilot uptime | ≥ 99.5% | TBD (pilot) | ⏳ G10 — 30-day measurement Aug 2026 |
 
 ---
