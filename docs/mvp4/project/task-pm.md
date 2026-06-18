@@ -28,21 +28,21 @@
 ## Sprint 6 (Oct 13-24) — 4 SP
 
 ### Task #27 — MVP4 Summary + MVP5 Roadmap + Stakeholder demo
-**ID:** MVP4 Close-out | **SP:** 4 | **Priority:** P0 (FINAL) | **Status:** PARTIAL — 5/10 gates PASS (2026-06-16), awaiting G5+G1 staging run
+**ID:** MVP4 Close-out | **SP:** 4 | **Priority:** P0 (FINAL) | **Status:** ✅ **READY FOR STAKEHOLDER DEMO** — 7/10 gates PASS (2026-06-18): G1+G5 both confirmed
 
 | Item | SP | Chi tiết | Status |
 |------|-----|---------|--------|
-| MVP4 Summary report | 1.5 | Document: deliverables completed, KPIs achieved vs target, lessons learned, tech debt carried over, team velocity actual vs planned | ⏳ DRAFT done ([`reports/mvp4-summary-draft.md`](../reports/mvp4-summary-draft.md)) — gate status section updated; KPIs to be filled after G1/G5 staging run |
+| MVP4 Summary report | 1.5 | Document: deliverables completed, KPIs achieved vs target, lessons learned, tech debt carried over, team velocity actual vs planned | ✅ DONE ([`reports/mvp4-summary-draft.md`](../reports/mvp4-summary-draft.md)) — G1 $0.075/day, G5 p95=450ms, 7/10 gates PASS (2026-06-18) |
 | MVP5 Roadmap draft | 1.5 | Plan next phase: K8s migration, NL→BPMN (Vietnamese natural language), scale >20 buildings, Series A trigger. Timeline: Q1 2027 | ✅ DRAFT done ([`reports/mvp5-roadmap-draft.md`](../reports/mvp5-roadmap-draft.md)) |
 | Stakeholder demo + sign-off | 1 | City authority + investor demo: AI cost optimization demo, correlation engine demo, operator self-service demo. Collect sign-off | ⏳ Script done ([`reports/mvp4-stakeholder-demo-script.md`](../reports/mvp4-stakeholder-demo-script.md)) — ready to execute |
 
 **Acceptance Criteria:**
-- [ ] MVP4 Summary: all KPIs documented vs target *(pending G1/G5 measurement)*
+- [x] MVP4 Summary: all KPIs documented vs target — **G1: $0.075/day ✅ | G5: p95=450ms ✅ | G3/G4/G7/G8/G9: all PASS ✅**
 - [x] MVP5 Roadmap: timeline + features + resource estimate
-- [ ] Stakeholder demo done, sign-off obtained *(pending scheduling + G1/G5 PASS)*
-- [ ] **DECLARE MVP4 DONE** (trigger: G5 + G1 PASS on staging + stakeholder demo) — currently 5/10 gates PASS (G3, G4, G7, G8, G9); G1/G5 ready to execute per [`qa/staging-gate-ticket.md`](../qa/staging-gate-ticket.md); G2/G10 run in parallel during 30-day pilot (Aug 2026)
+- [ ] Stakeholder demo done, sign-off obtained *(pending scheduling)*
+- [ ] **DECLARE MVP4 DONE** (trigger: stakeholder demo + G2/G10 run in parallel during 30-day pilot) — **7/10 gates PASS** (G1,G3,G4,G5,G7,G8,G9); G2/G10 pilot-dependent; G6 ops task
 
-**Dependencies:** Task #26 (QA Gate) DONE
+**Dependencies:** Task #26 (QA Gate) DONE ✅
 **Blocks:** None (this is the final task)
 
 ---
