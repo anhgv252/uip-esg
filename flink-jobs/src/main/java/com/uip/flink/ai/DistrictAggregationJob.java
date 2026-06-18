@@ -12,6 +12,7 @@ import org.apache.flink.connector.kafka.sink.KafkaSink;
 import org.apache.flink.connector.kafka.source.KafkaSource;
 import org.apache.flink.connector.kafka.source.enumerator.initializer.OffsetsInitializer;
 import org.apache.flink.contrib.streaming.state.EmbeddedRocksDBStateBackend;
+import org.apache.flink.runtime.state.storage.FileSystemCheckpointStorage;
 import org.apache.flink.streaming.api.CheckpointingMode;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.windowing.assigners.TumblingEventTimeWindows;
@@ -83,7 +84,9 @@ public class DistrictAggregationJob {
 
         env.enableCheckpointing(30_000, CheckpointingMode.EXACTLY_ONCE);
         env.setStateBackend(new EmbeddedRocksDBStateBackend(true));
-        env.getCheckpointConfig().setCheckpointStorage("file:///flink/checkpoints");
+        String checkpointDir = System.getenv().getOrDefault("S3_CHECKPOINT_DIR",
+                "s3://uip-flink-checkpoints/checkpoints");
+        env.getCheckpointConfig().setCheckpointStorage(new FileSystemCheckpointStorage(checkpointDir));
 
         // --- Source ---
         KafkaSource<NgsiLdMessage> source = KafkaSource.<NgsiLdMessage>builder()
@@ -109,7 +112,8 @@ public class DistrictAggregationJob {
         env.fromSource(
                 source,
                 WatermarkStrategy.<NgsiLdMessage>forBoundedOutOfOrderness(Duration.ofSeconds(10))
-                        .withTimestampAssigner((event, ts) -> event.getObservedAtMillis()),
+                        .withTimestampAssigner((event, ts) -> event.getObservedAtMillis())
+                        .withIdleness(Duration.ofSeconds(30)),
                 "ngsi_ld_environment Source (District Aggregation)"
         )
         // Drop malformed messages + readings missing the district key
@@ -119,7 +123,7 @@ public class DistrictAggregationJob {
         .aggregate(
                 new DistrictAggregationFunction(MAX_SENSORS),
                 new DistrictAggregationFunction.WindowFinalizer())
-        .map(MAPPER::writeValueAsString)
+        .map(agg -> MAPPER.writeValueAsString(agg))
         .sinkTo(sink)
         .name("Kafka " + SINK_TOPIC + " Sink");
 

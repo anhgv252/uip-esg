@@ -77,6 +77,7 @@ Targets: p95 &lt; 500ms, error rate &lt; 1%, throughput &gt; 500 RPS</stringProp
             </elementProp>
           </collectionProp>
         </HeaderManager>
+        <hashTree/>
 
         <!-- ─────────────────────────────────────────────────────────────── -->
         <!-- Sampler 1: GET /api/v1/esg/summary                              -->
