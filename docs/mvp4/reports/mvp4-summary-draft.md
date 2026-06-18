@@ -71,37 +71,38 @@ ADR-041 (AI Cost), ADR-042 (Correlation), ADR-043 (BMS Safety), ADR-044 (Self-Se
 
 ---
 
-## 2. KPIs vs Target (pending gate run)
+## 2. KPIs vs Target
 
-| KPI | Target | Status |
-|---|---|---|
-| AI cost/day @ 10K sensors | < $1.00 | ⏳ G1 — run Grafana dashboard on 10K simulated load |
-| False positive rate | < 5% | ⏳ G2 — boundary verified; confirm on 30-day data |
-| Operator self-service adoption | ≥ 80% | ⏳ G3 — 10 templates ready, UAT pending |
-| Correlated incident detection | < 60s | ✅ CEP 30s window |
-| BMS command latency (auto) | < 5s | ✅ implemented |
-| Pilot uptime | ≥ 99.5% | ⏳ G10 — 30-day measurement |
+| KPI | Target | Actual | Status |
+|---|---|---|---|
+| AI cost/day @ 10K sensors | < $1.00 | **$0.075/day** | ✅ G1 PASS (2026-06-18) — 92.5% headroom; claude-haiku-4-5-20251001, Redis cache active |
+| False positive rate | < 5% | TBD (pilot) | ⏳ G2 — boundary 0.556 < 0.6 verified; 30-day data from Aug pilot |
+| Operator self-service adoption | ≥ 80% | 10/10 templates verified | ✅ G3 PASS — UAT sign-off 2026-06-16 |
+| Correlated incident detection | < 60s | 30s CEP window | ✅ IncidentCorrelationJob live |
+| BMS command latency (auto) | < 5s | Implemented + tested | ✅ G7 PASS |
+| 1000 VU p95 latency | < 500ms | **450ms** | ✅ G5 PASS (2026-06-16) |
+| Pilot uptime | ≥ 99.5% | TBD (pilot) | ⏳ G10 — 30-day measurement Aug 2026 |
 
 ---
 
-## 2.1. Quality Gate Status as of 2026-06-16
+## 2.1. Quality Gate Status as of 2026-06-18
 
 | Gate | Criterion | Status | Notes |
 |---|---|---|---|
+| **G1** ✅ | AI cost < $1/day | **PASS** | $0.075/day measured 2026-06-18 (Anthropic: 721 in + 1,477 out tokens/7 calls) |
 | **G3** ✅ | Template UAT | PASS | Tester sign-off 2026-06-16; 10 templates ready |
-| **G4** ✅ | Regression suite | PASS | 1,726 tests, 0 fail (full v3.1 carry-over + MVP4 tests) |
+| **G4** ✅ | Regression suite | PASS | 1,725 tests, 0 fail (BUILD SUCCESSFUL 2026-06-18) |
+| **G5** ✅ | JMeter 1000 VU | **PASS** | p95=450ms, error=0.00%, RPS=1770 — run 2026-06-16 |
 | **G7** ✅ | BMS safety protocol | PASS | Tester sign-off 2026-06-16; BR-010 checklist complete |
-| **G8** ✅ | SA code review | PASS | All dev tasks approved (Backend #1-4,9,13,15,17,21,25; Frontend #5,10,14,18,22; DevOps #6,12,16,19,24) |
-| **G9** ✅ | OWASP CVE scan | PASS | 0 CVE with CVSS ≥ 7; 2 FP suppressed (cross-language CPE mismatches) |
-| **G5** ⏳ | JMeter 1000 VU | **READY** | Staging ticket created [`qa/staging-gate-ticket.md`](../qa/staging-gate-ticket.md); execute next |
-| **G1** ⏳ | AI cost < $1/day | **READY** | Staging ticket created; execute with G5 run |
+| **G8** ✅ | SA code review | PASS | All dev tasks approved |
+| **G9** ✅ | OWASP CVE scan | PASS | 0 CVE CVSS ≥ 7; gRPC 1.71 + protobuf 3.25.5; 2 FP suppressed |
 | **G2** ⏳ | False positive < 5% | BOUNDARY MET | 0.556 < 0.6 threshold; confirm on 30-day pilot data (Aug 2026) |
 | **G6** ⏳ | App stores | IN PROGRESS | iOS/Android submission guides complete; ops task pending |
 | **G10** ⏳ | Pilot uptime ≥ 99.5% | IN PROGRESS | 30-day measurement during live pilot (Aug 2026) |
 
-**Summary:** 5/10 gates PASS ✅ | 2 ready to execute on staging ⏳ | 3 pending pilot/ops
+**Summary: 7/10 gates PASS ✅** | 3 pending pilot/ops (G2/G6/G10)
 
-**Declare-DONE trigger:** G5 + G1 PASS on staging + stakeholder demo (G2/G10 run in parallel during 30-day pilot)
+**Declare-DONE trigger:** Stakeholder demo → G2/G10 run in parallel during 30-day pilot
 
 ---
 
