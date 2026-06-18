@@ -1,7 +1,8 @@
 # MVP4 — AI Scale + Correlation Engine + Operator Self-Service
 
-**Trạng thái:** 📋 PLANNING
+**Trạng thái:** ✅ DEMO COMPLETED
 **Ngày lập kế hoạch:** 2026-06-11
+**Ngày demo hoàn thành:** 2026-06-18
 **Sprint start dự kiến:** 2026-08-04 (sau pilot go-live)
 **Target:** Tier 2 pilot stabilized + AI scale to 10,000 sensors + Operator self-service
 **Goal:** UIP sẵn sàng phục vụ 50+ buildings với AI cost < $1/ngày và false positive < 5%
