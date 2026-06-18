@@ -68,5 +68,17 @@ create_topic "UIP.iot.sensor.reading.v2" 6         # Avro SensorReadingEvent
 create_topic "UIP.flink.alert.detected.v2" 3       # Avro AlertDetectedEvent
 create_topic "UIP.analytics.hourly.rollup.v2" 3    # Avro HourlyRollupEvent
 
+# ─── MVP4 AI Scale + Correlation Engine ──────────────────────────────────────
+# These topics are consumed by backend @KafkaListener but were missing from this
+# script — caused UNKNOWN_TOPIC_OR_PARTITION warns after any Kafka volume reset
+# (KAFKA_AUTO_CREATE_TOPICS_ENABLE=false). Added 2026-06-18.
+create_topic "ai.district.aggregations" 3            # Flink DistrictAggregationJob → DistrictAggregationConsumer (G1 AI pipeline)
+create_topic "correlated.incidents" 3                # Flink IncidentCorrelationJob → CorrelationService (G2 correlation)
+create_topic "correlated.incidents-retry-1" 1 2592000000  # CorrelationService retry (M4-COR @RetryableTopic)
+create_topic "correlated.incidents-dlt" 1 2592000000      # CorrelationService dead-letter (30 days)
+create_topic "bms.feedback.dlq" 1 2592000000             # BMS feedback retry dead-letter (M4-COR-04)
+create_topic "uip.esg.metrics.v1" 3                  # ESG metrics → forecast cache eviction
+create_topic "UIP.esg.telemetry.error.v1" 3          # ESG telemetry error consumer
+
 echo "=== All topics created successfully ==="
 kafka-topics --bootstrap-server "${BOOTSTRAP}" --list

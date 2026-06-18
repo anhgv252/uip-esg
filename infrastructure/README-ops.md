@@ -109,6 +109,43 @@ This is set in `backend/src/main/resources/application.properties` and propagate
 
 ---
 
+## ⚠️ Switching between single-node and HA compose — reset Kafka volumes
+
+`docker-compose.yml` runs Kafka as a **single broker** (`uip-kafka`, `KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093`).
+`docker-compose.ha.yml` is an **overlay** that adds `kafka-2` + `kafka-3` (3-node quorum `1,2,3`).
+
+Both files are correct by design, but **mixing them without resetting state corrupts Kafka**: the persistent volume
+keeps cluster metadata from the previous topology, so the broker restart-loops with a quorum mismatch
+(symptom: `uip-kafka` in `Restarting (1)` while `uip-kafka-2/3` stay healthy, backend logs
+`UNKNOWN_TOPIC_OR_PARTITION` because `KAFKA_AUTO_CREATE_TOPICS_ENABLE=false`).
+
+**When switching single ↔ HA, always reset Kafka state:**
+
+```bash
+# 1. Stop ALL kafka containers (single + HA leftovers)
+docker rm -f uip-kafka uip-kafka-2 uip-kafka-3 uip-kafka-init
+
+# 2. Delete the volumes holding stale cluster metadata
+docker volume rm infrastructure_kafka_data uip-kafka-2-data uip-kafka-3-data
+
+# 3. Start the target topology. kafka-init recreates all topics from kafka/create-topics.sh.
+docker compose -f docker-compose.yml up -d kafka kafka-init          # single
+# — OR —
+docker compose -f docker-compose.yml -f docker-compose.ha.yml up -d  # HA
+
+# 4. Restart backend so consumers rejoin with fresh metadata.
+docker restart uip-backend
+```
+
+Flink jobs (`DistrictAggregationJob`, `IncidentCorrelationJob`, `VibrationAnomalyJob`) hold offsets against the old
+Kafka instance — **re-submit them via the Flink REST API** after a volume reset, otherwise the source/sink topics
+appear empty and the AI pipeline (G1) / correlation pipeline (G2) produce no output.
+
+> Pilot data lives in TimescaleDB / ClickHouse, not Kafka — resetting Kafka volumes does not lose domain data,
+> only in-flight messages and consumer-group offsets.
+
+---
+
 ## Common Make Targets
 
 | Target | Description |

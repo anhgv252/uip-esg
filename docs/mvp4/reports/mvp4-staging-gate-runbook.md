@@ -92,10 +92,21 @@
 
 1. **Plan validated (2026-06-15):** `backend/src/test/resources/jmeter/uip-1000vu-plan.jmx` — well-formed XML, 1 ThreadGroup (1000 threads, 60s ramp, 360s total = 60 ramp + 300 hold ✓), 3 GET samplers (`/api/v1/esg/summary`, `/api/v1/traffic/incidents`, `/api/v1/environment/aqi/current`), 3 ResponseAssertions, `on_sample_error=continue`. Ready to run.
 
-2. **⚠️ Pre-run auth check:** the 3 samplers are GET-only with **no login/auth sampler** in the plan. If these endpoints require JWT on staging, the plan will 401. Before running, either:
-   - Add an HTTP Header Manager with a pre-generated staging JWT (`Authorization: Bearer <token>`), or
-   - Confirm the endpoints are permitAll in `SecurityConfig` (verify via `curl -I https://staging/api/v1/esg/summary` returns 200, not 401).
-   If they are permitAll on staging, no change needed.
+2. **⚠️ Pre-run auth check (CORRECTED 2026-06-18):** the 3 samplers are GET-only with **no login/auth sampler** in the plan, and these endpoints require a JWT. The plan already has a `HeaderManager` with `Authorization: Bearer ${BEARER_TOKEN}`, so you pass a **valid backend-issued HMAC JWT** at runtime via `-Jbearer-token=<jwt>`.
+
+   **The JWT is HMAC HS256, issued by the backend itself — NOT a Keycloak RSA token.** The three endpoints are validated by `JwtAuthenticationFilter` + `JwtTokenProvider` (secret from `JWT_SECRET`, issuer `uip-legacy`). `RoutingJwtDecoder` (the Keycloak RSA path) is dead-code for these endpoints.
+
+   **Obtain the token:**
+   ```bash
+   TOKEN=$(curl -s -X POST http://localhost:8080/api/v1/auth/login \
+     -H 'Content-Type: application/json' \
+     -d '{"username":"admin","password":"admin_Dev#2026!"}' | jq -r .accessToken)
+   ```
+   Then pass `-Jbearer-token="$TOKEN"` to JMeter. **Log in within < 10 min of starting the run** — `JWT_EXPIRATION_MS=900000` (15 min) and a 6-minute plan leaves little margin (a 2026-06-18 run was aborted mid-flight because the token was minted 24 min before launch).
+
+   Optional pre-check: `curl -I -H "Authorization: Bearer $TOKEN" http://localhost:8080/api/v1/esg/summary` → expect 200, not 401.
+
+   **Throughput pacing (added 2026-06-18):** the plan now contains a `ConstantThroughputTimer` (36000 req/min = 600 req/s, `calcMode=2`). Without it the plan fires ~17K req/s and saturates a single-instance backend (socket exhaustion). The value is hardcoded (`doubleProp` cannot eval `${__P()}`).
 
 3. **Run on staging:**
    ```bash
