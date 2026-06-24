@@ -76,9 +76,10 @@ public class StructuralAlertConsumer {
                 return;
             }
 
-            // Dedup: 1-min window per sensor+measureType+severity (shorter than flood — structural alerts are acute)
-            String dedupKey = "alert:dedup:structural:%s:%s:%s".formatted(
-                    event.getSensorId(), event.getMeasureType(), event.getSeverity());
+            // Dedup: 1-min window per tenant+sensor+measureType+severity
+            // (shorter than flood — structural alerts are acute; MVP5-S1-T06: tenant prefix)
+            String dedupKey = "alert:dedup:structural:tenant:%s:%s:%s:%s".formatted(
+                    event.getTenantId(), event.getSensorId(), event.getMeasureType(), event.getSeverity());
             Boolean isNew = redisTemplate.opsForValue().setIfAbsent(dedupKey, "1", DEDUP_TTL);
 
             if (Boolean.FALSE.equals(isNew)) {

@@ -45,7 +45,10 @@ services:
       CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
     volumes:
       - clickhouse_data:/var/lib/clickhouse
-      - ./clickhouse/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - ./clickhouse/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+      # ADR-047: RowPolicy user provisioning + policies (runs after 01-init.sql).
+      - ./clickhouse/02-row-policy.sql:/docker-entrypoint-initdb.d/02-row-policy.sql:ro
+      - ./../infra/clickhouse/schema/V032__row_policy_tenant_iso.sql:/docker-entrypoint-initdb.d/03-v032-row-policy.sql:ro
     ports:
       - "8123:8123"   # HTTP API
       - "9000:9000"   # Native protocol

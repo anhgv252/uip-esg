@@ -7,6 +7,7 @@ import com.uip.backend.alert.domain.AlertRule;
 import com.uip.backend.alert.kafka.AlertEventKafkaConsumer;
 import com.uip.backend.alert.repository.AlertEventRepository;
 import com.uip.backend.alert.repository.AlertRuleRepository;
+import com.uip.backend.tenant.context.TenantContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -22,6 +23,14 @@ import java.util.List;
  * Dùng cho sensor ingestion trực tiếp vào Spring Boot (không qua Flink job).
  *
  * Deduplicates via Redis key with TTL = rule.cooldownMinutes.
+ *
+ * <h2>Tenant namespacing (MVP5-S1-T06)</h2>
+ * <p>The dedup key is prefixed with the tenant id from
+ * {@link TenantContext#getCurrentTenant()} so two tenants sharing the same
+ * {@code sensorId} cannot suppress each other's alerts. When the tenant
+ * context is unbound (null/blank), dedup is <strong>fail-open</strong> — the
+ * alert is always created (no {@code setIfAbsent}) rather than risk a shared
+ * {@code "default"} key blocking a P0/P1 alert for a legitimate tenant.</p>
  * Sau khi save, publish lên Redis channel để NotificationService đẩy SSE.
  *
  * Lưu ý: Flink path dùng AlertEventKafkaConsumer (topic: UIP.flink.alert.detected.v1).
@@ -45,9 +54,18 @@ public class AlertEngine {
             if (!rule.getMeasureType().equalsIgnoreCase(measureType)) continue;
             if (!matches(rule.getOperator(), value, rule.getThreshold())) continue;
 
-            String dedupKey = "alert:dedup:%s:%s:%s".formatted(sensorId, measureType, rule.getId());
-            Boolean isNew = redisTemplate.opsForValue()
-                    .setIfAbsent(dedupKey, "1", Duration.ofMinutes(rule.getCooldownMinutes()));
+            // MVP5-S1-T06: tenant-prefixed dedup key prevents cross-tenant suppression.
+            // Fail-open when tenant is unbound: skip dedup entirely so a P0/P1 alert
+            // for a legitimate tenant is never blocked by a shared "default" key.
+            String tenant = TenantContext.getCurrentTenant();
+            boolean dedupEnabled = (tenant != null && !tenant.isBlank());
+            Boolean isNew = Boolean.TRUE; // default: process (fail-open)
+            if (dedupEnabled) {
+                String dedupKey = "alert:dedup:tenant:%s:%s:%s:%s".formatted(
+                        tenant, sensorId, measureType, rule.getId());
+                isNew = redisTemplate.opsForValue()
+                        .setIfAbsent(dedupKey, "1", Duration.ofMinutes(rule.getCooldownMinutes()));
+            }
 
             // Fail-open: null = Redis unavailable → tạo alert để không miss P0/P1.
             if (!Boolean.FALSE.equals(isNew)) {

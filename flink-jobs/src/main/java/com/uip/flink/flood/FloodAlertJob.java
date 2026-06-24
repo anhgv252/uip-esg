@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.uip.flink.common.NgsiLdDeserializer;
 import com.uip.flink.common.NgsiLdMessage;
+import com.uip.flink.common.tenant.TenantKeyedProcessFunctionDelegate;
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.api.common.serialization.SimpleStringSchema;
 import org.apache.flink.cep.CEP;
@@ -139,6 +140,15 @@ public class FloodAlertJob {
     static class FloodPatternProcessFunction
             extends PatternProcessFunction<NgsiLdMessage, FloodAlertEvent> {
 
+        // ADR-047 §1.3 — alert built under a bound TenantContext (fail-closed drop if no tenant).
+        // Initialised in open() (transient fields are not restored on the task manager).
+        private transient TenantKeyedProcessFunctionDelegate<NgsiLdMessage, FloodAlertEvent> tenantGuard;
+
+        @Override
+        public void open(org.apache.flink.configuration.Configuration parameters) {
+            tenantGuard = TenantKeyedProcessFunctionDelegate.forFn(NgsiLdMessage::getTenantId);
+        }
+
         @Override
         public void processMatch(Map<String, List<NgsiLdMessage>> match,
                                  Context ctx,
@@ -146,8 +156,15 @@ public class FloodAlertJob {
             List<NgsiLdMessage> readings = match.get("reading1");
             if (readings == null || readings.isEmpty()) return;
 
-            // Use the most recent reading for severity classification
+            // Use the most recent reading for severity classification + as the tenant source.
             NgsiLdMessage last = readings.get(readings.size() - 1);
+            final int spikeCount = readings.size();
+
+            tenantGuard.run(last, (rec, emit) -> buildAlert(rec, spikeCount, emit), out::collect);
+        }
+
+        private static void buildAlert(NgsiLdMessage last, int spikeCount,
+                                       java.util.function.Consumer<FloodAlertEvent> emit) {
             String sensorType = last.getMeta().getSensorType();
             ThresholdCondition.FloodReading floodReading =
                     ThresholdCondition.extractFloodReading(last.getMeasurementValues(), sensorType);
@@ -159,7 +176,7 @@ public class FloodAlertJob {
             }
             double threshold = ThresholdCondition.getThreshold(sensorType, severity);
 
-            out.collect(new FloodAlertEvent(
+            emit.accept(new FloodAlertEvent(
                     last.getDeviceIdValue(),
                     sensorType,
                     last.getTenantId(),
@@ -168,7 +185,7 @@ public class FloodAlertJob {
                     severity,
                     last.getMeta().getDistrict(),
                     last.getObservedAtMillis(),
-                    readings.size()
+                    spikeCount
             ));
         }
     }

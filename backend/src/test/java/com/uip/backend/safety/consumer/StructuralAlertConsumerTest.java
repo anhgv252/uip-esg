@@ -181,4 +181,37 @@ class StructuralAlertConsumerTest {
             assertThat(mapped).isIn("CRITICAL", "HIGH", "WARNING");
         }
     }
+
+    // ─── MVP5-S1-T06: cross-tenant dedup isolation ───────────────────────────
+
+    @Test
+    @DisplayName("MVP5-S1-T06: tenant A dedup does NOT suppress tenant B (same sensorId)")
+    void crossTenantDedup_isolated() throws Exception {
+        AlertEvent saved = new AlertEvent();
+        saved.setId(UUID.randomUUID());
+        saved.setSensorId("SENSOR-VIBR-001");
+        saved.setModule("STRUCTURAL");
+        saved.setSeverity("CRITICAL");
+        saved.setStatus("OPEN");
+        saved.setMeasureType("STRUCTURAL_VIBRATION");
+        saved.setValue(55.0);
+        saved.setTenantId("hcm");
+        saved.setBuildingId("BLDG-001");
+        when(valueOps.setIfAbsent(anyString(), anyString(), any())).thenReturn(true);
+        when(alertService.saveAlert(any())).thenReturn(saved);
+
+        // Tenant A (hcm)
+        consumer.consume(VALID_PAYLOAD, ack, StructuralAlertConsumer.TOPIC, 0);
+        // Tenant B (hanoi) — swap tenantId in the payload, same sensor/building
+        String payloadHanoi = VALID_PAYLOAD.replace("\"tenantId\": \"hcm\"", "\"tenantId\": \"hanoi\"")
+                                           .replace("\"hcm\"", "\"hanoi\"");
+        consumer.consume(payloadHanoi, ack, StructuralAlertConsumer.TOPIC, 0);
+
+        // Both alerts persisted — two tenant-scoped dedup keys
+        verify(alertService, times(2)).saveAlert(any());
+        ArgumentCaptor<String> keyCaptor = ArgumentCaptor.forClass(String.class);
+        verify(valueOps, times(2)).setIfAbsent(keyCaptor.capture(), anyString(), any());
+        assertThat(keyCaptor.getAllValues().get(0)).contains("tenant:hcm:");
+        assertThat(keyCaptor.getAllValues().get(1)).contains("tenant:hanoi:");
+    }
 }

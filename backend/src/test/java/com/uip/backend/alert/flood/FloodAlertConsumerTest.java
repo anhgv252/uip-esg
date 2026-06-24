@@ -207,5 +207,31 @@ class FloodAlertConsumerTest {
             verify(redisTemplate).convertAndSend(eq("uip:alerts"), jsonCaptor.capture());
             assertThat(jsonCaptor.getValue()).contains("\"tenantId\"").contains("hcm");
         }
+
+        @Test
+        @DisplayName("FL-T-13: MVP5-S1-T06 tenant A dedup does NOT suppress tenant B (same sensorId)")
+        void crossTenantDedup_isolated() throws Exception {
+            AlertEvent saved = new AlertEvent();
+            saved.setId(UUID.randomUUID());
+            saved.setSensorId("SENSOR-001");
+            saved.setModule("FLOOD");
+            saved.setSeverity("HIGH");
+            saved.setStatus("OPEN");
+            saved.setMeasureType("RAINFALL");
+            saved.setValue(95.0);
+            when(valueOps.setIfAbsent(anyString(), anyString(), any())).thenReturn(Boolean.TRUE);
+            when(alertEventRepository.save(any())).thenReturn(saved);
+
+            // Tenant A
+            consumer.consume(validPayload("hcm", "P1_WARNING"), ack, "UIP.flink.alert.flood.v1", 0);
+            // Tenant B — same sensor, must NOT be suppressed
+            consumer.consume(validPayload("hanoi", "P1_WARNING"), ack, "UIP.flink.alert.flood.v1", 0);
+
+            verify(alertEventRepository, times(2)).save(any());
+            ArgumentCaptor<String> keyCaptor = ArgumentCaptor.forClass(String.class);
+            verify(valueOps, times(2)).setIfAbsent(keyCaptor.capture(), anyString(), any());
+            assertThat(keyCaptor.getAllValues().get(0)).contains("tenant:hcm:");
+            assertThat(keyCaptor.getAllValues().get(1)).contains("tenant:hanoi:");
+        }
     }
 }

@@ -49,8 +49,9 @@ public class AlertEventKafkaConsumer {
 
     /**
      * Dedup TTL: 5 phút — cửa sổ đủ rộng để hấp thụ Kafka retry / at-least-once redelivery.
-     * Key: alert:dedup:kafka:{sensorId}:{measureType}:{severity}
+     * Key: alert:dedup:kafka:tenant:{tenantId}:{sensorId}:{measureType}:{severity}
      * Cùng logic với AlertEngine nhưng không dùng ruleId (Flink không biết rule nội bộ).
+     * MVP5-S1-T06: tenant prefix prevents cross-tenant dedup leak.
      */
     private static final Duration DEDUP_TTL = Duration.ofMinutes(5);
 
@@ -65,8 +66,10 @@ public class AlertEventKafkaConsumer {
         try {
             AlertEvent event = mapToAlertEvent(payload);
 
-            String dedupKey = "alert:dedup:kafka:%s:%s:%s".formatted(
-                    event.getSensorId(), event.getMeasureType(), event.getSeverity());
+            // MVP5-S1-T06: tenant-prefixed dedup key — see class Javadoc.
+            String tenantId = event.getTenantId() != null ? event.getTenantId() : "default";
+            String dedupKey = "alert:dedup:kafka:tenant:%s:%s:%s:%s".formatted(
+                    tenantId, event.getSensorId(), event.getMeasureType(), event.getSeverity());
             Boolean isNew = redisTemplate.opsForValue().setIfAbsent(dedupKey, "1", DEDUP_TTL);
 
             // Fail-open: null = Redis unavailable → xử lý alert để không miss P0/P1.
@@ -118,6 +121,11 @@ public class AlertEventKafkaConsumer {
         e.setValue(getDouble(m, "value"));
         e.setThreshold(getDouble(m, "threshold"));
         e.setSeverity(getString(m, "severity"));
+        // MVP5-S1-T06: carry tenant through so dedup key is tenant-scoped.
+        // Accept both camelCase ("tenantId") and snake_case ("tenant_id") keys.
+        String tenantId = getString(m, "tenantId");
+        if (tenantId == null) tenantId = getString(m, "tenant_id");
+        if (tenantId != null) e.setTenantId(tenantId);
         String detectedAtStr = getString(m, "detectedAt");
         e.setDetectedAt(detectedAtStr != null ? Instant.parse(detectedAtStr) : Instant.now());
         return e;

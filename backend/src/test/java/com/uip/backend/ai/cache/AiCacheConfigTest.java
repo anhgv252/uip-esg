@@ -5,7 +5,9 @@ import com.uip.backend.ai.AiCostMetrics;
 import com.uip.backend.ai.AiInferenceService;
 import com.uip.backend.ai.budget.TokenBudgetService;
 import com.uip.backend.ai.routing.ModelRouter;
+import com.uip.backend.tenant.context.TenantContext;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -158,6 +160,12 @@ class AiCacheConfigTest {
         metrics = new AiCacheMetrics(new SimpleMeterRegistry());
     }
 
+    @AfterEach
+    void clearTenant() {
+        // No ThreadLocal leak between tests (MVP5-S1-T06).
+        TenantContext.clear();
+    }
+
     @Test
     @DisplayName("recordHit increments hitCount")
     void recordHit_incrementsCounter() {
@@ -209,15 +217,18 @@ class AiCacheConfigTest {
     @Test
     @DisplayName("Cache HIT: hit counter incremented when key already in cache before call")
     void analyzeAqiWithMetrics_cacheHit_incrementsHitCounter() {
+        // MVP5-S1-T06: bind a tenant so the pre-check key includes the tenant prefix.
+        TenantContext.setCurrentTenant("hcm");
         CacheManager cacheMgr = new ConcurrentMapCacheManager("ai-responses");
         AiCacheMetrics localMetrics = new AiCacheMetrics(new SimpleMeterRegistry());
         ModelRouter router = new ModelRouter();
         TokenBudgetService budget = mock(TokenBudgetService.class);
         when(budget.isWithinBudget(anyLong())).thenReturn(true);
 
-        // Pre-populate the cache to simulate a warm cache hit
+        // Pre-populate the cache to simulate a warm cache hit.
+        // The seed key MUST match the tenant-prefixed pre-check key.
         AiAnalysisResponse cached = new AiAnalysisResponse("HCM-D1", "51-100", "Good air quality.", "haiku", 0L);
-        cacheMgr.getCache("ai-responses").put("HCM-D1:51-100", cached);
+        cacheMgr.getCache("ai-responses").put("hcm:HCM-D1:51-100", cached);
 
         AiInferenceService svc = new AiInferenceService(cacheMgr, localMetrics,
                 new AiCostMetrics(new SimpleMeterRegistry()), router, budget);
@@ -242,6 +253,8 @@ class AiCacheConfigTest {
     @Test
     @DisplayName("Warm cache scenario: 5 calls same bucket → hit rate ≥ 50% (expected ~80%)")
     void warmCacheScenario_hitRateAbove50Percent() {
+        // MVP5-S1-T06: bind a tenant so the seed key matches the pre-check key prefix.
+        TenantContext.setCurrentTenant("hcm");
         CacheManager cacheMgr = new ConcurrentMapCacheManager("ai-responses");
         AiCacheMetrics localMetrics = new AiCacheMetrics(new SimpleMeterRegistry());
         ModelRouter router = new ModelRouter();
@@ -256,9 +269,10 @@ class AiCacheConfigTest {
 
         // Simulate: first call (miss) populates cache, subsequent 4 calls are hits
         svc.analyzeAqiWithMetrics("HCM-D1", 75.0); // miss
-        // Manually populate cache as @Cacheable would in a Spring proxy context
+        // Manually populate cache as @Cacheable would in a Spring proxy context.
+        // Key now carries the tenant prefix (MVP5-S1-T06).
         AiAnalysisResponse resp = new AiAnalysisResponse("HCM-D1", "51-100", "Advisory text.", "none", 0L);
-        cacheMgr.getCache("ai-responses").put("HCM-D1:51-100", resp);
+        cacheMgr.getCache("ai-responses").put("hcm:HCM-D1:51-100", resp);
 
         svc.analyzeAqiWithMetrics("HCM-D1", 80.0);  // hit (same bucket 51-100)
         svc.analyzeAqiWithMetrics("HCM-D1", 65.0);  // hit

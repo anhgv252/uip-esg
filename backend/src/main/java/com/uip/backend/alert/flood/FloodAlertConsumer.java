@@ -72,9 +72,9 @@ public class FloodAlertConsumer {
                 return;
             }
 
-            // Dedup: 5-min window per sensor+measureType+severity
-            String dedupKey = "alert:dedup:flood:%s:%s:%s".formatted(
-                    event.getSensorId(), event.getMeasureType(), event.getSeverity());
+            // Dedup: 5-min window per tenant+sensor+measureType+severity (MVP5-S1-T06: tenant prefix)
+            String dedupKey = "alert:dedup:flood:tenant:%s:%s:%s:%s".formatted(
+                    event.getTenantId(), event.getSensorId(), event.getMeasureType(), event.getSeverity());
             Boolean isNew = redisTemplate.opsForValue().setIfAbsent(dedupKey, "1", DEDUP_TTL);
 
             if (Boolean.FALSE.equals(isNew)) {

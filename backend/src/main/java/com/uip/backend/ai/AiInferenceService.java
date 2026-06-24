@@ -5,6 +5,7 @@ import com.uip.backend.ai.cache.AiCacheConfig;
 import com.uip.backend.ai.cache.AiCacheMetrics;
 import com.uip.backend.ai.cache.AqiRangeBucket;
 import com.uip.backend.ai.routing.ModelRouter;
+import com.uip.backend.tenant.context.TenantContext;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -31,10 +32,24 @@ import java.util.Map;
  *
  * <h2>Caching strategy</h2>
  * <p>Identical requests are cached in Redis DB 2 under the key pattern
- * {@code ai-responses::{districtCode}:{aqiRange}} with a 5-minute TTL.
+ * {@code ai-responses:{tenantId}:{districtCode}:{aqiRange}} with a 5-minute TTL.
  * The AQI value is bucketed into one of six EPA-aligned bands
  * ({@link AqiRangeBucket}) before being used as part of the cache key,
  * so all readings within a band share a single cached response.</p>
+ *
+ * <h2>Tenant namespacing (MVP5-S1-T06)</h2>
+ * <p>Every cache key is prefixed with the tenant id to prevent cross-tenant
+ * cache leaks: two tenants sharing the same district code (e.g. "HCM-D1") must
+ * receive independent AI analyses. The tenant comes from
+ * {@link TenantContext#getCurrentTenant()} (ThreadLocal bound by
+ * {@code TenantContextFilter} / {@code TenantAwareKafkaListener}). When the
+ * context is unbound (null/blank) the key falls back to {@code "global"} — this
+ * is documented and acceptable for the AI advisory cache (non-sensitive,
+ * idempotent, cost-only). Both the manual pre-check key built in
+ * {@link #analyzeAqiWithMetrics} / {@link #analyzeGenericWithMetrics} and the
+ * {@code @Cacheable} SpEL {@code key} in {@link #analyzeAqiConditions} /
+ * {@link #analyzeGenericConditions} MUST be byte-identical, otherwise the
+ * pre-check hit/miss metric drifts and orphan cache entries appear.</p>
  *
  * <h2>Hit-rate estimation</h2>
  * <pre>
@@ -110,11 +125,18 @@ public class AiInferenceService {
      * Analyses AQI conditions for a district, using Redis cache to avoid
      * redundant Claude API calls.
      *
-     * <p>Cache key: {@code ai-responses::{districtCode}:{aqiRange}}</p>
+     * <p>Cache key: {@code ai-responses:{tenantId}:{districtCode}:{aqiRange}}
+     * where {@code tenantId} comes from {@link TenantContext#getCurrentTenant()}
+     * (fallback {@code "global"} when unbound — see class Javadoc).</p>
      *
      * <p>Metrics are tracked by pre-checking the cache before invoking the
      * {@code @Cacheable} proxy ({@link #analyzeAqiConditions}) to determine
      * whether the result comes from cache (hit) or from a fresh API call (miss).</p>
+     *
+     * <p><strong>CRITICAL:</strong> the manual {@code cacheKey} built here MUST be
+     * byte-identical to the {@code @Cacheable key} SpEL in
+     * {@link #analyzeAqiConditions}. Both include the tenant prefix via
+     * {@link #tenantKeySegment()} / {@code currentTenantOrGlobal()}.</p>
      *
      * @param districtCode district identifier, e.g. "HCM-D1"
      * @param aqi          raw AQI sensor reading
@@ -122,7 +144,8 @@ public class AiInferenceService {
      */
     public AiAnalysisResponse analyzeAqiWithMetrics(String districtCode, double aqi) {
         String aqiRange  = AqiRangeBucket.bucket(aqi);
-        String cacheKey  = districtCode + ":" + aqiRange;
+        // Keep in sync with @Cacheable key on analyzeAqiConditions (MVP5-S1-T06).
+        String cacheKey  = tenantKeySegment() + districtCode + ":" + aqiRange;
         Cache  cache     = aiResponseCacheManager.getCache(AiCacheConfig.CACHE_NAME);
         boolean preExisted = (cache != null && cache.get(cacheKey) != null);
 
@@ -150,8 +173,9 @@ public class AiInferenceService {
      * {@link #analyzeGenericConditions}.
      *
      * <p>Cache key for non-AQI types:
-     * {@code districtCode + ':' + sensorType + ':' + valueRange} where
-     * {@code valueRange} is a coarse bucket of {@code maxValue}.</p>
+     * {@code ai-responses:{tenantId}:{districtCode}:{sensorType}:{valueRange}}
+     * where {@code tenantId} comes from {@link TenantContext#getCurrentTenant()}
+     * and {@code valueRange} is a coarse bucket of {@code maxValue}.</p>
      */
     public AiAnalysisResponse analyzeBatch(com.uip.backend.ai.flink.DistrictAggregationEvent event) {
         if (event == null || event.districtCode() == null) {
@@ -172,7 +196,8 @@ public class AiInferenceService {
     public AiAnalysisResponse analyzeGenericWithMetrics(
             com.uip.backend.ai.flink.DistrictAggregationEvent event) {
         String valueRange = bucket(event.maxValue());
-        String cacheKey   = event.districtCode() + ":" + event.sensorType() + ":" + valueRange;
+        // Keep in sync with @Cacheable key on analyzeGenericConditions (MVP5-S1-T06).
+        String cacheKey   = tenantKeySegment() + event.districtCode() + ":" + event.sensorType() + ":" + valueRange;
         Cache cache       = aiResponseCacheManager.getCache(AiCacheConfig.CACHE_NAME);
         boolean preExisted = (cache != null && cache.get(cacheKey) != null);
 
@@ -220,7 +245,7 @@ public class AiInferenceService {
      */
     @Cacheable(
             value         = AiCacheConfig.CACHE_NAME,
-            key           = "#districtCode + ':' + T(com.uip.backend.ai.cache.AqiRangeBucket).bucket(#aqi)",
+            key           = "T(com.uip.backend.ai.AiInferenceService).currentTenantOrGlobal() + #districtCode + ':' + T(com.uip.backend.ai.cache.AqiRangeBucket).bucket(#aqi)",
             cacheManager  = "aiResponseCacheManager",
             condition     = "#districtCode != null"
     )
@@ -252,7 +277,7 @@ public class AiInferenceService {
      */
     @Cacheable(
             value         = AiCacheConfig.CACHE_NAME,
-            key           = "#event.districtCode + ':' + #event.sensorType + ':' + (#event.maxValue < 10 ? 'lt10' : (#event.maxValue < 50 ? '10-50' : (#event.maxValue < 100 ? '50-100' : (#event.maxValue < 500 ? '100-500' : (#event.maxValue < 1000 ? '500-1000' : 'gte1000')))))",
+            key           = "T(com.uip.backend.ai.AiInferenceService).currentTenantOrGlobal() + #event.districtCode + ':' + #event.sensorType + ':' + (#event.maxValue < 10 ? 'lt10' : (#event.maxValue < 50 ? '10-50' : (#event.maxValue < 100 ? '50-100' : (#event.maxValue < 500 ? '100-500' : (#event.maxValue < 1000 ? '500-1000' : 'gte1000')))))",
             cacheManager  = "aiResponseCacheManager",
             condition     = "#event != null && #event.districtCode != null"
     )
@@ -282,6 +307,36 @@ public class AiInferenceService {
     }
 
     // ─── Private helpers ──────────────────────────────────────────────────────
+
+    /**
+     * Returns the tenant-prefixed cache-key segment, e.g. {@code "hcm:"}.
+     * Used by the manual pre-check in {@link #analyzeAqiWithMetrics} and
+     * {@link #analyzeGenericWithMetrics}. MUST match the SpEL
+     * {@code currentTenantOrGlobal() + ...} prefix used by the
+     * {@code @Cacheable} annotations (MVP5-S1-T06).
+     */
+    private String tenantKeySegment() {
+        return currentTenantOrGlobal() + ":";
+    }
+
+    /**
+     * Returns the current tenant id, or {@code "global"} when the
+     * {@link TenantContext} ThreadLocal is unbound. Public static so it can be
+     * referenced from {@code @Cacheable} SpEL:
+     * {@code T(com.uip.backend.ai.AiInferenceService).currentTenantOrGlobal()}.
+     *
+     * <p>Fallback semantics: AI responses are non-sensitive advisory text and
+     * idempotent, so a null-tenant fallback to a shared {@code "global"}
+     * namespace is acceptable and documented. The cost of a stale shared
+     * entry is bounded (5-min TTL) and the worst case is a duplicated Claude
+     * call, not a data leak. Contrast with alert dedup where a null tenant
+     * is fail-open (AlertEngine) — here the AI cache fail-closes to a single
+     * global namespace to avoid an unbounded number of per-thread keys.</p>
+     */
+    public static String currentTenantOrGlobal() {
+        String t = TenantContext.getCurrentTenant();
+        return (t == null || t.isBlank()) ? "global" : t;
+    }
 
     private AiAnalysisResponse callClaudeApi(String districtCode, double aqi) {
         String aqiRange = AqiRangeBucket.bucket(aqi);

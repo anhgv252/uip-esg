@@ -89,7 +89,14 @@ class ClickHouseEnergyRepositoryIT {
         props.setProperty("password", "");
         props.setProperty("compress", "0");
         DataSource ds = new ClickHouseDataSource(url, props);
-        repository = new ClickHouseEnergyRepository(new JdbcTemplate(ds));
+        // ADR-047: repository now requires a RowPolicyEngine. This IT predates
+        // RowPolicy and uses the 'default' user (no V032 policy applied), so we
+        // pass a real engine — the SET/RESET calls are harmless no-ops against
+        // an unenforced session setting. Newer tenant-isolation ITs live in
+        // RowPolicyIsolationIT (analytics_policy user + V032).
+        JdbcTemplate jdbcTemplate = new JdbcTemplate(ds);
+        repository = new ClickHouseEnergyRepository(
+            jdbcTemplate, new com.uip.analytics.security.RowPolicyEngine(jdbcTemplate));
     }
 
     private static void httpPost(String host, int port, String sql) throws Exception {
