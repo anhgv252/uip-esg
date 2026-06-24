@@ -1,0 +1,27 @@
+# Buf module config — UIP shared protobuf contracts (ADR-012 gRPC).
+# MVP5 Sprint M5-1 Task T08: protobuf lint + breaking-change CI gate.
+version: v2
+modules:
+  - path: .
+lint:
+  use:
+    - STANDARD
+  except:
+    # Package dir layout: proto lives at analytics/v1/ not uip/analytics/v1/.
+    # Legacy layout from MVP3; moving dirs is a wire-compatible no-op but churns
+    # generated java_package + imports — deferred. Package name itself is valid.
+    - PACKAGE_DIRECTORY_MATCH
+    # RPC request/response naming: existing messages are EnergyAggRequest/Response
+    # (not the buf-conventional GetEnergyAggregateRequest). Renaming is a breaking
+    # wire change (message name on the wire) + regenerates all callers — deferred.
+    - RPC_REQUEST_RESPONSE_UNIQUE
+    - RPC_REQUEST_STANDARD_NAME
+    - RPC_RESPONSE_STANDARD_NAME
+breaking:
+  use:
+    - WIRE_JSON
+  # WIRE_JSON = backward-compatible breaking rules: rejects field removal, field
+  # number reuse, type changes, enum value removal — the changes that break
+  # already-compiled consumers. Permits additions (new fields/enum values) which
+  # are forward-compatible. THIS is the core value of T08 (prevent breaking proto
+  # changes silently), independent of the relaxed naming lint rules above.

@@ -77,6 +77,15 @@ dependencies {
     testImplementation 'org.testcontainers:clickhouse:1.19.7'
     // Pact — provider verification (S11-PACT-01)
     testImplementation 'au.com.dius.pact.provider:junit5:4.6.14'
+
+    // gRPC IT — InProcess channel để test wire layer không bind port thật (T11)
+    // grpc-core chứa InternalConfiguratorRegistry cần cho InProcessServerBuilder.
+    testImplementation 'io.grpc:grpc-inprocess:1.63.0'
+    testImplementation 'io.grpc:grpc-core:1.63.0'
+    testImplementation 'io.grpc:grpc-api:1.63.0'
+    testImplementation 'io.grpc:grpc-protobuf:1.63.0'
+    testImplementation 'io.grpc:grpc-stub:1.63.0'
+
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 

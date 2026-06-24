@@ -1,0 +1,61 @@
+name: Proto Lint & Breaking Change
+
+# MVP5 Sprint M5-1 Task T08 — protobuf contract governance (ADR-012 gRPC).
+# Two gates on every change to shared/proto:
+#   1. buf lint  — style/structure rules (STANDARD, with documented exceptions
+#      for legacy naming — see shared/proto/buf.yaml)
+#   2. buf breaking — rejects wire-incompatible changes against main (field
+#      removal, number reuse, type change, enum value removal). Additions are
+#      forward-compatible and permitted.
+#
+# The breaking gate is the core value: a removed/retyped field silently breaks
+# already-compiled consumers (backend, analytics-service, future mobile). This
+# CI fails the PR before merge.
+
+on:
+  push:
+    branches: [main, develop, "release/*"]
+    paths:
+      - "shared/proto/**"
+      - ".github/workflows/proto-lint.yml"
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - "shared/proto/**"
+      - ".github/workflows/proto-lint.yml"
+
+jobs:
+  proto:
+    name: buf lint + breaking
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Full history + all refs so buf breaking can diff against the PR base.
+          fetch-depth: 0
+
+      - name: Setup buf
+        uses: bufbuild/buf-action@v1
+        with:
+          setup_only: true
+          buf_user: ${{ secrets.BUF_USER }}
+          buf_api_token: ${{ secrets.BUF_API_TOKEN }}
+
+      - name: buf lint
+        working-directory: shared/proto
+        run: buf lint
+
+      - name: buf breaking (against base branch)
+        working-directory: shared/proto
+        # PRs compare against the PR base; pushes to main compare against the
+        # previous commit (HEAD^). buf resolves ".git" input from the workspace
+        # root, so reference it relative to the repo root.
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            AGAINST=".git#branch=${{ github.base_ref }},subdir=shared/proto"
+          else
+            AGAINST=".git#ref=HEAD~1,subdir=shared/proto"
+          fi
+          buf breaking --against "$AGAINST"

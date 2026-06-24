@@ -56,10 +56,10 @@
 | M5-1-T05 | Flink tenant function: refactor 3 sensor-stream jobs to extend `TenantKeyedProcessFunction` (apply tenant context from header) | Backend-1 | 3 | ✅ | T04 | 3 refactored Flink jobs + IT test tenant routing |
 | M5-1-T06 | Cache key namespacing audit + fix (`tenant_id:` prefix all Redis/CH cache keys — `feedback_sprint3_readiness` rule) | Backend-2 | 2 | ✅ | T04 | Cache namespace patch + audit report |
 | M5-1-T07 | MVP4 carry-over GAP-039: CH Keeper dashboard (RF=3 health, single-region — DR out) | DevOps | 2 | 🟡 (dashboard tồn tại `ch-keeper-overview.json`, cần verify RF=3 wiring) | T02 | Grafana dashboard `ch-keeper-rf3` |
-| M5-1-T08 | MVP4 carry-over GAP-040: protobuf breaking-change CI gate (buf + proto-lint) | DevOps | 2 | ⬜ | — | CI job `.github/workflows/proto-lint.yml` |
+| M5-1-T08 | MVP4 carry-over GAP-040: protobuf breaking-change CI gate (buf + proto-lint) | DevOps | 2 | ✅ | — | CI job `.github/workflows/proto-lint.yml` |
 | M5-1-T09 | MVP4 carry-over GAP-046: ClickHouse TLS mTLS Kong→CH (single-region) | DevOps | 2 | ⬜ | T02 | mTLS cert + connection test PASS |
 | M5-1-T10 | MVP4 carry-over Pact broker CI (consumer/producer contract test automation) | QA | 2 | ✅ | — | Pact broker + 3 contract tests |
-| M5-1-T11 | MVP4 carry-over GAP-010 (start): gRPC integration test scaffolding (continue M5-4) | QA | 2 | ⬜ | — | gRPC IT test infra + 1 sample test |
+| M5-1-T11 | MVP4 carry-over GAP-010 (start): gRPC integration test scaffolding (continue M5-4) | QA | 2 | ✅ | — | gRPC IT test infra + 1 sample test |
 | M5-1-T12 | **Synthetic 50-tenant test scaffolding** (R16): test-data generator (50 tenant × 100 sensor each), tenant-load runner — overlay owner | QA (synthetic) | 3 | ⬜ | T04 | Synthetic test harness + sample 5-tenant run |
 | M5-1-T13 | Modular Monolith ArchTest suite: 25 bounded-context boundary test, fail-on cross-module leak | SA | 2 | ✅ | — | ArchTest module + green run |
 | M5-1-T14 | Spring config bug class hardening (memo `feedback_mvp4_config_bugs`): `@SpringBootTest` full-load for any new CacheManager/KafkaTemplate bean | Backend-2 | 2 | ⬜ | — | Test gate + 1 regression test |
@@ -83,7 +83,9 @@
 | **T10** ✅ DONE (2026-06-24) | Pact CI + contract PASS | CI `.github/workflows/pact-contract.yml`; `pact-verify.sh` fix (integrationTest task); provider test PASS (fix 401 + 2 stale dead contract xóa). `./gradlew check` 55/55, `pact-verify.sh` exit 0. Pact broker defer MVP6. Memo `docs/mvp5/reports/mvp5-sprint1-pact-provider-fix.md` |
 | **T05** ✅ DONE (2026-06-24) | Tenant delegate ported + 5 operators refactored | Phát hiện kiến trúc: Flink jobs thực tế nằm trong module Maven **`flink-jobs/`** (độc lập, không depend backend), KHÔNG phải `backend/` Gradle. Đã port `TenantContext`/`TenantKeyedProcessFunction{,Delegate}` sang `com.uip.flink.common.tenant` + thêm `TenantBindingProcessFunction`. Refactor 5 operators: `TenantIdValidator`, `DistrictAggregationJob` (insert TenantBinding trước keyBy, **G1 window-batching giữ nguyên**), `WelfordKeyedProcessFunction` (delegate `processElement`, **BR-010/Welford math giữ nguyên**), `StructuralPatternProcessFunction` + `FloodPatternProcessFunction` + `CorrelationPatternProcessFunction`. ArchTest Maven-side **5 rules thực enforce** (`flink-jobs/src/test/java/com/uip/flink/arch/FlinkTenantArchTest.java`). `mvn test` **147 tests, 0 failures, BUILD SUCCESS**. ADR-047 §1.4 đã update (không còn forward-guard-only → fix false-DONE). Bản sao backend giữ làm forward-guard, sync theo convention. |
 | **T06** ✅ DONE (2026-06-24) | 5 cache points tenant-namespaced + cross-tenant tests | Audit phát hiện 5 cache key thiếu tenant namespace → leak P1: `AiInferenceService` (AQI + generic cache key `districtCode:aqiRange` — district KHÔNG tenant-unique, leak AI analysis) + `AlertEngine` + 3 alert dedup consumers (`alert:dedup:sensorId:...` — sensorId trùng tenant → chặn alert P0/P1 cross-tenant). Fix: thêm `tenant:{tenantId}:` prefix, AI cache null-tenant fallback `"global"`, alert dedup null-tenant **fail-open** (vẫn alert). 6 production file + 6 test file, 5 cross-tenant isolation tests mới. `./gradlew test` 385/385 PASS. Audit report: `docs/mvp5/reports/mvp5-sprint1-cache-namespace-audit.md`. **Pre-existing gap (ngoài scope):** `AlertEventKafkaConsumer` không bind TenantContext khi save (dùng `AlertEvent.tenantId` default `"default"` + RLS filter) — follow-up nếu cần thêm tenant-aware op. |
-| T03, T08, T09, T11, T12, T14, T15, T16 | ⬜ NOT STARTED | Không có artifact |
+| **T08** ✅ DONE (2026-06-24) | buf lint + breaking CI | `shared/proto/buf.yaml` (STANDARD lint + WIRE_JSON breaking). `.github/workflows/proto-lint.yml`: lint + breaking-against-base trên PR/push `shared/proto/**`. Lint PASS, breaking PASS (verify docker `bufbuild/buf`). 4 legacy naming rule relaxed + documented (PACKAGE_DIRECTORY_MATCH, RPC_REQUEST/RESPONSE_*). **Core value = breaking gate** chặn field removal/retype/number-reuse silent. |
+| **T11** ✅ DONE (2026-06-24) | gRPC IT scaffolding | `EnergyAnalyticsGrpcServiceIT` — InProcessServerBuilder (no port bind, CI-safe), blocking stub qua gRPC wire thật (không mock StreamObserver như unit test cũ). 3 test PASS: round-trip proto, INTERNAL status on exception, empty building_ids. Deps grpc-inprocess/grpc-core 1.63.0. `@Tag("integration")` → integrationTest task. Gap `feedback_doc_vs_code_gap` đóng: trước chỉ unit mock không bắt proto serialization bug. |
+| T03, T09, T12, T14, T15, T16 | ⬜ NOT STARTED | Không có artifact |
 
 **Tiếp theo cần hoàn thiện (ưu tiên critical-path T04 → T05/T06 → G2):**
 1. ~~T01~~ ✅ DONE 2026-06-24 (ADR-048 Compose HA topology + ADR-050 K8s readiness-only authored, dựa trên artifact thật)
@@ -92,7 +94,7 @@
 4. ~~T13~~ ✅ DONE 2026-06-24 (ModuleBoundaryArchTest 22→73 @Test, 23/23 context covered, 3 deferred coupling cho SA follow-up: D1 UserIdentityPort/D2 TenantConfigPort/D3 EnvironmentBroadcastPort)
 5. **T03**: Vault secret injection (block G1 — "Vault injecting all secrets")
 6. **T02/T07/T09**: hoàn thiện HA compose (Kafka RF=3 + Kong/Keycloak HA) + keeper dashboard RF=3 + mTLS Kong→CH
-7. **T08/T11**: CI gates còn lại (proto-lint, gRPC IT scaffolding). ~~T10~~ ✅ DONE 2026-06-24 (Pact CI + contract PASS, fix bug RowPolicy custom setting lộ theo)
+7. ~~T08/T10/T11~~ ✅ ALL DONE 2026-06-24 (3 CI gates: proto-lint buf breaking, Pact consumer+provider, gRPC IT InProcess wire)
 8. **T12**: synthetic 50-tenant scaffolding (R16 xuyên suốt M5-1→M5-5)
 9. **T14/T15/T16**: config hardening + G1 prep + M5-2 planning
 
