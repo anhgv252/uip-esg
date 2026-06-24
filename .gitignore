@@ -93,3 +93,4 @@ infrastructure/docker-compose.override.yml
 # MVP5 — local build output & JMeter dumps (not source)
 target/
 *.jtl
+g5-rerun-ha-smoke.json
