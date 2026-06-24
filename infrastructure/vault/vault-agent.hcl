@@ -63,8 +63,11 @@ listener "tcp" {
 template {
   source      = "/vault/config/vault-agent-template.tpl"
   destination = "/vault/secrets/uip.env"
-  # Render atomically so services never read a half-written file.
-  perms       = 0600
+  # 0644 (world-readable) so non-root consumers (e.g. backend/analytics run as
+  # uid 999) can read the file via the entrypoint wrapper. The volume is only
+  # mounted into intended consumers; prod hardening (ADR-048 §6.4) would use
+  # per-service paths or a sidecar that writes to each service's private dir.
+  perms       = 0644
   # Re-render when secret rotates. KV v2 lease duration is 30d default.
   error_on_missing_key = true
 }

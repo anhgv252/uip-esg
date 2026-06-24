@@ -205,19 +205,40 @@ services:
   # remains the secure external entry. Follow-up: re-evaluate when upgrading
   # ClickHouse JDBC driver or CH version (tech-debt M5-3+).
   analytics-service:
+    # M5-2-D2: secrets (CLICKHOUSE_USER/PASSWORD/DB, JWT_SECRET) now come from
+    # Vault via the entrypoint wrapper (vault-env-wrapper.sh sources
+    # /run/secrets/uip.env at runtime). Only non-secret wiring stays here.
+    entrypoint: ["/run/secrets/vault-env-wrapper.sh"]
+    command: ["java", "-XX:+UseContainerSupport", "-XX:MaxRAMPercentage=75.0",
+              "-Djava.security.egd=file:/dev/./urandom", "-jar", "app.jar"]
     environment:
       CLICKHOUSE_URL: jdbc:clickhouse://clickhouse-01:8123,clickhouse-02:8123/${CLICKHOUSE_DB:-analytics}
+    volumes:
+      - vault-secrets:/run/secrets:ro
     depends_on:
+      vault-agent:
+        condition: service_healthy
       clickhouse-01:
         condition: service_healthy
       clickhouse-02:
         condition: service_healthy
 
   # ─── Override: backend → HA cluster (8123 internal) ───────────────────────
+  # M5-2-D2: secrets (SPRING_DATASOURCE_PASSWORD, SPRING_DATA_REDIS_PASSWORD,
+  # JWT_SECRET, CLAUDE_API_KEY, OPERATOR/ADMIN/CITIZEN_PASSWORD) come from
+  # Vault via the entrypoint wrapper. Only non-secret wiring stays here.
   backend:
+    entrypoint: ["/run/secrets/vault-env-wrapper.sh"]
+    command: ["java", "-XX:+UseContainerSupport", "-XX:MaxRAMPercentage=75.0",
+              "-Djava.security.egd=file:/dev/./urandom", "-jar", "app.jar"]
     environment:
       CLICKHOUSE_URL: jdbc:clickhouse://clickhouse-01:8123,clickhouse-02:8123/${CLICKHOUSE_DB:-analytics}
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092,kafka-2:9092,kafka-3:9092
+    volumes:
+      - vault-secrets:/run/secrets:ro
+    depends_on:
+      vault-agent:
+        condition: service_healthy
 
   # ─── Override: Flink submitters → HA cluster ─────────────────────────────
   flink-esg-job-submitter:
@@ -425,9 +446,15 @@ services:
       CLAUDE_API_KEY: ${CLAUDE_API_KEY:-}
     volumes:
       - ./vault/vault-init.sh:/vault/init/vault-init.sh:ro
-      # Dedicated volume for AppRole creds (role_id + secret_id). Kept SEPARATE
-      # from vault-secrets so consumer services mounting vault-secrets at
-      # /run/secrets never see auth creds (least privilege).
+      - ./vault/vault-env-wrapper.sh:/vault/init/vault-env-wrapper.sh:ro
+      # Mount the shared secrets volume so vault-init can:
+      #   (a) write AppRole role_id/secret_id (consumers don't read these), AND
+      #   (b) copy vault-env-wrapper.sh to the volume root so consumers can
+      #       exec it at /run/secrets/vault-env-wrapper.sh (M5-2-D2).
+      - vault-secrets:/vault/secrets
+      # Dedicated volume for AppRole creds — written here by vault-init, read
+      # by vault-agent. Kept SEPARATE so consumer services mounting
+      # vault-secrets at /run/secrets never see auth creds (least privilege).
       - vault-approle:/vault/approle
     depends_on:
       vault:
@@ -462,10 +489,13 @@ services:
       vault-init:
         condition: service_completed_successfully
     healthcheck:
-      # Agent is healthy when the rendered env-file exists and was written
-      # within the last renewal window (token ttl 1h; re-render on rotate).
-      # 6-min freshness catches a stalled agent quickly.
-      test: ["CMD-SHELL", "test -f /vault/secrets/uip.env && find /vault/secrets/uip.env -mmin -6 | grep -q ."]
+      # Agent is healthy when the env-file exists, is non-empty, AND the agent
+      # process is running. We do NOT check freshness (-mmin) because the agent
+      # only re-renders on secret change — a steady-state agent legitimately
+      # hasn't written in hours. The agent process liveness is covered by
+      # docker restart policy; the file-presence check catches a wedged runner
+      # that failed its initial render.
+      test: ["CMD-SHELL", "test -s /vault/secrets/uip.env && grep -q '^POSTGRES_PASSWORD=' /vault/secrets/uip.env"]
       interval: 15s
       timeout: 5s
       retries: 10
@@ -479,6 +509,51 @@ services:
           memory: 64m
     networks:
       - uip-network
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # Vault consumer wiring (M5-2-D2)
+  # ═══════════════════════════════════════════════════════════════════════════
+  # Wired services source their secrets from /run/secrets/uip.env (rendered by
+  # vault-agent from Vault KV v2). The file is mounted read-only from the
+  # shared vault-secrets named volume.
+  #
+  # IMPORTANT: docker-compose `env_file:` is resolved by the compose CLIENT on
+  # the HOST at config time — it CANNOT read a file inside a mounted named
+  # volume. So instead of env_file, wired services use an entrypoint wrapper
+  # (vault/vault-env-wrapper.sh) that sources /run/secrets/uip.env at container
+  # runtime, then execs the original Java process. The wrapper is bind-mounted
+  # read-only alongside uip.env on the same volume.
+  #
+  # Per docker-compose semantics, `environment:` entries take precedence over
+  # environment vars set by the wrapper. So for each wired service we DROP the
+  # secret-bearing keys from its `environment:` block and let the wrapper
+  # supply them — this is the actual cutover from plaintext .env to Vault.
+  #
+  # To add a new consumer:
+  #   1. Add the secret keys it needs to vault/vault-agent-template.tpl (if not
+  #      already present) + the corresponding `vault kv put` in vault-init.sh.
+  #   2. In the service's override block in this file:
+  #        entrypoint: ["/run/secrets/vault-env-wrapper.sh"]
+  #        command: ["<original-entrypoint-and-args>"]
+  #        volumes:
+  #          - vault-secrets:/run/secrets:ro
+  #      and REMOVE the secret keys from the service's environment: block so
+  #      the wrapper-sourced vars are authoritative.
+  #   3. `docker compose ... up -d <service>` then verify health + a real call.
+  # ═══════════════════════════════════════════════════════════════════════════
+
+  # ─── analytics-service + backend: secrets from Vault via entrypoint wrapper ─
+  # Both Spring Boot services share the same Java entrypoint shape; their
+  # override blocks (near the top of this overlay) set:
+  #   entrypoint: ["/run/secrets/vault-env-wrapper.sh"]
+  #   command: ["java", "-XX:+UseContainerSupport", ...]
+  # and mount vault-secrets at /run/secrets (ro). The wrapper script itself
+  # lives at the volume root (vault-secrets/vault-env-wrapper.sh) so consumers
+  # don't need a separate bind mount — vault-init copies it there.
+  # Secret keys dropped from their environment: blocks:
+  #   analytics-service: CLICKHOUSE_USER, CLICKHOUSE_PASSWORD, CLICKHOUSE_DB, JWT_SECRET
+  #   backend: SPRING_DATASOURCE_USERNAME/PASSWORD, SPRING_DATA_REDIS_PASSWORD,
+  #            JWT_SECRET, CLAUDE_API_KEY, ADMIN/OPERATOR/CITIZEN_PASSWORD
 
   # ═══════════════════════════════════════════════════════════════════════════
   # PostgreSQL Streaming Replication — Primary + Hot Standby (S8-OPS04)

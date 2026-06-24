@@ -48,3 +48,16 @@ EMQX_DASHBOARD_PASSWORD={{ with secret "secret/data/uip/emqx" }}{{ .Data.data.da
 
 # AI provider
 CLAUDE_API_KEY={{ with secret "secret/data/uip/ai/claude" }}{{ .Data.data.api_key }}{{ end }}
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Spring Boot canonical property names (M5-2-D2)
+# Docker-compose `environment:` would otherwise shadow `env_file:` — and
+# Spring reads SPRING_DATASOURCE_PASSWORD, not POSTGRES_PASSWORD. To make
+# env_file the single source of truth for wired services, we emit BOTH the
+# raw secret names above AND the Spring-form aliases below. The consumer
+# override blocks in docker-compose.ha.yml DROP the corresponding
+# `${VAR}` references from `environment:` so env_file wins.
+# ─────────────────────────────────────────────────────────────────────────────
+SPRING_DATASOURCE_USERNAME={{ with secret "secret/data/uip/postgres" }}{{ .Data.data.username }}{{ end }}
+SPRING_DATASOURCE_PASSWORD={{ with secret "secret/data/uip/postgres" }}{{ .Data.data.password }}{{ end }}
+SPRING_DATA_REDIS_PASSWORD={{ with secret "secret/data/uip/redis" }}{{ .Data.data.password }}{{ end }}

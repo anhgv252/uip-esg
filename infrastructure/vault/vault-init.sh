@@ -150,5 +150,23 @@ printf '%s' "${SECRET_ID}"  > "${APPROLE_DIR}/secret_id"
 chmod 0600 "${APPROLE_DIR}/role_id" "${APPROLE_DIR}/secret_id"
 echo "[vault-init] AppRole configured — creds at ${APPROLE_DIR}/ (role_id + secret_id)"
 
+# ─────────────────────────────────────────────────────────────────────────────
+# 4. Copy the env-wrapper script onto the vault-secrets volume so consumers
+#    can exec it from /run/secrets/vault-env-wrapper.sh. The volume is mounted
+#    into vault-init at /vault/secrets (same path vault-agent uses), so the
+#    wrapper lands at the volume root alongside the later-rendered uip.env.
+#    (M5-2-D2: docker-compose env_file cannot read inside a named volume, so
+#     consumers use this entrypoint wrapper to source uip.env at runtime.)
+# ─────────────────────────────────────────────────────────────────────────────
+SECRETS_DIR="/vault/secrets"
+mkdir -p "${SECRETS_DIR}"
+if [ -f "/vault/init/vault-env-wrapper.sh" ]; then
+  cp /vault/init/vault-env-wrapper.sh "${SECRETS_DIR}/vault-env-wrapper.sh"
+  chmod 0755 "${SECRETS_DIR}/vault-env-wrapper.sh"
+  echo "[vault-init] env-wrapper copied to ${SECRETS_DIR}/vault-env-wrapper.sh"
+else
+  echo "[vault-init] WARNING: vault-env-wrapper.sh not found — consumers will not boot." >&2
+fi
+
 echo "[vault-init] DONE — all secrets pre-loaded into KV v2 + AppRole for agent."
 echo "[vault-init] Verify: docker compose -f docker-compose.yml -f docker-compose.ha.yml exec vault vault kv list secret/uip/"
