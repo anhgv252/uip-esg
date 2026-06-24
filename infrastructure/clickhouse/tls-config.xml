@@ -1,5 +1,5 @@
 <!--
-  ClickHouse mTLS overlay (MVP5 Sprint 1 — T09 / GAP-046)
+  ClickHouse mTLS overlay (MVP5 Sprint 1 - T09 / GAP-046)
   ============================================================================
   Adds an HTTPS listener on port 8443 with mutual-TLS verification:
     - server presents server.crt (signed by internal ca.crt)
@@ -20,9 +20,9 @@
   Single-region only (ADR-048). No DR cert replication.
 -->
 <clickhouse>
-    <!-- HTTPS listener — mTLS (verify client cert against ca.crt) -->
+    <!-- HTTPS listener - mTLS (verify client cert against ca.crt) -->
     <https_port>8443</https_port>
-    <!-- Secure native protocol — mTLS (used by clickhouse-client --secure) -->
+    <!-- Secure native protocol - mTLS (used by: clickhouse-client with secure flag) -->
     <tcp_port_secure>9440</tcp_port_secure>
 
     <openSSL>
@@ -32,7 +32,7 @@
             <privateKeyFile>/etc/clickhouse-server/tls/server.key</privateKeyFile>
 
             <!-- Verify client cert => mTLS. invalidity_policy defaults to
-                 "reject" — connections without a valid client cert are dropped. -->
+                 "reject" - connections without a valid client cert are dropped. -->
             <caConfig>/etc/clickhouse-server/tls/ca.crt</caConfig>
             <verificationMode>strict</verificationMode>
             <loadDefaultCAFile>false</loadDefaultCAFile>
@@ -43,16 +43,15 @@
     </openSSL>
 
     <!--
-      Client-cert CN => ClickHouse user mapping.
-      Any valid client cert (signed by ca.crt) authenticates as the JDBC
-      incoming user. This user is created by docker-entrypoint via
-      CLICKHOUSE_USER/CLICKHOUSE_PASSWORD env. mTLS is the transport-layer
-      authentication; RowPolicy tenant isolation (V32) is orthogonal and
-      continues to enforce tenant scoping at the SQL layer.
+      mTLS transport auth note (M5-1-T09):
+      We intentionally do NOT enable <client_certificate_auth> CN->user mapping.
+      CH 23.8 with client_certificate_auth forces cert-based user auth and rejects
+      the JDBC driver's username/password credentials (AUTHENTICATION_FAILED 516),
+      even though mTLS transport verification (openSSL caConfig strict) already
+      guarantees only ca-signed clients can connect. Keeping user auth on the
+      standard CLICKHOUSE_USER/CLICKHOUSE_PASSWORD path (sent over the mTLS
+      channel) is simpler and avoids the cert-auth / password-auth conflict.
+      mTLS = transport-layer trust (no ca-signed cert = connection dropped before
+      auth); RowPolicy tenant isolation (V32) enforces scoping at SQL layer.
     -->
-    <client_certificate_auth>
-        <cn_to_user>
-            <uip-jdbc-client>default</uip-jdbc-client>
-        </cn_to_user>
-    </client_certificate_auth>
 </clickhouse>

@@ -57,7 +57,7 @@
 | M5-1-T06 | Cache key namespacing audit + fix (`tenant_id:` prefix all Redis/CH cache keys — `feedback_sprint3_readiness` rule) | Backend-2 | 2 | ✅ | T04 | Cache namespace patch + audit report |
 | M5-1-T07 | MVP4 carry-over GAP-039: CH Keeper dashboard (RF=3 health, single-region — DR out) | DevOps | 2 | ✅ | T02 | Grafana dashboard `ch-keeper-rf3` (fix prometheus scrape 1→3 keeper node) |
 | M5-1-T08 | MVP4 carry-over GAP-040: protobuf breaking-change CI gate (buf + proto-lint) | DevOps | 2 | ✅ | — | CI job `.github/workflows/proto-lint.yml` |
-| M5-1-T09 | MVP4 carry-over GAP-046: ClickHouse TLS mTLS Kong→CH (single-region) | DevOps | 2 | ✅ | T02 | mTLS cert + connection test PASS (analytics+backend wired; flink/forecast follow-up ~2SP) |
+| M5-1-T09 | MVP4 carry-over GAP-046: ClickHouse TLS mTLS Kong→CH (single-region) | DevOps | 2 | 🟡 | T02 | mTLS cert + connection test PASS — **transport verified** (8443 handshake + no-cert reject); **verify runtime phát hiện 2 bug**: (1) tls-config.xml `--` trong comment = XML parse crash (đã fix), (2) CH 23.8 auth qua 8443 fail 516 (defer M5-2 debt). Analytics rollback 8123 để stack ổn. |
 | M5-1-T10 | MVP4 carry-over Pact broker CI (consumer/producer contract test automation) | QA | 2 | ✅ | — | Pact broker + 3 contract tests |
 | M5-1-T11 | MVP4 carry-over GAP-010 (start): gRPC integration test scaffolding (continue M5-4) | QA | 2 | ✅ | — | gRPC IT test infra + 1 sample test |
 | M5-1-T12 | **Synthetic 50-tenant test scaffolding** (R16): test-data generator (50 tenant × 100 sensor each), tenant-load runner — overlay owner | QA (synthetic) | 3 | ✅ | T04 | Synthetic test harness + sample 5-tenant run |

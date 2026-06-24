@@ -31,6 +31,16 @@
 - citizen1 có scope `environment:read, esg:read, alert:read, traffic:read` → đọc `/environment`, `/alerts` là **hợp lệ theo scope**, không phải leak role. Role guard thật ở UI route (`/dashboard` operator-only) + action write.
 - **Verdict:** M5-1 RowPolicy V32 enforce theo `tenant_id` claim — code + ArchTest + IT đã cover (V2 RowPolicyIsolationIT). **Manual verify leak thật (2 tenant) defer M5-2** (cần seed multi-tenant → tenant fuzz T05 M5-2 + synthetic full M5-G7).
 
+**TC-UI-06 mTLS path (T09) — KẾT QUẢ THỰC TẾ + BUG ĐÃ FIX:**
+- **BUG #1 (đã fix):** `infrastructure/clickhouse/tls-config.xml` line 25 chứa `clickhouse-client --secure` → `--` trong XML comment = illegal (SAXParseException line 25 col 68) → CH node crash loop khi mount overlay. DevOps agent T09 chỉ verify `compose config --quiet` (YAML), không boot CH thật → false-green. Fix: normalize `--` và em-dash trong comment. Verify runtime mới phát hiện.
+- **mTLS transport LAYER = ✅ PASS (verified thật):** port 8443 listen, no-client-cert → HTTP 000 (reject), WITH client cert → `SELECT 1` trả `1` HTTP 200. Cert handshake hoạt động.
+- **mTLS auth wiring = ❌ DEFER (tech-debt):** JDBC consumer (analytics) qua 8443 fail `AUTHENTICATION_FAILED 516` — CH 23.8 với `default` user + empty password reject khi qua HTTPS endpoint (dù cred match 8123). `client_certificate_auth` CN→user mapping cũng conflict. Root cause sâu (CH 23.8 auth qua mTLS endpoint). **Đã rollback analytics về 8123 để stack ổn định** (0 unhealthy, API 200). Follow-up: tạo CH user riêng không-password cho mTLS (cert-only auth) hoặc debug CH 23.8 HTTPS auth path. Cùng nhóm debt với Flink/forecast mTLS (~2-4 SP M5-2).
+- **Bài học:** T09 agent verify config-only (`compose config --quiet`) là **không đủ** — phải boot service thật. Thêm rule: every infra config change verify bằng `docker compose up` + healthcheck + actual connection, không chỉ YAML parse. (memo `feedback_doc_vs_code_gap` pattern lại lặp).
+
+**TC-UI-07 HA tolerance — ✅ PASS (verified thật):** kill 1/3 keeper → 2/3 quorum survive, API `/environment/sensors` vẫn HTTP 200, keeper rejoin sau restart.
+
+**TC-UI-01/02/04/05 RBAC — ✅ PASS:** ADMIN 16 scopes / OPERATOR 11 / CITIZEN 4, phân tầng đúng, endpoint access đúng role.
+
 ---
 
 ## §2. Manual UI Test Plan — Operator + Citizen portal
