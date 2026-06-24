@@ -18,6 +18,20 @@ import java.sql.Statement;
  * clause by mistake, the RowPolicy ({@code USING tenant_id = currentSetting('tenant_id')})
  * still restricts the result set to the current tenant.</p>
  *
+ * <p><b>Config prerequisite (regression fix M5-1-T10).</b> ClickHouse 23.8 / 24.3
+ * REQUIRE user-defined session settings to start with the {@code SQL_} prefix
+ * (the old "arbitrary string settings allowed by default" behaviour was removed
+ * in CH 22.3+). The {@code SQL_tenant_id} setting is runtime-only: it
+ * materializes the first time this engine issues {@code SET SQL_tenant_id = ...}
+ * on a connection. DO NOT declare it in {@code <profiles>/<custom_settings>} or
+ * as a {@code <SQL_tenant_id>} element in {@code config.d} — both crash CH 23.8
+ * startup with {@code Couldn't restore Field from dump}. The V032 RowPolicy
+ * {@code USING} clause reads the setting via {@code getSetting('SQL_tenant_id')}
+ * — note {@code getSetting}, NOT the removed {@code currentSetting}. If a
+ * connection never ran SET, {@code getSetting('SQL_tenant_id')} throws
+ * {@code Code 115 UNKNOWN_SETTING} at policy-evaluation time → the SELECT
+ * errors → fail-CLOSED (no rows leak).</p>
+ *
  * <p><b>Connection pool isolation (Spike S1 — ADR-047 §3).</b> ClickHouse session
  * settings are bound to a physical connection. Because the shared connection pool
  * reuses connections across requests, a {@code SET tenant_id} that leaks into a
@@ -47,8 +61,12 @@ import java.sql.Statement;
 @RequiredArgsConstructor
 public class RowPolicyEngine {
 
-    /** Session setting name consumed by the RowPolicy USING clause (see V032 migration). */
-    static final String SETTING_NAME = "tenant_id";
+    /**
+     * Session setting name consumed by the V032 RowPolicy USING clause
+     * ({@code tenant_id = getSetting('SQL_tenant_id')}). The {@code SQL_} prefix
+     * is mandatory for user-defined settings in ClickHouse 23.8 / 24.3.
+     */
+    static final String SETTING_NAME = "SQL_tenant_id";
 
     private final JdbcTemplate jdbcTemplate;
 

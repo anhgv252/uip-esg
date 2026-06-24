@@ -20,7 +20,18 @@
 CREATE USER IF NOT EXISTS analytics_policy
     IDENTIFIED WITH sha256_password BY 'changeme';
 
--- allow custom session setting 'tenant_id' to be SET by non-default users.
--- ClickHouse 23.8+: arbitrary string settings are allowed by default; this
--- GRANT is belt-and-suspenders for environments with strict access management.
+-- PREREQUISITE (regression fix M5-1-T10): the per-connection session setting
+-- 'SQL_tenant_id' is SET by RowPolicyEngine before every query and consumed by
+-- the V032 RowPolicy via `getSetting('SQL_tenant_id')`.
+--   * The `SQL_` prefix is mandatory for user-defined settings in CH 23.8 / 24.3
+--     (the old "arbitrary string settings allowed by default" was removed).
+--   * The setting is runtime-only — do NOT declare it in <profiles>/<custom_settings>
+--     or in <profiles>/<default>/<SQL_tenant_id>... ; doing so crashes CH 23.8
+--     startup with `Couldn't restore Field from dump`. The setting materializes
+--     the first time RowPolicyEngine issues SET SQL_tenant_id = '...' on a
+--     connection.
+--   * If a connection never runs SET, getSetting('SQL_tenant_id') throws
+--     Code 115 UNKNOWN_SETTING → fail-CLOSED (no rows leak).
+-- The earlier comment claiming "arbitrary string settings are allowed by
+-- default" was wrong for CH 23.8.
 GRANT SHOW SETTINGS ON * TO analytics_policy;

@@ -30,6 +30,9 @@ class ClickHouseEnergyRepositoryIT {
     @SuppressWarnings("resource")
     static final GenericContainer<?> clickhouse = new GenericContainer<>("clickhouse/clickhouse-server:23.8")
             .withExposedPorts(8123)
+            // NOTE (M5-1-T10): no custom config XML is mounted — CH 23.8 requires
+            // the SQL_ prefix on user-defined settings (handled in RowPolicyEngine),
+            // and declaring them in <profiles> crashes the server. See V032 header.
             .waitingFor(Wait.forHttp("/ping").forPort(8123).withStartupTimeout(Duration.ofSeconds(60)));
 
     static ClickHouseEnergyRepository repository;
@@ -88,12 +91,18 @@ class ClickHouseEnergyRepositoryIT {
         props.setProperty("user", "default");
         props.setProperty("password", "");
         props.setProperty("compress", "0");
+        // M5-1-T10: pin a session id so the SET SQL_tenant_id issued by
+        // RowPolicyEngine persists to the subsequent SELECT. The HTTP interface
+        // is otherwise stateless — SET would be lost between statements.
+        props.setProperty("session_id", "energy-repo-it-" + System.currentTimeMillis());
         DataSource ds = new ClickHouseDataSource(url, props);
-        // ADR-047: repository now requires a RowPolicyEngine. This IT predates
-        // RowPolicy and uses the 'default' user (no V032 policy applied), so we
-        // pass a real engine — the SET/RESET calls are harmless no-ops against
-        // an unenforced session setting. Newer tenant-isolation ITs live in
-        // RowPolicyIsolationIT (analytics_policy user + V032).
+        // ADR-047: repository now requires a RowPolicyEngine. This IT connects
+        // as the privileged 'default' user (no V032 policy applied), so the
+        // engine's SET SQL_tenant_id / RESET calls enforce no row filter — but
+        // they MUST still execute without error (regression M5-1-T10: previously
+        // SET tenant_id was rejected with Code 115). The actual cross-tenant
+        // enforcement is covered by RowPolicyIsolationIT (analytics_policy user
+        // + V032 policy applied).
         JdbcTemplate jdbcTemplate = new JdbcTemplate(ds);
         repository = new ClickHouseEnergyRepository(
             jdbcTemplate, new com.uip.analytics.security.RowPolicyEngine(jdbcTemplate));

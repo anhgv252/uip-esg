@@ -72,8 +72,9 @@ class RowPolicyEngineTest {
         String result = engine.executeWithTenant("tenant_A", c -> "queried-on-" + c.hashCode());
 
         // SET happens before the callback; RESET happens after (in finally).
-        verify(stmt, times(1)).execute(contains("SET tenant_id = 'tenant_A'"));
-        verify(stmt, times(1)).execute(contains("SET tenant_id = ''"));
+        // The setting name is SQL_tenant_id (CH 23.8 requires SQL_ prefix).
+        verify(stmt, times(1)).execute(contains("SET SQL_tenant_id = 'tenant_A'"));
+        verify(stmt, times(1)).execute(contains("SET SQL_tenant_id = ''"));
         // Result returned unchanged from the callback.
         assert result != null;
     }
@@ -96,6 +97,6 @@ class RowPolicyEngineTest {
 
         // Critical: even on failure the setting must be reset so the pooled
         // connection does not leak tenant_A to the next borrower.
-        verify(stmt, times(1)).execute(contains("SET tenant_id = ''"));
+        verify(stmt, times(1)).execute(contains("SET SQL_tenant_id = ''"));
     }
 }

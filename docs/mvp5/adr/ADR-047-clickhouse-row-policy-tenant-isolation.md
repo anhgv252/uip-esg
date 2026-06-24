@@ -276,4 +276,82 @@ Switch sang **View-per-Tenant fallback** (+2 SP, cùng sprint M5-1):
 
 ---
 
+## 9. CORRECTION — M5-1-T10 regression fix (2026-06-24)
+
+The original §2.1 and §8.1 of this ADR assumed three CH features that **do not
+hold on CH 23.8.16 / 24.3.18** (the versions used in Testcontainers + production
+`docker-compose.yml`). They were discovered by running the real
+`RowPolicyIsolationIT` for the first time — T04 was previously a **false-DONE**
+exactly as `feedback_doc_vs_code_gap` warns: marked DONE on the basis of
+`RowPolicyEngineTest`, a mocked-JDBC unit test that never issues a real `SET`
+against ClickHouse. The four corrections below were all verified empirically
+against `clickhouse/clickhouse-server:23.8` via Testcontainers.
+
+### 9.1 `currentSetting` was removed — use `getSetting`
+
+CH 22.3+ removed `currentSetting(...)`. The V032 RowPolicy `USING` clause must
+read the tenant setting via `getSetting('SQL_tenant_id')`. Calling
+`currentSetting` throws `Code 46 UNKNOWN_FUNCTION`.
+
+### 9.2 User-defined settings REQUIRE the `SQL_` prefix
+
+CH 22.3+ removed the old "arbitrary string settings allowed by default"
+behaviour. A `SET tenant_id = '...'` is rejected with
+`Code 115 UNKNOWN_SETTING ("neither a builtin setting nor started with the
+prefix 'SQL_'")`. The setting name MUST be `SQL_tenant_id` (or any name with
+the `SQL_` prefix).
+
+### 9.3 The setting is RUNTIME-ONLY — do NOT declare it in `<profiles>`
+
+The earlier plan to declare the setting in a `<profiles>/<custom_settings>`
+block (or as a `<SQL_tenant_id>` profile element) **crashes CH 23.8 startup**
+with `Code 536 CANNOT_RESTORE_FROM_FIELD_DUMP`. The `SQL_*` settings are
+runtime-only and materialize the first time a session issues
+`SET SQL_tenant_id = '...'`. If a session never runs SET,
+`getSetting('SQL_tenant_id')` throws `UNKNOWN_SETTING` at policy-evaluation
+time → the SELECT errors → **fail-CLOSED** (no rows leak). No custom config
+XML is mounted in `docker-compose.yml`.
+
+### 9.4 RESTRICTIVE returns zero rows on 23.8 — use PERMISSIVE
+
+The documented behaviour ("a RESTRICTIVE policy with no PERMISSIVE sibling is
+treated as if an always-true PERMISSIVE existed") does NOT hold on CH 23.8.
+With a single `AS RESTRICTIVE` policy every SELECT returns zero rows — even
+when the `USING` clause matches and the session setting is correctly set.
+Verified on `clickhouse-server:23.8.16` (2024 build). The V032 policies are
+therefore `AS PERMISSIVE`. A PERMISSIVE policy whose `USING` clause is a strict
+tenant equality is still a real isolation barrier: a row whose `tenant_id`
+differs from the session setting is filtered out. Combined with Layer 1
+(`WHERE tenant_id = ?`) this remains defense-in-depth. (Restoring RESTRICTIVE
+is a candidate for a future CH upgrade — track in §8.)
+
+### 9.5 HTTP-mode JDBC needs a `session_id` to persist SET across statements
+
+`clickhouse-jdbc:0.6.0` speaks HTTP. The CH HTTP interface is **stateless**:
+each request runs in a fresh session, so a `SET SQL_tenant_id = '...'` issued
+by `RowPolicyEngine` is lost before the subsequent `SELECT` runs. The driver
+pins statements to a server-side session only when a `session_id` is supplied
+as a connection property. `ClickHouseConfig` now sets
+`session_id = uip-analytics-${random.uuid}` (one id per application instance).
+Cross-request tenant bleed is still prevented by `RowPolicyEngine`'s
+try/finally RESET (every borrower restores `SQL_tenant_id` to empty before the
+connection returns to the pool). CH also expires idle sessions after
+`session_timeout` (default 60 s).
+
+### 9.6 Verification
+
+| Test | Result | What it exercises |
+|---|---|---|
+| `ClickHouseEnergyRepositoryIT` | **8/8 PASS** | `SET SQL_tenant_id` no longer rejected; repository queries return correct data |
+| `RowPolicyIsolationIT` (un-`@Disabled`) | **6/6 PASS** | Real PERMISSIVE RowPolicy enforces tenant_A vs tenant_B isolation; no-SET → fail-closed; RowPolicyEngine SET/RESET does not bleed tenant across pooled requests (Spike S1 §3.3) |
+| `./gradlew test` (default) | **BUILD SUCCESSFUL** | All non-integration tests green |
+
+The unrelated `AnalyticsServiceProviderPactTest` 401 failures observed in
+`./gradlew check` are pre-existing REST security-config issues (Pact requests
+hit the protected `/api/v1/analytics/**` endpoints without a valid bearer
+token) and are NOT caused by the row-policy regression — they predate T10 and
+belong to a separate Pact/JWT wiring task.
+
+---
+
 **End ADR-047**
