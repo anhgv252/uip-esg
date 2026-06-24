@@ -106,10 +106,16 @@ services:
     volumes:
       - clickhouse-01-data:/var/lib/clickhouse
       - ./clickhouse/node-config.xml:/etc/clickhouse-server/config.d/cluster-config.xml:ro
+      # M5-1-T09 (GAP-046): mTLS overlay — adds https_port 8443 + tcp_port_secure
+      # 9440 with openSSL caConfig = client cert verification.
+      - ./clickhouse/tls-config.xml:/etc/clickhouse-server/config.d/tls-config.xml:ro
+      - ./clickhouse/tls:/etc/clickhouse-server/tls:ro
       - ./clickhouse/init-replicated.sql:/docker-entrypoint-initdb.d/init.sql:ro
     ports:
-      - "8125:8123"   # HTTP API (HA node-01, offset from single-node :8123)
+      - "8125:8123"   # HTTP API plain (HA node-01, offset from single-node :8123)
+      - "8126:8443"   # HTTPS API mTLS (M5-1-T09) — host offset
       - "9002:9000"   # Native protocol (offset)
+      - "9442:9440"   # Native protocol mTLS (M5-1-T09) — host offset
     ulimits:
       nofile:
         soft: 262144
@@ -151,10 +157,15 @@ services:
     volumes:
       - clickhouse-02-data:/var/lib/clickhouse
       - ./clickhouse/node-config.xml:/etc/clickhouse-server/config.d/cluster-config.xml:ro
+      # M5-1-T09 (GAP-046): mTLS overlay — same as clickhouse-01.
+      - ./clickhouse/tls-config.xml:/etc/clickhouse-server/config.d/tls-config.xml:ro
+      - ./clickhouse/tls:/etc/clickhouse-server/tls:ro
       - ./clickhouse/init-replicated.sql:/docker-entrypoint-initdb.d/init.sql:ro
     ports:
-      - "8124:8123"   # HTTP API (offset port)
+      - "8124:8123"   # HTTP API plain (offset port)
+      - "8127:8443"   # HTTPS API mTLS (M5-1-T09) — host offset
       - "9003:9000"   # Native protocol (offset port)
+      - "9443:9440"   # Native protocol mTLS (M5-1-T09) — host offset
     ulimits:
       nofile:
         soft: 262144
@@ -184,21 +195,33 @@ services:
     networks:
       - uip-network
 
-  # ─── Override: analytics-service → HA cluster ─────────────────────────────
+  # ─── Override: analytics-service → HA cluster (mTLS, M5-1-T09 GAP-046) ────
+  # Switched from plain 8123 to HTTPS 8443 with mutual-TLS:
+  #   - ssl=true                 : TLS on
+  #   - sslrootcert=.../ca.crt   : verify server cert against internal CA
+  #   - sslcert=.../client.crt   : present client cert (mTLS)
+  #   - sslkey=.../client.key    : client private key
+  # ClickHouse validates client.crt against caConfig in tls-config.xml.
+  # Single-region only (ADR-048). RowPolicy tenant isolation (V32) is
+  # orthogonal — mTLS is purely transport-layer authentication.
   analytics-service:
     environment:
-      CLICKHOUSE_URL: jdbc:clickhouse://clickhouse-01:8123,clickhouse-02:8123/${CLICKHOUSE_DB:-analytics}
+      CLICKHOUSE_URL: jdbc:clickhouse://clickhouse-01:8443,clickhouse-02:8443/${CLICKHOUSE_DB:-analytics}?ssl=true&sslrootcert=/etc/clickhouse-tls/ca.crt&sslcert=/etc/clickhouse-tls/client.crt&sslkey=/etc/clickhouse-tls/client.key
+    volumes:
+      - ./clickhouse/tls:/etc/clickhouse-tls:ro
     depends_on:
       clickhouse-01:
         condition: service_healthy
       clickhouse-02:
         condition: service_healthy
 
-  # ─── Override: backend → HA cluster (for ClickHouse queries if used) ──────
+  # ─── Override: backend → HA cluster (mTLS, M5-1-T09 GAP-046) ──────────────
   backend:
     environment:
-      CLICKHOUSE_URL: jdbc:clickhouse://clickhouse-01:8123,clickhouse-02:8123/${CLICKHOUSE_DB:-analytics}
+      CLICKHOUSE_URL: jdbc:clickhouse://clickhouse-01:8443,clickhouse-02:8443/${CLICKHOUSE_DB:-analytics}?ssl=true&sslrootcert=/etc/clickhouse-tls/ca.crt&sslcert=/etc/clickhouse-tls/client.crt&sslkey=/etc/clickhouse-tls/client.key
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092,kafka-2:9092,kafka-3:9092
+    volumes:
+      - ./clickhouse/tls:/etc/clickhouse-tls:ro
 
   # ─── Override: Flink submitters → HA cluster ─────────────────────────────
   flink-esg-job-submitter:
