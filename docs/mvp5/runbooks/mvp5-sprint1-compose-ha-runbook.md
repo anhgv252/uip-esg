@@ -385,3 +385,81 @@ curl -s http://localhost:8081/jobs | jq '.jobs[] | {id,jid,state}'
    [`mvp5-sprint1-ch-mtls-runbook.md`](./mvp5-sprint1-ch-mtls-runbook.md)
    for cert generation, rotation, and connection verification. Kong does
    NOT call ClickHouse directly; mTLS is wired on the JDBC consumer path.
+
+---
+
+## 13. Vault consumer wiring (M5-2-D2)
+
+**Context**: T03 delivered the Vault backbone (server + KV v2 + agent rendering `uip.env`). D2 wires consumer services to actually read secrets from Vault instead of plaintext `infrastructure/.env` interpolation. See `docs/mvp5/reports/mvp5-sprint1-vault-secret-audit.md` §8 for the full pattern.
+
+### What's wired (verified end-to-end 2026-06-25)
+
+| Service | Secrets from Vault | Verification |
+|---|---|---|
+| `analytics-service` | CLICKHOUSE_USER/PASSWORD/DB, JWT_SECRET | `/actuator/health` 200; wrapper "sourced 26 vars"; PID 1 environ confirms Vault values |
+| `backend` | SPRING_DATASOURCE_USERNAME/PASSWORD, SPRING_DATA_REDIS_PASSWORD, JWT_SECRET, CLAUDE_API_KEY, OPERATOR/ADMIN/CITIZEN_PASSWORD | `/api/v1/health` 200; admin login returns JWT; PID 1 environ confirms `ADMIN_PASSWORD=Admin#2026!` (Vault), not `.env` default |
+
+### Bring up the Vault stack from scratch
+
+```bash
+cd infrastructure
+# 1. Vault server (dev mode, http, root token)
+docker compose -f docker-compose.yml -f docker-compose.ha.yml up -d vault
+# wait healthy
+# 2. Bootstrap KV v2 + AppRole + copy wrapper
+docker compose -f docker-compose.yml -f docker-compose.ha.yml up vault-init
+# 3. Agent renders uip.env (AppRole auto_auth)
+docker compose -f docker-compose.yml -f docker-compose.ha.yml up -d vault-agent
+# 4. Verify
+docker exec uip-vault-agent ls -la /vault/secrets/   # uip.env + vault-env-wrapper.sh
+docker exec uip-vault-agent head -5 /vault/secrets/uip.env
+# 5. Bring up wired consumers (they depend_on vault-agent:healthy)
+docker compose -f docker-compose.yml -f docker-compose.ha.yml up -d analytics-service backend
+```
+
+### Verify a consumer is actually using Vault (not plaintext)
+
+The `docker exec ... env` check is misleading — it shows the compose-config env, not the wrapper-modified env of PID 1. Use `/proc/1/environ` instead:
+
+```bash
+# Confirm the Java process (PID 1 = wrapper-exec'd java) has Vault values
+docker exec uip-backend sh -c 'cat /proc/1/environ | tr "\0" "\n" | grep -E "^SPRING_DATASOURCE_PASSWORD=|^ADMIN_PASSWORD="'
+# Should print Vault values (e.g. ADMIN_PASSWORD=Admin#2026!), NOT .env defaults.
+```
+
+Also check the wrapper ran:
+
+```bash
+docker logs uip-backend 2>&1 | grep vault-env-wrapper
+# Expected: [vault-env-wrapper] sourced 26 vars from /run/secrets/uip.env
+```
+
+### Add a new consumer
+
+See the audit report §8 "Adding a new consumer". Summary:
+
+1. Add needed keys to `vault/vault-agent-template.tpl` (+ the `vault kv put` in `vault-init.sh`). For Spring Boot, emit both raw and Spring-form names.
+2. In the service's override block in `docker-compose.ha.yml`: set `entrypoint: ["/run/secrets/vault-env-wrapper.sh"]`, `command: [<original java args>]`, add `volumes: [- vault-secrets:/run/secrets:ro]`, add `depends_on: [vault-agent: {condition: service_healthy}]`.
+3. Remove the secret keys from the service's `environment:` block (non-secret wiring stays).
+4. `up -d <service>`, verify health + real API call + PID 1 environ.
+
+### Rotate a secret
+
+```bash
+# Patch one key in Vault KV v2
+docker exec uip-vault sh -c \
+  'VAULT_ADDR=http://127.0.0.1:8200 VAULT_TOKEN=root vault kv patch secret/uip/postgres password="<new>"'
+# Force agent re-render
+docker compose -f docker-compose.yml -f docker-compose.ha.yml restart vault-agent
+# Restart consumers so the wrapper re-sources the updated file
+docker compose -f docker-compose.yml -f docker-compose.ha.yml restart analytics-service backend
+```
+
+### Known gotchas
+
+- **`env_file:` does NOT work** with named-volume paths — compose resolves it on the host at config time. Use the entrypoint wrapper instead.
+- **vault-agent healthcheck** must NOT use `-mmin` freshness — the agent only re-renders on secret change, not on a schedule. The healthcheck checks file presence + content (`grep POSTGRES_PASSWORD`).
+- **uip.env perms are 0644** (not 0600) so non-root consumers (uid 999) can read it. The volume is only mounted into intended consumers; prod hardening (ADR-048 §6.4) would isolate per-service.
+- **AppRole creds live on a SEPARATE volume** (`vault-approle`) from `vault-secrets`, so consumers mounting `vault-secrets` at `/run/secrets` never see auth creds.
+- **Engine services** (PG, CH, Redis, MinIO, EMQX, Keycloak) read secrets at process init, not via env-file — they need per-engine patterns and are deferred to M5-3 (audit §5.1).
+- **Stale DB users**: backend's admin user was seeded in a pre-Vault run with the `.env` default password (`admin_Dev#2026!`). After Vault cutover the NEW seed password is `Admin#2026!`, but the existing DB row keeps the old password until re-seeded. Login with the OLD password still works; to rotate, drop + re-seed the user or update the DB row.

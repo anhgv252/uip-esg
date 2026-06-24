@@ -93,14 +93,31 @@ docker compose -f docker-compose.yml -f docker-compose.ha.yml exec \
 
 ## 5. Remaining plaintext debt (tracked, NOT a T03 blocker)
 
-Per ADR-048 §6.4, `infrastructure/.env` is still the bootstrap source for `vault-init`. The plaintext values must be rotated + the `.env` removed in a follow-up task post-T03. Items:
+Per ADR-048 §6.4, `infrastructure/.env` is still the bootstrap source for `vault-init`. The plaintext values must be rotated + the `.env` removed in a follow-up task. Items:
 
-| Debt item | Owner | Sprint |
-|---|---|---|
-| Rotate every plaintext value after switching consumers to `env_file: /run/secrets/uip.env` | DevOps | M5-2 |
-| Per-service consumer wiring (backend, analytics-service, Flink submitters, etc.) — add `vault-secrets` volume mount + `env_file` directive | Backend + DevOps | M5-2 |
-| Remove `POSTGRES_PASSWORD` etc. from `docker-compose.yml` `environment:` blocks once env_file is wired | DevOps | M5-2 |
-| External secret store for prod (AWS SM / Vault externally managed) — eliminate `.env` bootstrap | DevOps + SA | MVP6 |
+| Debt item | Owner | Sprint | Status |
+|---|---|---|---|
+| Per-service consumer wiring via entrypoint wrapper (see §8) | DevOps | M5-2 | **D2 PARTIAL — 2 of ~10 services wired (analytics-service, backend)** |
+| Rotate every plaintext value after switching ALL consumers to Vault | DevOps | M5-3 | Blocked on consumer wiring completion |
+| Remove `POSTGRES_PASSWORD` etc. from `docker-compose.yml` `environment:` blocks once wrapper is wired for ALL consumers | DevOps | M5-3 | Blocked on consumer wiring completion |
+| External secret store for prod (AWS SM / Vault externally managed) — eliminate `.env` bootstrap | DevOps + SA | MVP6 | Open |
+
+### 5.1 Consumer-wiring status (M5-2-D2, updated 2026-06-25)
+
+| Service | Wired to Vault? | Secrets sourced from Vault | Notes |
+|---|---|---|---|
+| **analytics-service** | YES (D2) | CLICKHOUSE_USER, CLICKHOUSE_PASSWORD, CLICKHOUSE_DB, JWT_SECRET | Verified: health 200, wrapper sourced 26 vars, PID 1 environ confirms Vault values |
+| **backend** | YES (D2) | SPRING_DATASOURCE_USERNAME/PASSWORD, SPRING_DATA_REDIS_PASSWORD, JWT_SECRET, CLAUDE_API_KEY, OPERATOR/ADMIN/CITIZEN_PASSWORD | Verified: health 200, admin login returns JWT, PID 1 environ confirms Vault values (Admin#2026!) |
+| keycloak | NO (debt) | KEYCLOAK_ADMIN_PASSWORD | Reads env at JVM start; needs same wrapper pattern. Pre-seeded realm users keep it working today. |
+| redis | NO (debt) | REDIS_PASSWORD | Requires `redis-server ... --requirepass ${REDIS_PASSWORD}` from mounted config; defer to M5-3. |
+| timescaledb / standby | NO (debt) | POSTGRES_PASSWORD, REPLICATION_PASSWORD | DB engine reads pwd at init; runtime rotation not supported without re-init. Defer. |
+| clickhouse / clickhouse-01 / -02 | NO (debt) | CLICKHOUSE_PASSWORD | Same as PG — engine-level pwd. Defer. |
+| minio | NO (debt) | MINIO_ROOT_USER, MINIO_ROOT_PASSWORD | MinIO reads root creds at startup from env; wrapper-compatible but low priority (S3 checkpoints). |
+| emqx | NO (debt) | EMQX_DASHBOARD_USER/PASSWORD | EMQX dashboard creds; low priority. |
+| uip-forecast-service | NO (debt) | POSTGRES_PASSWORD | Same wrapper pattern as backend; small service. |
+| flink-*-submitter | NO (debt) | CLICKHOUSE_*, POSTGRES_*, MINIO_* | One-shot jobs; wrapper-compatible. |
+
+**Why D2 stopped at 2 services**: the entrypoint-wrapper pattern is proven stable (both Spring Boot services boot healthy, real API calls succeed, PID 1 environ confirms Vault values are authoritative over compose `environment:`). The remaining services fall into two groups: (a) JVM/Java services that could use the same wrapper with ~15 min each of verification (forecast-service, flink submitters), and (b) engine services (PG, CH, Redis, MinIO, EMQX, Keycloak) that read secrets at process init in non-env ways and need per-engine investigation. Group (a) is low-risk follow-up; group (b) is M5-3 scope.
 
 ## 6. License confirmation
 
@@ -111,13 +128,65 @@ Per ADR-048 §6.4, `infrastructure/.env` is still the bootstrap source for `vaul
 
 | Deliverable | Status |
 |---|---|
-| Vault server in `docker-compose.ha.yml` | DONE — `vault:1.15` dev mode, healthcheck, resource limits |
+| Vault server in `docker-compose.ha.yml` | DONE — `vault:1.15` dev mode, healthcheck (http addr fix D2), resource limits |
 | KV v2 enabled + pre-loaded | DONE — `vault/vault-init.sh`, 10 paths |
-| Secret-injection sidecar | DONE — `vault-agent` rendering `uip.env` to named volume `vault-secrets` |
-| 5-min in-mem cache (R6) | DONE — `cache { ttl = "5m" }` in `vault-agent.hcl` |
+| AppRole auth for vault-agent | DONE (D2) — `vault-init.sh` provisions `uip-agent` role + writes role_id/secret_id; required because the agent `template` block needs `auto_auth` (static `vault.token` does NOT drive templates) |
+| Secret-injection sidecar | DONE — `vault-agent` rendering `uip.env` to named volume `vault-secrets` (AppRole auto_auth fix D2) |
+| 5-min in-mem cache (R6) | DONE — token renewed by auth handler (ttl 1h, renew @90%); rendered file persists on disk during brief Vault unavailability |
 | Audit log (this document) | DONE — §2 + §3 tables |
 | `make vault-init` / `vault-verify` runbook | DONE — `infrastructure/Makefile` + ADR-048 §6.6 |
 | ADR-048 Vault section | DONE — §6 |
-| `docker compose ... config` validates | DONE — `OVERLAY_OK` (verified 2026-06-24) |
+| `docker compose ... config` validates | DONE — `OVERLAY_OK` (verified 2026-06-25) |
+| Consumer wiring (M5-2-D2) | PARTIAL — analytics-service + backend wired + verified end-to-end; 8 services remain as debt (§5.1) |
 
-**Remaining plaintext in targeted HA-overlay services after wiring**: 0 (once §5 follow-up wiring lands in M5-2). T03 itself delivers the Vault backbone; per-consumer wiring is intentionally deferred to keep the overlay diff reviewable.
+**Remaining plaintext in WIRED HA-overlay services (analytics-service, backend)**: 0 — secrets come from Vault via the entrypoint wrapper. Other services still read plaintext from compose `environment:` (debt, §5.1).
+
+## 8. Consumer-wiring pattern (M5-2-D2)
+
+### Why not `env_file:`
+
+docker-compose `env_file:` is resolved by the **compose client on the host** at config time — it reads the file from the host filesystem, NOT from inside a mounted named volume. Pointing `env_file: /run/secrets/uip.env` at a path inside the `vault-secrets` volume fails with `env file /run/secrets/uip.env not found` because the host has no such file. (Verified D2.)
+
+### Entrypoint-wrapper pattern
+
+The working pattern for Vault-rendered env-files in docker-compose:
+
+1. `vault-init.sh` copies `vault-env-wrapper.sh` to the `vault-secrets` volume root.
+2. `vault-agent` renders `uip.env` to the same volume.
+3. Each consumer service overrides its entrypoint to the wrapper and passes the original command:
+
+```yaml
+service-name:
+  entrypoint: ["/run/secrets/vault-env-wrapper.sh"]
+  command: ["java", "-XX:+UseContainerSupport", ..., "-jar", "app.jar"]
+  environment:
+    # NON-SECRET wiring only (URLs, hosts, profile). Secret keys are dropped
+    # so the wrapper-sourced vars are authoritative.
+    SOME_URL: http://example:8080
+  volumes:
+    - vault-secrets:/run/secrets:ro
+  depends_on:
+    vault-agent:
+      condition: service_healthy
+```
+
+The wrapper (`infrastructure/vault/vault-env-wrapper.sh`) sources `/run/secrets/uip.env` (POSIX KEY=value, comments + quoting handled), exports each var, then `exec`s the original command. Because the wrapper runs AFTER docker-compose sets `environment:`, wrapper-sourced vars override compose env — making Vault authoritative for the cut-over keys.
+
+### Adding a new consumer
+
+1. Ensure the secret keys the service needs are in `vault/vault-agent-template.tpl` (and the corresponding `vault kv put` in `vault-init.sh`). For Spring Boot services, emit BOTH the raw name (e.g. `POSTGRES_PASSWORD`) AND the Spring-form alias (`SPRING_DATASOURCE_PASSWORD`) — see the template's Spring Boot section.
+2. In `docker-compose.ha.yml`, add to the service's override block:
+   - `entrypoint: ["/run/secrets/vault-env-wrapper.sh"]`
+   - `command: [<original-entrypoint-and-args>]`
+   - `volumes: [- vault-secrets:/run/secrets:ro]`
+   - `depends_on: [vault-agent: {condition: service_healthy}]`
+3. REMOVE the secret keys from the service's `environment:` block (base compose or earlier overlay) so the wrapper is the source of truth. Leave non-secret wiring (URLs, hosts, profile, issuer URLs).
+4. `docker compose ... up -d <service>`, then verify:
+   - `docker inspect` health = healthy
+   - `docker logs <service> | grep vault-env-wrapper` shows "sourced N vars"
+   - A real API call returns 200 (not just container-started — D1 lesson)
+   - `docker exec <service> cat /proc/1/environ | tr '\0' '\n' | grep <SECRET_KEY>` confirms the Vault value (NOT the host `.env` value) is in the Java process env
+
+### Engine services (deferred to M5-3)
+
+PostgreSQL, ClickHouse, Redis, MinIO, EMQX, Keycloak read secrets at process init in engine-specific ways (not via env-file sourcing). These need per-engine patterns (e.g. Redis `--requirepass` from a mounted config, PG `pg_hba.conf` + init script). Tracked in §5.1.
