@@ -86,10 +86,15 @@ scrape_configs:
       - targets: ['clickhouse-exporter:9116']
 
   # S11-INFRA-01 — ClickHouse Keeper metrics (native Prometheus endpoint)
-  # Keeper exposes metrics at :9363/metrics for memory, goroutines, snapshots, gRPC
+  # Keeper exposes metrics at :9363/metrics for memory, goroutines, snapshots, gRPC.
+  # M5-1-T07: scrape all 3 keeper nodes to reflect RF=3 quorum health (was single-node →
+  # dashboard silently hid 2/3 nodes). Container names from docker-compose.ha.yml.
   - job_name: 'clickhouse-keeper'
     scrape_interval: 30s
     static_configs:
-      - targets: ['uip-clickhouse-keeper:9363']
+      - targets:
+          - 'uip-clickhouse-keeper:9363'
+          - 'uip-clickhouse-keeper-02:9363'
+          - 'uip-clickhouse-keeper-03:9363'
         labels:
           component: 'keeper'
