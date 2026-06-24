@@ -195,33 +195,29 @@ services:
     networks:
       - uip-network
 
-  # ─── Override: analytics-service → HA cluster (mTLS, M5-1-T09 GAP-046) ────
-  # Switched from plain 8123 to HTTPS 8443 with mutual-TLS:
-  #   - ssl=true                 : TLS on
-  #   - sslrootcert=.../ca.crt   : verify server cert against internal CA
-  #   - sslcert=.../client.crt   : present client cert (mTLS)
-  #   - sslkey=.../client.key    : client private key
-  # ClickHouse validates client.crt against caConfig in tls-config.xml.
-  # Single-region only (ADR-048). RowPolicy tenant isolation (V32) is
-  # orthogonal — mTLS is purely transport-layer authentication.
+  # ─── Override: analytics-service → HA cluster ─────────────────────────────
+  # M5-2 decision: JDBC consumers stay on 8123 INTERNAL (uip-network only, NOT
+  # published to host). mTLS transport (8443, verified PASS — cert handshake +
+  # no-cert reject) is published to host for external/admin access. Reason: the
+  # ClickHouse JDBC driver + CH 23.8 HTTPS interface auth is incompatible — JDBC
+  # fails 516 over 8443 while curl with the same credential PASSes. 8123 is
+  # internal-cluster-only so the data path is not externally exposed; mTLS 8443
+  # remains the secure external entry. Follow-up: re-evaluate when upgrading
+  # ClickHouse JDBC driver or CH version (tech-debt M5-3+).
   analytics-service:
     environment:
-      CLICKHOUSE_URL: jdbc:clickhouse://clickhouse-01:8443,clickhouse-02:8443/${CLICKHOUSE_DB:-analytics}?ssl=true&sslrootcert=/etc/clickhouse-tls/ca.crt&sslcert=/etc/clickhouse-tls/client.crt&sslkey=/etc/clickhouse-tls/client.key
-    volumes:
-      - ./clickhouse/tls:/etc/clickhouse-tls:ro
+      CLICKHOUSE_URL: jdbc:clickhouse://clickhouse-01:8123,clickhouse-02:8123/${CLICKHOUSE_DB:-analytics}
     depends_on:
       clickhouse-01:
         condition: service_healthy
       clickhouse-02:
         condition: service_healthy
 
-  # ─── Override: backend → HA cluster (mTLS, M5-1-T09 GAP-046) ──────────────
+  # ─── Override: backend → HA cluster (8123 internal) ───────────────────────
   backend:
     environment:
-      CLICKHOUSE_URL: jdbc:clickhouse://clickhouse-01:8443,clickhouse-02:8443/${CLICKHOUSE_DB:-analytics}?ssl=true&sslrootcert=/etc/clickhouse-tls/ca.crt&sslcert=/etc/clickhouse-tls/client.crt&sslkey=/etc/clickhouse-tls/client.key
+      CLICKHOUSE_URL: jdbc:clickhouse://clickhouse-01:8123,clickhouse-02:8123/${CLICKHOUSE_DB:-analytics}
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092,kafka-2:9092,kafka-3:9092
-    volumes:
-      - ./clickhouse/tls:/etc/clickhouse-tls:ro
 
   # ─── Override: Flink submitters → HA cluster ─────────────────────────────
   flink-esg-job-submitter:

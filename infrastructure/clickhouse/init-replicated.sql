@@ -30,3 +30,16 @@ PARTITION BY toYYYYMM(recorded_at)
 ORDER BY (tenant_id, building_id, source_id, metric_type, recorded_at)
 TTL recorded_at + toIntervalYear(2)
 SETTINGS index_granularity = 8192;
+
+-- ─── M5-2 mTLS auth user (T09 follow-up) ─────────────────────────────────
+-- JDBC consumers (analytics-service, backend) connect over HTTPS 8443 with
+-- mutual-TLS. The transport layer (openSSL caConfig strict in tls-config.xml)
+-- guarantees only ca-signed clients can open a connection. This user carries a
+-- password because the ClickHouse JDBC driver always sends a credential on
+-- connect and CH 23.8 rejects "no password sent" for plaintext/no_password
+-- users over the HTTP interface (516). mTLS transport remains the primary
+-- trust gate; this password is a secondary auth over the already-encrypted
+-- channel. CH 23.8 HTTP iface does not forward client-cert CN to SQL auth,
+-- so ssl_certificate CN->user mapping also fails — hence the dedicated user.
+CREATE USER IF NOT EXISTS uip_jdbc IDENTIFIED WITH sha256_password BY 'uip_jdbc_mtls_2026' DEFAULT DATABASE analytics;
+GRANT SELECT ON analytics.* TO uip_jdbc;
