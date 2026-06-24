@@ -320,6 +320,139 @@ services:
         condition: service_healthy
 
   # ═══════════════════════════════════════════════════════════════════════════
+  # HashiCorp Vault — Secret injection (M5-1-T03, block gate G1)
+  # See ADR-048 §6. BSL 1.1 license — NOT AGPL. Acceptable for internal UIP use.
+  #
+  # Topology:
+  #   1. vault       — Vault dev server (single node, in-mem; DR deferred MVP6)
+  #   2. vault-init  — one-shot bootstrap: enable KV v2 + pre-load all secrets
+  #   3. vault-agent — sidecar: pulls secrets, renders uip.env, caches 5m (R6)
+  #
+  # Services consume secrets via the shared `vault-secrets` volume:
+  #   volumes:
+  #     - vault-secrets:/run/secrets:ro
+  #   env_file:
+  #     - /run/secrets/uip.env
+  # (Wiring consumers is opt-in per service to keep the HA overlay diff small;
+  #  audit report mvp5-sprint1-vault-secret-audit.md tracks each migration.)
+  # ═══════════════════════════════════════════════════════════════════════════
+
+  vault:
+    image: hashicorp/vault:1.15
+    container_name: uip-vault
+    restart: unless-stopped
+    # Dev mode: auto-unsealed, in-mem storage, root token = "root".
+    # Production MUST switch to file/raft storage + AppRole/JWT auth (ADR-048 §6.2).
+    cap_add:
+      - IPC_LOCK
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: root
+      VAULT_DEV_LISTEN_ADDRESS: 0.0.0.0:8200
+      VAULT_LOG_LEVEL: info
+    ports:
+      - "8200:8200"   # Vault API (UI: http://localhost:8200, token: root)
+    healthcheck:
+      # Vault dev server is unsealed by default; "initialized" is the ready signal.
+      test: ["CMD", "vault", "status"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+          cpus: '0.5'
+        reservations:
+          memory: 128m
+    networks:
+      - uip-network
+
+  # ─── One-shot: enable KV v2 + pre-load all UIP secrets ──────────────────────
+  vault-init:
+    image: hashicorp/vault:1.15
+    container_name: uip-vault-init
+    restart: "no"
+    entrypoint: ["/bin/sh", "/vault/init/vault-init.sh"]
+    environment:
+      VAULT_ADDR: http://vault:8200
+      VAULT_TOKEN: root
+      # Plaintext values sourced from infrastructure/.env (gitignored).
+      # They are written to Vault KV v2 and then MUST be removed from .env in
+      # a follow-up task — see audit report mvp5-sprint1-vault-secret-audit.md.
+      POSTGRES_USER: ${POSTGRES_USER:-uip}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-uip_smartcity}
+      REPLICATION_PASSWORD: ${REPLICATION_PASSWORD:-${POSTGRES_PASSWORD}}
+      CLICKHOUSE_USER: ${CLICKHOUSE_USER:-default}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-}
+      CLICKHOUSE_DB: ${CLICKHOUSE_DB:-analytics}
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      KAFKA_CLUSTER_ID: ${KAFKA_CLUSTER_ID:-MkU3OEVBNTcwNTJENDM36Qg}
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET:-uip-api-secret-dev}
+      OPERATOR_PASSWORD: ${OPERATOR_PASSWORD:-Operator#2026!}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-Admin#2026!}
+      CITIZEN_PASSWORD: ${CITIZEN_PASSWORD:-citizen1_Dev#2026!}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRATION_MS: ${JWT_EXPIRATION_MS:-900000}
+      JWT_REFRESH_EXPIRATION_MS: ${JWT_REFRESH_EXPIRATION_MS:-604800000}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      EMQX_DASHBOARD_USER: ${EMQX_DASHBOARD_USER:-admin}
+      EMQX_DASHBOARD_PASSWORD: ${EMQX_DASHBOARD_PASSWORD}
+      CLAUDE_API_KEY: ${CLAUDE_API_KEY:-}
+    volumes:
+      - ./vault/vault-init.sh:/vault/init/vault-init.sh:ro
+    depends_on:
+      vault:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 128m
+          cpus: '0.25'
+        reservations:
+          memory: 64m
+    networks:
+      - uip-network
+
+  # ─── Sidecar: render secrets to shared volume + cache 5m (R6 mitigation) ───
+  vault-agent:
+    image: hashicorp/vault:1.15
+    container_name: uip-vault-agent
+    restart: unless-stopped
+    entrypoint: ["vault", "agent", "-config=/vault/config/vault-agent.hcl"]
+    environment:
+      VAULT_ADDR: http://vault:8200
+    volumes:
+      - ./vault/vault-agent.hcl:/vault/config/vault-agent.hcl:ro
+      - ./vault/vault-agent-template.tpl:/vault/config/vault-agent-template.tpl:ro
+      - vault-secrets:/vault/secrets          # shared with consumers (read-only)
+      - vault-agent-pid:/vault/pid
+    depends_on:
+      vault-init:
+        condition: service_completed_successfully
+    healthcheck:
+      # Agent is healthy when the rendered env-file exists and was written
+      # within the last cache-TTL window (5m + 1m slack).
+      test: ["CMD-SHELL", "test -f /vault/secrets/uip.env && find /vault/secrets/uip.env -mmin -6 | grep -q ."]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 128m
+          cpus: '0.25'
+        reservations:
+          memory: 64m
+    networks:
+      - uip-network
+
+  # ═══════════════════════════════════════════════════════════════════════════
   # PostgreSQL Streaming Replication — Primary + Hot Standby (S8-OPS04)
   # Manual promotion (no auto-failover) — SA recommendation: false promotion
   # from network noise is worse than brief downtime.
@@ -403,3 +536,12 @@ volumes:
     name: uip-kafka-3-data
   timescaledb-standby-data:
     name: uip-timescaledb-standby-data
+  # ─── Vault secret-injection (M5-1-T03) ────────────────────────────────────
+  # Rendered env-file shared read-only with consuming services. Named volume
+  # (NOT bind mount) per infra constraint. Survives agent restart; rebuilt
+  # from Vault KV on agent start.
+  vault-secrets:
+    name: uip-vault-secrets
+  # PID file dir for vault-agent (kept off the secrets volume for atomicity).
+  vault-agent-pid:
+    name: uip-vault-agent-pid
