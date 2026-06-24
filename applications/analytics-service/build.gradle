@@ -88,13 +88,35 @@ dependencyManagement {
 
 test {
     useJUnitPlatform {
-        // Pact provider verification needs ClickHouse Testcontainers — run via pact-verify.sh
+        // Integration tests (Testcontainers-heavy: CH, Kafka, etc.) run via the
+        // dedicated `integrationTest` task or `pact-verify.sh`, not the default build.
         excludeTags 'integration'
     }
     environment 'RYUK_DISABLED', 'true'
     jvmArgs '-Xmx1g'
     finalizedBy jacocoTestReport
 }
+
+// ─── Integration test task ───────────────────────────────────────────────────
+// Runs the @Tag("integration") suite (RowPolicyIsolationIT, Pact provider tests).
+// Invoke directly: ./gradlew integrationTest
+// These tests spin up real ClickHouse/Kafka via Testcontainers — slower, isolated
+// from the default `test` task so unit-test feedback stays fast.
+tasks.register('integrationTest', Test) {
+    useJUnitPlatform {
+        includeTags 'integration'
+    }
+    // Allow running individual ITs: ./gradlew integrationTest --tests "...IT"
+    filter { setFailOnNoMatchingTests(false) }
+    environment 'RYUK_DISABLED', 'true'
+    jvmArgs '-Xmx1g'
+    shouldRunAfter test
+    // Separate JaCoCo exec so IT coverage is additive, not overwriting unit exec.
+    jacoco { destinationFile = layout.buildDirectory.file('jacoco/integrationTest.exec').get().asFile }
+}
+
+// `check` runs both unit + integration so CI gates on the full suite.
+check.dependsOn integrationTest
 
 jacocoTestReport {
     dependsOn test

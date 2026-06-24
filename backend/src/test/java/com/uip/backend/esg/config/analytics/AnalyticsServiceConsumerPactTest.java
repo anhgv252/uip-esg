@@ -34,7 +34,7 @@ class AnalyticsServiceConsumerPactTest {
         return builder
                 .given("analytics data exists for tenant alpha")
                 .uponReceiving("a POST request for energy aggregate")
-                    .path("/energy-aggregate")
+                    .path("/api/v1/analytics/energy-aggregate")
                     .method("POST")
                     .headers(Map.of("Content-Type", "application/json"))
                     .body("{\"tenantId\":\"alpha\",\"buildingIds\":[\"B01\"],"
@@ -61,7 +61,7 @@ class AnalyticsServiceConsumerPactTest {
 
         ResponseEntity<ClickHouseRestAnalyticsAdapter.EnergyAggregateHttpResponse> response =
                 restTemplate.postForEntity(
-                        mockServer.getUrl() + "/energy-aggregate",
+                        mockServer.getUrl() + "/api/v1/analytics/energy-aggregate",
                         request,
                         ClickHouseRestAnalyticsAdapter.EnergyAggregateHttpResponse.class);
 

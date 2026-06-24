@@ -23,7 +23,7 @@
           "Content-Type": "application/json"
         },
         "method": "POST",
-        "path": "/energy-aggregate"
+        "path": "/api/v1/analytics/energy-aggregate"
       },
       "response": {
         "body": {

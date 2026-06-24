@@ -1,0 +1,67 @@
+name: Pact Contract Tests
+
+# MVP5 Sprint M5-1 Task T10 — consumer-driven contract test automation.
+# Runs scripts/pact-verify.sh on every PR/push touching the contract surface:
+#   1. Consumer tests (backend) generate Pact JSON → build/pacts/
+#   2. Pact files copied to analytics-service test classpath
+#   3. Provider verification (analytics-service) asserts the live API honours
+#      every consumer expectation.
+#
+# Pact Broker: NOT used in MVP5 (single-repo, file-based contract passing is
+# sufficient). Deferred to MVP6 when can-i-deploy + cross-repo consumer
+# workflows become necessary — tracked in mvp5-sprint-plan.md M5-1-T10.
+
+on:
+  push:
+    branches: [main, develop, "release/*"]
+    paths:
+      - "backend/src/main/java/**"
+      - "backend/src/test/java/**/contract/**"
+      - "backend/src/test/java/**/esg/config/analytics/**"
+      - "applications/analytics-service/src/main/java/**"
+      - "applications/analytics-service/src/test/java/**/contract/**"
+      - "scripts/pact-verify.sh"
+      - ".github/workflows/pact-contract.yml"
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - "backend/src/main/java/**"
+      - "backend/src/test/java/**/contract/**"
+      - "backend/src/test/java/**/esg/config/analytics/**"
+      - "applications/analytics-service/src/main/java/**"
+      - "applications/analytics-service/src/test/java/**/contract/**"
+      - "scripts/pact-verify.sh"
+      - ".github/workflows/pact-contract.yml"
+
+jobs:
+  pact-verify:
+    name: Consumer + Provider Contract Verification
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      - name: Grant execute permission for pact-verify.sh
+        run: chmod +x scripts/pact-verify.sh
+
+      - name: Run Pact contract verification
+        run: ./scripts/pact-verify.sh
+
+      - name: Upload Pact files (on failure)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pact-files
+          path: |
+            backend/build/pacts/*.json
+            applications/analytics-service/src/test/resources/pacts/*.json
+          if-no-files-found: ignore
+          retention-days: 7

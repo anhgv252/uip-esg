@@ -47,15 +47,21 @@ log ""
 log "Step 3: Running provider verification (analytics-service)..."
 
 cd "${ANALYTICS_DIR}"
-./gradlew test --tests "com.uip.analytics.contract.AnalyticsServiceProviderPactTest" 2>&1 | tail -5
+# IMPORTANT: the provider test is tagged @Tag("integration") and is excluded
+# from the default `test` task (excludeTags 'integration' in build.gradle).
+# It must run via the `integrationTest` task, otherwise Gradle reports
+# "No tests found for given includes". See analytics-service/build.gradle.
+./gradlew integrationTest --tests "com.uip.analytics.contract.AnalyticsServiceProviderPactTest" 2>&1 | tail -5
 
 EXIT_CODE=$?
 
 echo ""
 if [[ $EXIT_CODE -eq 0 ]]; then
     pass "Pact contract verification PASSED — all contracts verified"
-    log "Cleanup: removing copied Pact files..."
-    rm -f "${PACT_TARGET}"/*.json
+    log "Pact files retained in ${PACT_TARGET}/ — they are the committed"
+    log "source-of-truth for standalone provider verification"
+    log "('./gradlew integrationTest --tests '...PactTest' without the consumer step)."
+    log "Re-running this script refreshes them from the consumer test output."
     exit 0
 else
     fail "Pact contract verification FAILED"
