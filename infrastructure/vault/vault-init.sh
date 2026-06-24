@@ -109,5 +109,46 @@ vault kv put secret/uip/ai/claude \
   api_key="${CLAUDE_API_KEY:-}" >/dev/null
 echo "[vault-init] wrote secret/uip/ai/claude"
 
-echo "[vault-init] DONE — all secrets pre-loaded into KV v2."
+# ─────────────────────────────────────────────────────────────────────────────
+# 3. AppRole auth for vault-agent (REQUIRED — template block needs auto_auth
+#    to source its token; static vault.token does NOT drive templates.
+#    Verified M5-2-D2.)
+# The role_id + secret_id are written to the shared vault-secrets volume at
+# /vault/approle/ so vault-agent can read them. Consumers mount the SAME
+# volume at /run/secrets but only read /run/secrets/uip.env (perms 0600
+# owned by root); the approle creds live in a sibling dir and are also
+# 0600 — services must NOT read them.
+# ─────────────────────────────────────────────────────────────────────────────
+echo "[vault-init] configuring AppRole auth for vault-agent..."
+vault auth enable approle >/dev/null 2>&1 || \
+  echo "[vault-init] approle already enabled — skipping enable."
+
+# Policy: read-only on all UIP KV v2 secrets + metadata (for list).
+vault policy write uip-agent - >/dev/null <<'POL'
+path "secret/data/uip/*"   { capabilities = ["read"] }
+path "secret/metadata/uip/*" { capabilities = ["list", "read"] }
+POL
+
+# Role: short-lived tokens, auto-renewed by agent. secret_id_ttl 24h is
+# plenty for a sidecar that re-auths on token expiry (token_ttl 1h).
+vault write auth/approle/role/uip-agent \
+  secret_id_ttl=24h \
+  secret_id_num_uses=0 \
+  token_ttl=1h \
+  token_max_ttl=4h \
+  token_policies=uip-agent >/dev/null
+
+ROLE_ID="$(vault read -field=role_id auth/approle/role/uip-agent/role-id)"
+SECRET_ID="$(vault write -f -field=secret_id auth/approle/role/uip-agent/secret-id)"
+
+# Stash creds on the shared volume so vault-agent can read them via
+# role_id_file_path / secret_id_file_path (approle method requires files).
+APPROLE_DIR="/vault/approle"
+mkdir -p "${APPROLE_DIR}"
+printf '%s' "${ROLE_ID}"    > "${APPROLE_DIR}/role_id"
+printf '%s' "${SECRET_ID}"  > "${APPROLE_DIR}/secret_id"
+chmod 0600 "${APPROLE_DIR}/role_id" "${APPROLE_DIR}/secret_id"
+echo "[vault-init] AppRole configured — creds at ${APPROLE_DIR}/ (role_id + secret_id)"
+
+echo "[vault-init] DONE — all secrets pre-loaded into KV v2 + AppRole for agent."
 echo "[vault-init] Verify: docker compose -f docker-compose.yml -f docker-compose.ha.yml exec vault vault kv list secret/uip/"

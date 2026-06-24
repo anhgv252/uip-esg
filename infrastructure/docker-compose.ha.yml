@@ -372,7 +372,8 @@ services:
       - "8200:8200"   # Vault API (UI: http://localhost:8200, token: root)
     healthcheck:
       # Vault dev server is unsealed by default; "initialized" is the ready signal.
-      test: ["CMD", "vault", "status"]
+      # Dev server is HTTP-only — must override VAULT_ADDR (CLI defaults to https).
+      test: ["CMD-SHELL", "VAULT_ADDR=http://127.0.0.1:8200 vault status >/dev/null 2>&1"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -424,6 +425,10 @@ services:
       CLAUDE_API_KEY: ${CLAUDE_API_KEY:-}
     volumes:
       - ./vault/vault-init.sh:/vault/init/vault-init.sh:ro
+      # Dedicated volume for AppRole creds (role_id + secret_id). Kept SEPARATE
+      # from vault-secrets so consumer services mounting vault-secrets at
+      # /run/secrets never see auth creds (least privilege).
+      - vault-approle:/vault/approle
     depends_on:
       vault:
         condition: service_healthy
@@ -437,7 +442,7 @@ services:
     networks:
       - uip-network
 
-  # ─── Sidecar: render secrets to shared volume + cache 5m (R6 mitigation) ───
+  # ─── Sidecar: AppRole auto-auth + render secrets to shared volume ──────────
   vault-agent:
     image: hashicorp/vault:1.15
     container_name: uip-vault-agent
@@ -448,14 +453,18 @@ services:
     volumes:
       - ./vault/vault-agent.hcl:/vault/config/vault-agent.hcl:ro
       - ./vault/vault-agent-template.tpl:/vault/config/vault-agent-template.tpl:ro
-      - vault-secrets:/vault/secrets          # shared with consumers (read-only)
+      # vault-secrets: rendered uip.env, mounted read-only into consumers.
+      # vault-approle: AppRole role_id/secret_id written by vault-init.
+      - vault-secrets:/vault/secrets
+      - vault-approle:/vault/approle
       - vault-agent-pid:/vault/pid
     depends_on:
       vault-init:
         condition: service_completed_successfully
     healthcheck:
       # Agent is healthy when the rendered env-file exists and was written
-      # within the last cache-TTL window (5m + 1m slack).
+      # within the last renewal window (token ttl 1h; re-render on rotate).
+      # 6-min freshness catches a stalled agent quickly.
       test: ["CMD-SHELL", "test -f /vault/secrets/uip.env && find /vault/secrets/uip.env -mmin -6 | grep -q ."]
       interval: 15s
       timeout: 5s
@@ -555,12 +564,16 @@ volumes:
     name: uip-kafka-3-data
   timescaledb-standby-data:
     name: uip-timescaledb-standby-data
-  # ─── Vault secret-injection (M5-1-T03) ────────────────────────────────────
+  # ─── Vault secret-injection (M5-1-T03 + M5-2-D2) ──────────────────────────
   # Rendered env-file shared read-only with consuming services. Named volume
   # (NOT bind mount) per infra constraint. Survives agent restart; rebuilt
   # from Vault KV on agent start.
   vault-secrets:
     name: uip-vault-secrets
+  # AppRole role_id + secret_id — written by vault-init, read by vault-agent.
+  # Kept SEPARATE from vault-secrets so consumers never see auth creds.
+  vault-approle:
+    name: uip-vault-approle
   # PID file dir for vault-agent (kept off the secrets volume for atomicity).
   vault-agent-pid:
     name: uip-vault-agent-pid
