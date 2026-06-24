@@ -1,0 +1,23 @@
+# UIP synthetic 50-tenant harness — FULL 50-tenant profile (M5-5-T13, NOT M5-1).
+#
+# THIS PROFILE IS NOT RUN IN M5-1. It exists so the M5-5 gate run is a
+# one-liner. Running it before gate M5-G7 wastes resources — the harness
+# scaffold (T12) is exercised by `smoke-5-tenant.yaml` only.
+#
+# M5-5 usage:
+#   python3 -m runner --profile infrastructure/scripts/synthetic/profiles/full-50-tenant.yaml
+
+tenants: 50
+sensors_per_tenant: 100          # 50 × 100 = 5,000 sensors total (R16 target)
+events_per_sensor: 10            # 10 queries per sensor → 50000 queries total
+rate_per_tenant: 5.0             # 5 RPS per tenant → 250 RPS aggregate
+base_url: http://localhost:8081
+analytics_endpoint: /api/v1/analytics/energy-aggregate
+admin_username: admin
+admin_password: admin_Dev#2026!
+max_workers: 25                  # 25 concurrent tenants (rolled in 2 waves)
+seed: 0
+error_rate_threshold_pct: 1.0    # production-grade threshold
+transport: kafka                 # full pipeline exercise (Simulator→Kafka→Flink→DB)
+kafka_bootstrap: localhost:29092
+kafka_topic: ngsi_ld_environment

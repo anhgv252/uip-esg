@@ -1,0 +1,4 @@
+__pycache__/
+*.pyc
+synthetic-report-*.json
+synthetic-report-*.md
