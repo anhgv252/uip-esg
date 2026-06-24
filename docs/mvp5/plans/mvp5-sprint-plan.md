@@ -62,7 +62,7 @@
 | M5-1-T11 | MVP4 carry-over GAP-010 (start): gRPC integration test scaffolding (continue M5-4) | QA | 2 | ✅ | — | gRPC IT test infra + 1 sample test |
 | M5-1-T12 | **Synthetic 50-tenant test scaffolding** (R16): test-data generator (50 tenant × 100 sensor each), tenant-load runner — overlay owner | QA (synthetic) | 3 | ⬜ | T04 | Synthetic test harness + sample 5-tenant run |
 | M5-1-T13 | Modular Monolith ArchTest suite: 25 bounded-context boundary test, fail-on cross-module leak | SA | 2 | ✅ | — | ArchTest module + green run |
-| M5-1-T14 | Spring config bug class hardening (memo `feedback_mvp4_config_bugs`): `@SpringBootTest` full-load for any new CacheManager/KafkaTemplate bean | Backend-2 | 2 | ⬜ | — | Test gate + 1 regression test |
+| M5-1-T14 | Spring config bug class hardening (memo `feedback_mvp4_config_bugs`): `@SpringBootTest` full-load for any new CacheManager/KafkaTemplate bean | Backend-2 | 2 | ✅ | — | Test gate + 1 regression test |
 | M5-1-T15 | **Gate M5-G1 prep**: Compose HA deploy recording + ArchTest report + tenant isolation P1 code review + Vault secret injection audit | PM + SA | 1 | ⬜ | T02,T03,T04,T13 | Gate scorecard draft |
 | M5-1-T16 | Sprint planning M5-2 + risk review (R16, R2, R5) | PM | 1 | ⬜ | — | M5-2 plan doc |
 
@@ -85,7 +85,8 @@
 | **T06** ✅ DONE (2026-06-24) | 5 cache points tenant-namespaced + cross-tenant tests | Audit phát hiện 5 cache key thiếu tenant namespace → leak P1: `AiInferenceService` (AQI + generic cache key `districtCode:aqiRange` — district KHÔNG tenant-unique, leak AI analysis) + `AlertEngine` + 3 alert dedup consumers (`alert:dedup:sensorId:...` — sensorId trùng tenant → chặn alert P0/P1 cross-tenant). Fix: thêm `tenant:{tenantId}:` prefix, AI cache null-tenant fallback `"global"`, alert dedup null-tenant **fail-open** (vẫn alert). 6 production file + 6 test file, 5 cross-tenant isolation tests mới. `./gradlew test` 385/385 PASS. Audit report: `docs/mvp5/reports/mvp5-sprint1-cache-namespace-audit.md`. **Pre-existing gap (ngoài scope):** `AlertEventKafkaConsumer` không bind TenantContext khi save (dùng `AlertEvent.tenantId` default `"default"` + RLS filter) — follow-up nếu cần thêm tenant-aware op. |
 | **T08** ✅ DONE (2026-06-24) | buf lint + breaking CI | `shared/proto/buf.yaml` (STANDARD lint + WIRE_JSON breaking). `.github/workflows/proto-lint.yml`: lint + breaking-against-base trên PR/push `shared/proto/**`. Lint PASS, breaking PASS (verify docker `bufbuild/buf`). 4 legacy naming rule relaxed + documented (PACKAGE_DIRECTORY_MATCH, RPC_REQUEST/RESPONSE_*). **Core value = breaking gate** chặn field removal/retype/number-reuse silent. |
 | **T11** ✅ DONE (2026-06-24) | gRPC IT scaffolding | `EnergyAnalyticsGrpcServiceIT` — InProcessServerBuilder (no port bind, CI-safe), blocking stub qua gRPC wire thật (không mock StreamObserver như unit test cũ). 3 test PASS: round-trip proto, INTERNAL status on exception, empty building_ids. Deps grpc-inprocess/grpc-core 1.63.0. `@Tag("integration")` → integrationTest task. Gap `feedback_doc_vs_code_gap` đóng: trước chỉ unit mock không bắt proto serialization bug. |
-| T03, T09, T12, T14, T15, T16 | ⬜ NOT STARTED | Không có artifact |
+| **T14** ✅ DONE (2026-06-24) | Config bug-class gate (17 test) | `ApplicationContextLoadsIT` (full-context load, 4 gate: contextLoads + CacheManager distinct + KafkaTemplate resolvable + @Primary resolve) + `AiCacheConfigMutualExclusionTest` (ApplicationContextRunner slice, 7 test — `@ConditionalOnProperty` mutual-exclusion) + `AvroProducerConditionalBeanTest` (6 test — `@ConditionalOnBean` chain). 17/17 PASS. Gate bắt future bean override/missing-@Primary/circular-dep của CacheManager/KafkaTemplate. Golden rule doc `docs/mvp5/reports/mvp5-sprint1-config-bug-gate.md`. Pre-existing flaky `SensorToAlertLatencyTest` ngoài scope. |
+| T03, T09, T12, T15, T16 | ⬜ NOT STARTED | Không có artifact |
 
 **Tiếp theo cần hoàn thiện (ưu tiên critical-path T04 → T05/T06 → G2):**
 1. ~~T01~~ ✅ DONE 2026-06-24 (ADR-048 Compose HA topology + ADR-050 K8s readiness-only authored, dựa trên artifact thật)
@@ -96,7 +97,7 @@
 6. **T02/T07/T09**: hoàn thiện HA compose (Kafka RF=3 + Kong/Keycloak HA) + keeper dashboard RF=3 + mTLS Kong→CH
 7. ~~T08/T10/T11~~ ✅ ALL DONE 2026-06-24 (3 CI gates: proto-lint buf breaking, Pact consumer+provider, gRPC IT InProcess wire)
 8. **T12**: synthetic 50-tenant scaffolding (R16 xuyên suốt M5-1→M5-5)
-9. **T14/T15/T16**: config hardening + G1 prep + M5-2 planning
+9. ~~T14~~ ✅ DONE 2026-06-24 (config bug-class gate 17 test). **T15** (G1 prep — docs aggregation) + **T16** (M5-2 planning): pending, phụ thuộc T03 Vault (gate G1 chính)
 
 ---
 
