@@ -2,6 +2,7 @@ package com.uip.flink.correlation;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.uip.flink.common.tenant.TenantKeyedProcessFunctionDelegate;
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.api.common.serialization.SimpleStringSchema;
 import org.apache.flink.cep.CEP;
@@ -246,9 +247,18 @@ public class IncidentCorrelationJob {
         private final int minSensorTypes;
         private final double minScore;
 
+        // ADR-047 §1.3 — correlation built under a bound TenantContext (fail-closed drop if no tenant).
+        // Initialised in open() (transient fields are not restored on the task manager).
+        private transient TenantKeyedProcessFunctionDelegate<AlertEventEnvelope, CorrelatedIncidentEvent> tenantGuard;
+
         CorrelationPatternProcessFunction(int minSensorTypes, double minScore) {
             this.minSensorTypes = minSensorTypes;
             this.minScore = minScore;
+        }
+
+        @Override
+        public void open(org.apache.flink.configuration.Configuration parameters) {
+            tenantGuard = TenantKeyedProcessFunctionDelegate.forFn(AlertEventEnvelope::getTenantId);
         }
 
         @Override
@@ -256,8 +266,14 @@ public class IncidentCorrelationJob {
                                  Context ctx,
                                  Collector<CorrelatedIncidentEvent> out) {
             List<AlertEventEnvelope> alerts = match.get("alerts");
-            evaluateWindow(alerts, minSensorTypes, minScore, WINDOW_SECONDS)
-                    .ifPresent(out::collect);
+            if (alerts == null || alerts.isEmpty()) return;
+
+            // Bind tenant from the first alert in the window; fail-closed drop if blank.
+            AlertEventEnvelope first = alerts.get(0);
+            tenantGuard.run(first,
+                    (rec, emit) -> evaluateWindow(alerts, minSensorTypes, minScore, WINDOW_SECONDS)
+                            .ifPresent(emit),
+                    out::collect);
         }
     }
 

@@ -13,6 +13,7 @@ import org.junit.jupiter.api.TestTemplate;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
 
 /**
@@ -30,8 +31,16 @@ import org.springframework.test.context.ActiveProfiles;
  *
  * <p>Run manually: {@code scripts/pact-verify.sh}</p>
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest(
+    webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
+    // Locally disable the production SecurityConfig for contract verification
+    // only. This class-level property overrides the shared test profile so that
+    // other tests (AnalyticsControllerTest) which rely on the real security
+    // chain keep it enabled. Production is unaffected: matchIfMissing=true.
+    properties = "uip.security.enabled=false"
+)
 @ActiveProfiles("test")
+@Import({PactProviderStubConfiguration.class, com.uip.analytics.config.TestSecurityConfig.class})
 @Provider("analytics-service")
 @PactFolder("pacts")
 @Tag("contract")

@@ -1,0 +1,20 @@
+[req]
+distinguished_name = req_distinguished_name
+req_extensions     = v3_req
+prompt             = no
+[req_distinguished_name]
+C  = VN
+O  = UIP-POC
+OU = infra
+CN = clickhouse-01
+[v3_req]
+keyUsage         = digitalSignature, keyEncipherment
+extendedKeyUsage = serverAuth
+subjectAltName   = @alt_names
+[alt_names]
+DNS.1 = clickhouse-01
+DNS.2 = clickhouse-02
+DNS.3 = uip-clickhouse-01
+DNS.4 = uip-clickhouse-02
+DNS.5 = localhost
+IP.1  = 127.0.0.1

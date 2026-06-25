@@ -8,6 +8,10 @@
     <listen_host>0.0.0.0</listen_host>
     <http_port>8123</http_port>
     <tcp_port>9000</tcp_port>
+    <!-- Secure listeners (https_port 8443, tcp_port_secure 9440) are declared
+         in tls-config.xml overlay (M5-1-T09), mounted only on HA nodes that
+         have the mTLS cert volume. Single-node Tier 1 does NOT mount the
+         overlay and therefore stays on plain 8123/9000. -->
 
     <!-- Keeper connection for ReplicatedMergeTree coordination -->
     <!-- 3-node quorum — ADR-036 S9-TD-KEEPER -->

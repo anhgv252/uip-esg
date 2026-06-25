@@ -3,11 +3,14 @@ package com.uip.analytics.repository;
 import com.uip.analytics.api.dto.AqiTrendResponse.AqiDataPoint;
 import com.uip.analytics.api.dto.EmissionsAggregateResponse.TenantEmissionsBreakdown;
 import com.uip.analytics.api.dto.EnergyAggregateResponse.BuildingEnergyBreakdown;
+import com.uip.analytics.security.RowPolicyEngine;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
+import java.sql.PreparedStatement;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
@@ -17,6 +20,7 @@ import java.util.List;
 public class ClickHouseEnergyRepository {
 
     private final JdbcTemplate jdbcTemplate;
+    private final RowPolicyEngine rowPolicyEngine;
 
     public List<BuildingEnergyBreakdown> aggregateByBuilding(
             String tenantId, List<String> buildingIds, long fromEpoch, long toEpoch) {
@@ -38,12 +42,24 @@ public class ClickHouseEnergyRepository {
                     ORDER BY building_id
                     """.formatted(inClause);
 
-            return jdbcTemplate.query(sql, buildParams(tenantId, buildingIds, fromEpoch, toEpoch),
-                    (rs, rowNum) -> new BuildingEnergyBreakdown(
-                            rs.getString("building_id"),
-                            rs.getDouble("total_kwh"),
-                            rs.getDouble("peak_demand_kw")
-                    ));
+            // ADR-047: run on the tenant-scoped connection so the CH RowPolicy (L2)
+            // enforces isolation in addition to the WHERE clause (L1) above.
+            return rowPolicyEngine.executeWithTenant(tenantId, conn -> {
+                List<BuildingEnergyBreakdown> out = new ArrayList<>();
+                try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                    bindParams(ps, tenantId, buildingIds, fromEpoch, toEpoch);
+                    try (var rs = ps.executeQuery()) {
+                        while (rs.next()) {
+                            out.add(new BuildingEnergyBreakdown(
+                                    rs.getString("building_id"),
+                                    rs.getDouble("total_kwh"),
+                                    rs.getDouble("peak_demand_kw")
+                            ));
+                        }
+                    }
+                }
+                return out;
+            });
         });
     }
 
@@ -67,12 +83,22 @@ public class ClickHouseEnergyRepository {
                     ORDER BY building_id
                     """.formatted(inClause);
 
-            return jdbcTemplate.query(sql, buildParams(tenantId, buildingIds, fromEpoch, toEpoch),
-                    (rs, rowNum) -> new TenantEmissionsBreakdown(
-                            rs.getString("building_id"),
-                            rs.getDouble("total_co2_kg"),
-                            rs.getDouble("avg_co2_per_hour")
-                    ));
+            return rowPolicyEngine.executeWithTenant(tenantId, conn -> {
+                List<TenantEmissionsBreakdown> out = new ArrayList<>();
+                try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                    bindParams(ps, tenantId, buildingIds, fromEpoch, toEpoch);
+                    try (var rs = ps.executeQuery()) {
+                        while (rs.next()) {
+                            out.add(new TenantEmissionsBreakdown(
+                                    rs.getString("building_id"),
+                                    rs.getDouble("total_co2_kg"),
+                                    rs.getDouble("avg_co2_per_hour")
+                            ));
+                        }
+                    }
+                }
+                return out;
+            });
         });
     }
 
@@ -97,13 +123,23 @@ public class ClickHouseEnergyRepository {
                     ORDER BY building_id, ts_hour
                     """.formatted(inClause);
 
-            return jdbcTemplate.query(sql, buildParams(tenantId, buildingIds, fromEpoch, toEpoch),
-                    (rs, rowNum) -> new AqiDataPoint(
-                            rs.getString("building_id"),
-                            rs.getLong("ts_hour"),
-                            rs.getDouble("avg_aqi"),
-                            rs.getDouble("max_aqi")
-                    ));
+            return rowPolicyEngine.executeWithTenant(tenantId, conn -> {
+                List<AqiDataPoint> out = new ArrayList<>();
+                try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                    bindParams(ps, tenantId, buildingIds, fromEpoch, toEpoch);
+                    try (var rs = ps.executeQuery()) {
+                        while (rs.next()) {
+                            out.add(new AqiDataPoint(
+                                    rs.getString("building_id"),
+                                    rs.getLong("ts_hour"),
+                                    rs.getDouble("avg_aqi"),
+                                    rs.getDouble("max_aqi")
+                            ));
+                        }
+                    }
+                }
+                return out;
+            });
         });
     }
 
@@ -112,16 +148,20 @@ public class ClickHouseEnergyRepository {
         return 1.0;
     }
 
-    private Object[] buildParams(
-            String tenantId, List<String> buildingIds, long fromEpoch, long toEpoch) {
-        Object[] params = new Object[3 + buildingIds.size()];
-        params[0] = tenantId;
-        for (int i = 0; i < buildingIds.size(); i++) {
-            params[1 + i] = buildingIds.get(i);
+    /**
+     * Bind query params in the order the SQL expects them:
+     * {@code tenant_id, [building_id...], fromEpoch, toEpoch}.
+     */
+    private void bindParams(
+            PreparedStatement ps, String tenantId, List<String> buildingIds,
+            long fromEpoch, long toEpoch) throws java.sql.SQLException {
+        int i = 1;
+        ps.setString(i++, tenantId);
+        for (String buildingId : buildingIds) {
+            ps.setString(i++, buildingId);
         }
-        params[1 + buildingIds.size()] = fromEpoch;
-        params[2 + buildingIds.size()] = toEpoch;
-        return params;
+        ps.setLong(i++, fromEpoch);
+        ps.setLong(i, toEpoch);
     }
 
     @FunctionalInterface

@@ -1,0 +1,29 @@
+# UIP synthetic 50-tenant harness — 5-tenant SMOKE profile (T12 scaffold).
+#
+# Purpose: prove the harness end-to-end against a live stack with a TINY
+# tenant count. The FULL 50-tenant run is M5-5-T13 — do NOT run it from
+# this profile (the full-run profile lives at `full-50-tenant.yaml` and
+# is consumed only at gate M5-G7).
+#
+# Usage:
+#   python3 -m runner --profile infrastructure/scripts/synthetic/profiles/smoke-5-tenant.yaml
+#
+# Or via env (CI):
+#   BASE_URL=http://localhost:8081 \
+#   python3 -m runner --profile infrastructure/scripts/synthetic/profiles/smoke-5-tenant.yaml
+
+tenants: 5
+sensors_per_tenant: 20           # 5 × 20 = 100 sensors total (smoke)
+events_per_sensor: 5             # 5 queries per sensor → 25 queries/tenant
+rate_per_tenant: 2.0             # 2 RPS per tenant → 10 RPS aggregate (gentle)
+base_url: http://localhost:8081  # analytics-service (override via BASE_URL)
+analytics_endpoint: /api/v1/analytics/energy-aggregate
+admin_username: admin
+admin_password: admin_Dev#2026!  # seed creds (override via UIP_PASSWORD)
+max_workers: 5                   # one thread per tenant
+seed: 0                          # deterministic fleet
+error_rate_threshold_pct: 5.0    # softer threshold for smoke (infra may be cold)
+
+# Transport mode for the FULL harness (the runner always exercises the REST
+# read path; M5-2+ adds a Kafka-publish mode for partition-scan extension).
+transport: api

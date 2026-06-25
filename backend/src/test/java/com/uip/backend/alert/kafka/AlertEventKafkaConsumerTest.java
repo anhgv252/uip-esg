@@ -7,6 +7,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -25,6 +26,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
+import static org.assertj.core.api.Assertions.assertThat;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("AlertEventKafkaConsumer (alert module)")
@@ -139,15 +141,16 @@ class AlertEventKafkaConsumerTest {
     }
 
     @Test
-    @DisplayName("consume: dedup key uses sensorId + measureType + severity")
+    @DisplayName("consume: dedup key uses tenant + sensorId + measureType + severity (MVP5-S1-T06)")
     void consume_dedupKeyIncludesSensorMeasureSeverity() throws Exception {
         when(alertEventRepository.save(any())).thenReturn(savedEvent());
         when(objectMapper.writeValueAsString(any())).thenReturn("{}");
 
         consumer.consume(fullPayload(), ack, AlertEventKafkaConsumer.TOPIC, 0);
 
+        // MVP5-S1-T06: key now carries the tenant prefix to prevent cross-tenant dedup leaks.
         verify(valueOps).setIfAbsent(
-                eq("alert:dedup:kafka:ENV-001:AQI:CRITICAL"),
+                eq("alert:dedup:kafka:tenant:hcm:ENV-001:AQI:CRITICAL"),
                 eq("1"),
                 eq(Duration.ofMinutes(5)));
     }
@@ -218,6 +221,35 @@ class AlertEventKafkaConsumerTest {
     }
 
     // -------------------------------------------------------------------------
+    // MVP5-S1-T06: cross-tenant dedup isolation
+    // -------------------------------------------------------------------------
+
+    @Test
+    @DisplayName("MVP5-S1-T06: tenant A dedup does NOT suppress tenant B (same sensorId)")
+    void consume_crossTenantDedup_isolated() throws Exception {
+        when(alertEventRepository.save(any())).thenReturn(savedEvent());
+        when(objectMapper.writeValueAsString(any())).thenReturn("{}");
+
+        // Tenant A: ENV-001 → dedup key set
+        Map<String, Object> payloadA = fullPayload(); // tenantId=hcm
+        consumer.consume(payloadA, ack, AlertEventKafkaConsumer.TOPIC, 0);
+
+        // Tenant B: same sensorId/measure/severity, different tenantId
+        Map<String, Object> payloadB = fullPayload();
+        payloadB.put("tenantId", "hanoi");
+        consumer.consume(payloadB, ack, AlertEventKafkaConsumer.TOPIC, 0);
+
+        // Two distinct tenant-scoped dedup keys → both processed
+        verify(alertEventRepository, times(2)).save(any());
+
+        ArgumentCaptor<String> keyCaptor = ArgumentCaptor.forClass(String.class);
+        verify(valueOps, times(2)).setIfAbsent(keyCaptor.capture(), eq("1"), eq(Duration.ofMinutes(5)));
+        java.util.List<String> keys = keyCaptor.getAllValues();
+        assertThat(keys.get(0)).contains("tenant:hcm:").doesNotContain("hanoi");
+        assertThat(keys.get(1)).contains("tenant:hanoi:").doesNotContain("hcm");
+    }
+
+    // -------------------------------------------------------------------------
     // Helpers
     // -------------------------------------------------------------------------
 
@@ -229,6 +261,7 @@ class AlertEventKafkaConsumerTest {
         m.put("value",       "155.0");
         m.put("threshold",   "100.0");
         m.put("severity",    "CRITICAL");
+        m.put("tenantId",    "hcm"); // MVP5-S1-T06: tenant carried into dedup key
         m.put("detectedAt",  Instant.now().toString());
         return m;
     }

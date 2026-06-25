@@ -29,6 +29,24 @@ public class ClickHouseConfig {
     @Value("${clickhouse.database:analytics}")
     private String database;
 
+    /**
+     * ClickHouse session id for this application instance — pins HTTP-mode JDBC
+     * connections so that {@code SET SQL_tenant_id = ...} issued by
+     * {@code RowPolicyEngine} persists across the SET statement and the
+     * subsequent SELECT. Without a session_id the HTTP interface is stateless
+     * and each statement runs in a fresh session (the SET is lost).
+     *
+     * <p>The same id is reused for every pooled connection. Cross-request tenant
+     * bleed is prevented by {@code RowPolicyEngine}'s try/finally RESET — every
+     * borrower restores {@code SQL_tenant_id} to empty before the connection is
+     * returned. CH also expires idle sessions after {@code session_timeout}
+     * (default 60s).</p>
+     *
+     * <p>Ref: ADR-047, regression fix M5-1-T10.
+     */
+    @Value("${clickhouse.session_id:uip-analytics-${random.uuid}}")
+    private String sessionId;
+
     @Bean
     public DataSource clickHouseDataSource() throws SQLException {
         String url = clickhouseUrl;
@@ -42,8 +60,11 @@ public class ClickHouseConfig {
         props.setProperty("socket_timeout", "30000");
         props.setProperty("connect_timeout", "10000");
         props.setProperty("compress", "0");
+        // ADR-047 (regression fix M5-1-T10): pin a session id so HTTP-mode JDBC
+        // connections carry session state (SET SQL_tenant_id) across statements.
+        props.setProperty("session_id", sessionId);
 
-        log.info("Connecting to ClickHouse: {}", url);
+        log.info("Connecting to ClickHouse: {} (session_id={})", url, sessionId);
         return new ClickHouseDataSource(url, props);
     }
 

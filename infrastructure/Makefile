@@ -7,7 +7,7 @@ COMPOSE_FILE        = -f docker-compose.yml
 COMPOSE_UAT_FILE    = -f docker-compose.yml -f docker-compose.uat.yml
 COMPOSE_STAGING_FILE = -f docker-compose.yml -f docker-compose.uat.yml -f docker-compose.staging.yml
 
-.PHONY: help up up-ha ha-health-check down logs ps migrate test-mqtt test-pipeline check-contract-drift \
+.PHONY: help up up-ha ha-health-check vault-init vault-status vault-verify down logs ps migrate test-mqtt test-pipeline check-contract-drift \
         uat-up uat-down uat-logs uat-ps uat-test uat-clean seed-uat clean \
         staging-up staging-down staging-logs staging-ps staging-smoke-test \
         regression-test regression-test-group \
@@ -40,6 +40,38 @@ up-ha: ## Start HA stack (ClickHouse 2-node + Kafka 3-broker — staging/pilot o
 
 ha-health-check: ## Check health of all HA environment containers (use --wait to retry for 5min)
 	@./scripts/ha-health-check.sh $(ARGS)
+
+# ─── Vault secret injection (M5-1-T03, block gate G1) ────────────────────────
+# Docs: ADR-048 §6, runbook in docs/mvp5/reports/mvp5-sprint1-vault-secret-audit.md
+
+vault-init: ## Bootstrap Vault: start server + pre-load KV v2 secrets + render uip.env (HA overlay)
+	@cp -n .env.example .env 2>/dev/null || true
+	$(COMPOSE) -f docker-compose.yml -f docker-compose.ha.yml up -d vault
+	@echo "Waiting for Vault to be healthy..."
+	@$(COMPOSE) -f docker-compose.yml -f docker-compose.ha.yml exec -T vault vault status >/dev/null
+	$(COMPOSE) -f docker-compose.yml -f docker-compose.ha.yml run --rm vault-init
+	$(COMPOSE) -f docker-compose.yml -f docker-compose.ha.yml up -d vault-agent
+	@echo ""
+	@echo "=== Vault bootstrap complete ==="
+	@echo "  Server:    http://localhost:8200 (token: root — DEV ONLY)"
+	@echo "  KV engine: secret/ (KV v2)"
+	@echo "  Rendered:  uip-vault-secrets:/vault/secrets/uip.env (mounted into consumers)"
+	@echo "  Verify:    make vault-verify"
+
+vault-status: ## Show Vault seal status + KV v2 secret list
+	$(COMPOSE) -f docker-compose.yml -f docker-compose.ha.yml exec vault vault status
+	@echo "--- KV paths ---"
+	$(COMPOSE) -f docker-compose.yml -f docker-compose.ha.yml exec vault vault kv list secret/uip/ || true
+
+vault-verify: ## Verify rendered secrets file exists, is fresh (<6m), and contains expected keys
+	@test -n "$$(docker volume ls -q --filter name=uip-vault-secrets)" || { echo "ERROR: vault-secrets volume missing. Run 'make vault-init' first."; exit 1; }
+	$(COMPOSE) -f docker-compose.yml -f docker-compose.ha.yml exec vault-agent sh -c '\
+		test -f /vault/secrets/uip.env || { echo "FAIL: uip.env not rendered"; exit 1; }; \
+		find /vault/secrets/uip.env -mmin -6 | grep -q . || { echo "FAIL: uip.env stale (>6min) — agent not refreshing"; exit 1; }; \
+		grep -qE "^POSTGRES_PASSWORD=" /vault/secrets/uip.env || { echo "FAIL: POSTGRES_PASSWORD missing"; exit 1; }; \
+		grep -qE "^JWT_SECRET="         /vault/secrets/uip.env || { echo "FAIL: JWT_SECRET missing"; exit 1; }; \
+		grep -qE "^CLAUDE_API_KEY="     /vault/secrets/uip.env || { echo "FAIL: CLAUDE_API_KEY missing"; exit 1; }; \
+		echo "OK: uip.env rendered, fresh (<6m), all critical keys present."'
 
 down: ## Stop dev stack
 	$(COMPOSE) $(COMPOSE_FILE) down

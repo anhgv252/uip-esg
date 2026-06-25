@@ -106,10 +106,16 @@ services:
     volumes:
       - clickhouse-01-data:/var/lib/clickhouse
       - ./clickhouse/node-config.xml:/etc/clickhouse-server/config.d/cluster-config.xml:ro
+      # M5-1-T09 (GAP-046): mTLS overlay — adds https_port 8443 + tcp_port_secure
+      # 9440 with openSSL caConfig = client cert verification.
+      - ./clickhouse/tls-config.xml:/etc/clickhouse-server/config.d/tls-config.xml:ro
+      - ./clickhouse/tls:/etc/clickhouse-server/tls:ro
       - ./clickhouse/init-replicated.sql:/docker-entrypoint-initdb.d/init.sql:ro
     ports:
-      - "8125:8123"   # HTTP API (HA node-01, offset from single-node :8123)
+      - "8125:8123"   # HTTP API plain (HA node-01, offset from single-node :8123)
+      - "8126:8443"   # HTTPS API mTLS (M5-1-T09) — host offset
       - "9002:9000"   # Native protocol (offset)
+      - "9442:9440"   # Native protocol mTLS (M5-1-T09) — host offset
     ulimits:
       nofile:
         soft: 262144
@@ -151,10 +157,15 @@ services:
     volumes:
       - clickhouse-02-data:/var/lib/clickhouse
       - ./clickhouse/node-config.xml:/etc/clickhouse-server/config.d/cluster-config.xml:ro
+      # M5-1-T09 (GAP-046): mTLS overlay — same as clickhouse-01.
+      - ./clickhouse/tls-config.xml:/etc/clickhouse-server/config.d/tls-config.xml:ro
+      - ./clickhouse/tls:/etc/clickhouse-server/tls:ro
       - ./clickhouse/init-replicated.sql:/docker-entrypoint-initdb.d/init.sql:ro
     ports:
-      - "8124:8123"   # HTTP API (offset port)
+      - "8124:8123"   # HTTP API plain (offset port)
+      - "8127:8443"   # HTTPS API mTLS (M5-1-T09) — host offset
       - "9003:9000"   # Native protocol (offset port)
+      - "9443:9440"   # Native protocol mTLS (M5-1-T09) — host offset
     ulimits:
       nofile:
         soft: 262144
@@ -185,20 +196,49 @@ services:
       - uip-network
 
   # ─── Override: analytics-service → HA cluster ─────────────────────────────
+  # M5-2 decision: JDBC consumers stay on 8123 INTERNAL (uip-network only, NOT
+  # published to host). mTLS transport (8443, verified PASS — cert handshake +
+  # no-cert reject) is published to host for external/admin access. Reason: the
+  # ClickHouse JDBC driver + CH 23.8 HTTPS interface auth is incompatible — JDBC
+  # fails 516 over 8443 while curl with the same credential PASSes. 8123 is
+  # internal-cluster-only so the data path is not externally exposed; mTLS 8443
+  # remains the secure external entry. Follow-up: re-evaluate when upgrading
+  # ClickHouse JDBC driver or CH version (tech-debt M5-3+).
   analytics-service:
+    # M5-2-D2: secrets (CLICKHOUSE_USER/PASSWORD/DB, JWT_SECRET) now come from
+    # Vault via the entrypoint wrapper (vault-env-wrapper.sh sources
+    # /run/secrets/uip.env at runtime). Only non-secret wiring stays here.
+    entrypoint: ["/run/secrets/vault-env-wrapper.sh"]
+    command: ["java", "-XX:+UseContainerSupport", "-XX:MaxRAMPercentage=75.0",
+              "-Djava.security.egd=file:/dev/./urandom", "-jar", "app.jar"]
     environment:
       CLICKHOUSE_URL: jdbc:clickhouse://clickhouse-01:8123,clickhouse-02:8123/${CLICKHOUSE_DB:-analytics}
+    volumes:
+      - vault-secrets:/run/secrets:ro
     depends_on:
+      vault-agent:
+        condition: service_healthy
       clickhouse-01:
         condition: service_healthy
       clickhouse-02:
         condition: service_healthy
 
-  # ─── Override: backend → HA cluster (for ClickHouse queries if used) ──────
+  # ─── Override: backend → HA cluster (8123 internal) ───────────────────────
+  # M5-2-D2: secrets (SPRING_DATASOURCE_PASSWORD, SPRING_DATA_REDIS_PASSWORD,
+  # JWT_SECRET, CLAUDE_API_KEY, OPERATOR/ADMIN/CITIZEN_PASSWORD) come from
+  # Vault via the entrypoint wrapper. Only non-secret wiring stays here.
   backend:
+    entrypoint: ["/run/secrets/vault-env-wrapper.sh"]
+    command: ["java", "-XX:+UseContainerSupport", "-XX:MaxRAMPercentage=75.0",
+              "-Djava.security.egd=file:/dev/./urandom", "-jar", "app.jar"]
     environment:
       CLICKHOUSE_URL: jdbc:clickhouse://clickhouse-01:8123,clickhouse-02:8123/${CLICKHOUSE_DB:-analytics}
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092,kafka-2:9092,kafka-3:9092
+    volumes:
+      - vault-secrets:/run/secrets:ro
+    depends_on:
+      vault-agent:
+        condition: service_healthy
 
   # ─── Override: Flink submitters → HA cluster ─────────────────────────────
   flink-esg-job-submitter:
@@ -320,6 +360,202 @@ services:
         condition: service_healthy
 
   # ═══════════════════════════════════════════════════════════════════════════
+  # HashiCorp Vault — Secret injection (M5-1-T03, block gate G1)
+  # See ADR-048 §6. BSL 1.1 license — NOT AGPL. Acceptable for internal UIP use.
+  #
+  # Topology:
+  #   1. vault       — Vault dev server (single node, in-mem; DR deferred MVP6)
+  #   2. vault-init  — one-shot bootstrap: enable KV v2 + pre-load all secrets
+  #   3. vault-agent — sidecar: pulls secrets, renders uip.env, caches 5m (R6)
+  #
+  # Services consume secrets via the shared `vault-secrets` volume:
+  #   volumes:
+  #     - vault-secrets:/run/secrets:ro
+  #   env_file:
+  #     - /run/secrets/uip.env
+  # (Wiring consumers is opt-in per service to keep the HA overlay diff small;
+  #  audit report mvp5-sprint1-vault-secret-audit.md tracks each migration.)
+  # ═══════════════════════════════════════════════════════════════════════════
+
+  vault:
+    image: hashicorp/vault:1.15
+    container_name: uip-vault
+    restart: unless-stopped
+    # Dev mode: auto-unsealed, in-mem storage, root token = "root".
+    # Production MUST switch to file/raft storage + AppRole/JWT auth (ADR-048 §6.2).
+    cap_add:
+      - IPC_LOCK
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: root
+      VAULT_DEV_LISTEN_ADDRESS: 0.0.0.0:8200
+      VAULT_LOG_LEVEL: info
+    ports:
+      - "8200:8200"   # Vault API (UI: http://localhost:8200, token: root)
+    healthcheck:
+      # Vault dev server is unsealed by default; "initialized" is the ready signal.
+      # Dev server is HTTP-only — must override VAULT_ADDR (CLI defaults to https).
+      test: ["CMD-SHELL", "VAULT_ADDR=http://127.0.0.1:8200 vault status >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+          cpus: '0.5'
+        reservations:
+          memory: 128m
+    networks:
+      - uip-network
+
+  # ─── One-shot: enable KV v2 + pre-load all UIP secrets ──────────────────────
+  vault-init:
+    image: hashicorp/vault:1.15
+    container_name: uip-vault-init
+    restart: "no"
+    entrypoint: ["/bin/sh", "/vault/init/vault-init.sh"]
+    environment:
+      VAULT_ADDR: http://vault:8200
+      VAULT_TOKEN: root
+      # Plaintext values sourced from infrastructure/.env (gitignored).
+      # They are written to Vault KV v2 and then MUST be removed from .env in
+      # a follow-up task — see audit report mvp5-sprint1-vault-secret-audit.md.
+      POSTGRES_USER: ${POSTGRES_USER:-uip}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-uip_smartcity}
+      REPLICATION_PASSWORD: ${REPLICATION_PASSWORD:-${POSTGRES_PASSWORD}}
+      CLICKHOUSE_USER: ${CLICKHOUSE_USER:-default}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-}
+      CLICKHOUSE_DB: ${CLICKHOUSE_DB:-analytics}
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      KAFKA_CLUSTER_ID: ${KAFKA_CLUSTER_ID:-MkU3OEVBNTcwNTJENDM36Qg}
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET:-uip-api-secret-dev}
+      OPERATOR_PASSWORD: ${OPERATOR_PASSWORD:-Operator#2026!}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-Admin#2026!}
+      CITIZEN_PASSWORD: ${CITIZEN_PASSWORD:-citizen1_Dev#2026!}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRATION_MS: ${JWT_EXPIRATION_MS:-900000}
+      JWT_REFRESH_EXPIRATION_MS: ${JWT_REFRESH_EXPIRATION_MS:-604800000}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      EMQX_DASHBOARD_USER: ${EMQX_DASHBOARD_USER:-admin}
+      EMQX_DASHBOARD_PASSWORD: ${EMQX_DASHBOARD_PASSWORD}
+      CLAUDE_API_KEY: ${CLAUDE_API_KEY:-}
+    volumes:
+      - ./vault/vault-init.sh:/vault/init/vault-init.sh:ro
+      - ./vault/vault-env-wrapper.sh:/vault/init/vault-env-wrapper.sh:ro
+      # Mount the shared secrets volume so vault-init can:
+      #   (a) write AppRole role_id/secret_id (consumers don't read these), AND
+      #   (b) copy vault-env-wrapper.sh to the volume root so consumers can
+      #       exec it at /run/secrets/vault-env-wrapper.sh (M5-2-D2).
+      - vault-secrets:/vault/secrets
+      # Dedicated volume for AppRole creds — written here by vault-init, read
+      # by vault-agent. Kept SEPARATE so consumer services mounting
+      # vault-secrets at /run/secrets never see auth creds (least privilege).
+      - vault-approle:/vault/approle
+    depends_on:
+      vault:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 128m
+          cpus: '0.25'
+        reservations:
+          memory: 64m
+    networks:
+      - uip-network
+
+  # ─── Sidecar: AppRole auto-auth + render secrets to shared volume ──────────
+  vault-agent:
+    image: hashicorp/vault:1.15
+    container_name: uip-vault-agent
+    restart: unless-stopped
+    entrypoint: ["vault", "agent", "-config=/vault/config/vault-agent.hcl"]
+    environment:
+      VAULT_ADDR: http://vault:8200
+    volumes:
+      - ./vault/vault-agent.hcl:/vault/config/vault-agent.hcl:ro
+      - ./vault/vault-agent-template.tpl:/vault/config/vault-agent-template.tpl:ro
+      # vault-secrets: rendered uip.env, mounted read-only into consumers.
+      # vault-approle: AppRole role_id/secret_id written by vault-init.
+      - vault-secrets:/vault/secrets
+      - vault-approle:/vault/approle
+      - vault-agent-pid:/vault/pid
+    depends_on:
+      vault-init:
+        condition: service_completed_successfully
+    healthcheck:
+      # Agent is healthy when the env-file exists, is non-empty, AND the agent
+      # process is running. We do NOT check freshness (-mmin) because the agent
+      # only re-renders on secret change — a steady-state agent legitimately
+      # hasn't written in hours. The agent process liveness is covered by
+      # docker restart policy; the file-presence check catches a wedged runner
+      # that failed its initial render.
+      test: ["CMD-SHELL", "test -s /vault/secrets/uip.env && grep -q '^POSTGRES_PASSWORD=' /vault/secrets/uip.env"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 128m
+          cpus: '0.25'
+        reservations:
+          memory: 64m
+    networks:
+      - uip-network
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # Vault consumer wiring (M5-2-D2)
+  # ═══════════════════════════════════════════════════════════════════════════
+  # Wired services source their secrets from /run/secrets/uip.env (rendered by
+  # vault-agent from Vault KV v2). The file is mounted read-only from the
+  # shared vault-secrets named volume.
+  #
+  # IMPORTANT: docker-compose `env_file:` is resolved by the compose CLIENT on
+  # the HOST at config time — it CANNOT read a file inside a mounted named
+  # volume. So instead of env_file, wired services use an entrypoint wrapper
+  # (vault/vault-env-wrapper.sh) that sources /run/secrets/uip.env at container
+  # runtime, then execs the original Java process. The wrapper is bind-mounted
+  # read-only alongside uip.env on the same volume.
+  #
+  # Per docker-compose semantics, `environment:` entries take precedence over
+  # environment vars set by the wrapper. So for each wired service we DROP the
+  # secret-bearing keys from its `environment:` block and let the wrapper
+  # supply them — this is the actual cutover from plaintext .env to Vault.
+  #
+  # To add a new consumer:
+  #   1. Add the secret keys it needs to vault/vault-agent-template.tpl (if not
+  #      already present) + the corresponding `vault kv put` in vault-init.sh.
+  #   2. In the service's override block in this file:
+  #        entrypoint: ["/run/secrets/vault-env-wrapper.sh"]
+  #        command: ["<original-entrypoint-and-args>"]
+  #        volumes:
+  #          - vault-secrets:/run/secrets:ro
+  #      and REMOVE the secret keys from the service's environment: block so
+  #      the wrapper-sourced vars are authoritative.
+  #   3. `docker compose ... up -d <service>` then verify health + a real call.
+  # ═══════════════════════════════════════════════════════════════════════════
+
+  # ─── analytics-service + backend: secrets from Vault via entrypoint wrapper ─
+  # Both Spring Boot services share the same Java entrypoint shape; their
+  # override blocks (near the top of this overlay) set:
+  #   entrypoint: ["/run/secrets/vault-env-wrapper.sh"]
+  #   command: ["java", "-XX:+UseContainerSupport", ...]
+  # and mount vault-secrets at /run/secrets (ro). The wrapper script itself
+  # lives at the volume root (vault-secrets/vault-env-wrapper.sh) so consumers
+  # don't need a separate bind mount — vault-init copies it there.
+  # Secret keys dropped from their environment: blocks:
+  #   analytics-service: CLICKHOUSE_USER, CLICKHOUSE_PASSWORD, CLICKHOUSE_DB, JWT_SECRET
+  #   backend: SPRING_DATASOURCE_USERNAME/PASSWORD, SPRING_DATA_REDIS_PASSWORD,
+  #            JWT_SECRET, CLAUDE_API_KEY, ADMIN/OPERATOR/CITIZEN_PASSWORD
+
+  # ═══════════════════════════════════════════════════════════════════════════
   # PostgreSQL Streaming Replication — Primary + Hot Standby (S8-OPS04)
   # Manual promotion (no auto-failover) — SA recommendation: false promotion
   # from network noise is worse than brief downtime.
@@ -403,3 +639,16 @@ volumes:
     name: uip-kafka-3-data
   timescaledb-standby-data:
     name: uip-timescaledb-standby-data
+  # ─── Vault secret-injection (M5-1-T03 + M5-2-D2) ──────────────────────────
+  # Rendered env-file shared read-only with consuming services. Named volume
+  # (NOT bind mount) per infra constraint. Survives agent restart; rebuilt
+  # from Vault KV on agent start.
+  vault-secrets:
+    name: uip-vault-secrets
+  # AppRole role_id + secret_id — written by vault-init, read by vault-agent.
+  # Kept SEPARATE from vault-secrets so consumers never see auth creds.
+  vault-approle:
+    name: uip-vault-approle
+  # PID file dir for vault-agent (kept off the secrets volume for atomicity).
+  vault-agent-pid:
+    name: uip-vault-agent-pid

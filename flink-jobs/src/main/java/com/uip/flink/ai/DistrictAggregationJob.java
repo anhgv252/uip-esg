@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.uip.flink.common.NgsiLdDeserializer;
 import com.uip.flink.common.NgsiLdMessage;
+import com.uip.flink.common.tenant.TenantBindingProcessFunction;
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.api.common.serialization.SimpleStringSchema;
 import org.apache.flink.api.java.tuple.Tuple3;
@@ -118,6 +119,12 @@ public class DistrictAggregationJob {
         )
         // Drop malformed messages + readings missing the district key
         .filter(DistrictAggregationJob::hasDistrictAndValue)
+        // ADR-047 §1.3 — bind TenantContext + fail-closed drop records with no tenant.
+        // Inserted BEFORE keyBy so every record reaching the window has a tenant bound;
+        // does NOT alter the composite key (tenantId is still IN the key) and does NOT
+        // touch the window/aggregate logic (G1 window-batching preserved).
+        .process(new TenantBindingProcessFunction<>(NgsiLdMessage::getTenantId))
+                .name("Tenant Binding (District Aggregation)")
         .keyBy(DistrictAggregationJob::extractKey)
         .window(TumblingEventTimeWindows.of(Time.seconds(WINDOW_SECONDS)))
         .aggregate(

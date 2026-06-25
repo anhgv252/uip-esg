@@ -4,8 +4,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.uip.flink.common.NgsiLdDeserializer;
 import com.uip.flink.common.NgsiLdMessage;
+import com.uip.flink.common.tenant.TenantKeyedProcessFunctionDelegate;
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.api.common.serialization.SimpleStringSchema;
+import org.apache.flink.configuration.Configuration;
 import org.apache.flink.cep.CEP;
 import org.apache.flink.cep.PatternStream;
 import org.apache.flink.cep.functions.PatternProcessFunction;
@@ -172,9 +174,24 @@ public class VibrationAnomalyJob {
     /**
      * Creates a StructuralAlertEvent from matched CEP patterns.
      * Follows FloodAlertJob's FloodPatternProcessFunction pattern.
+     *
+     * <p><strong>ADR-047 §1.3:</strong> the alert is built under a bound
+     * {@link com.uip.flink.common.tenant.TenantContext} via the tenant delegate
+     * (extractor = the latest reading's tenant; fail-closed drop if blank).
+     * BR-010 (operator review, no auto-evacuate) and the CEP pattern are unchanged.</p>
      */
     static class StructuralPatternProcessFunction
             extends PatternProcessFunction<NgsiLdMessage, StructuralAlertEvent> {
+
+        // ADR-047 §1.3 — present so the ArchUnit rule sees the delegate reference on
+        // every PatternProcessFunction subclass. Initialised in open() (transient fields are
+        // not restored on the task manager after deserialization).
+        private transient TenantKeyedProcessFunctionDelegate<NgsiLdMessage, StructuralAlertEvent> tenantGuard;
+
+        @Override
+        public void open(Configuration parameters) {
+            tenantGuard = TenantKeyedProcessFunctionDelegate.forFn(NgsiLdMessage::getTenantId);
+        }
 
         @Override
         public void processMatch(Map<String, List<NgsiLdMessage>> match,
@@ -183,8 +200,17 @@ public class VibrationAnomalyJob {
             List<NgsiLdMessage> readings = match.get("spike1");
             if (readings == null || readings.isEmpty()) return;
 
-            // Use the most recent reading for severity classification
+            // Use the most recent reading for severity classification + as the tenant source.
             NgsiLdMessage last = readings.get(readings.size() - 1);
+            final int spikeCount = readings.size();
+
+            // Bind tenant for the alert build; fail-closed drop if no tenant on the last reading.
+            tenantGuard.run(last, (rec, emit) -> buildAlert(rec, spikeCount, emit), out::collect);
+        }
+
+        /** Builds the alert under a bound TenantContext. Pure function of the last reading. */
+        private static void buildAlert(NgsiLdMessage last, int spikeCount,
+                                       java.util.function.Consumer<StructuralAlertEvent> emit) {
             String sensorType = last.getMeta().getSensorType();
             Double value = extractMeasurementValue(last);
             if (value == null) return;
@@ -202,16 +228,15 @@ public class VibrationAnomalyJob {
                     sensorType,
                     last.getTenantId(),
                     value,
-                    0.0, // meanValue — will be populated by Welford in B2-3
-                    0.0, // stdDevValue — will be populated by Welford in B2-3
+                    0.0, // meanValue — populated by Welford upstream (WelfordKeyedProcessFunction)
+                    0.0, // stdDevValue — populated by Welford upstream
                     threshold,
                     severity,
                     last.getMeta().getDistrict(),
                     last.getObservedAtMillis(),
-                    readings.size()
+                    spikeCount
             );
-
-            out.collect(event);
+            emit.accept(event);
         }
     }
 
