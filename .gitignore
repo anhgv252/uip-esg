@@ -25,6 +25,12 @@ infrastructure/secrets/*.jks
 infrastructure/secrets/*.keystore
 !infrastructure/secrets/README.md
 
+# MVP5 — ClickHouse mTLS private keys (generated locally, NEVER commit)
+# Public certs (.crt) are committed; private keys (.key) must stay local.
+infrastructure/clickhouse/tls/*.key
+# Keep .cnf (openssl config) and .crt (public) tracked
+!infrastructure/clickhouse/tls/*.cnf
+
 # Backend (Gradle / Java)
 backend/.gradle/
 backend/build/
