@@ -13,7 +13,10 @@
 #   - client cert for analytics-service / backend (CN=uip-jdbc-client)
 #
 # !!! POC / TEST-ENVIRONMENT DEV CERTS ONLY !!!
-# These certs are committed intentionally so the test topology is reproducible.
+# Only PUBLIC material is committed: CA cert + leaf certs (.crt) and openssl
+# configs (.cnf) so the test topology is reproducible.
+# PRIVATE KEYS (*.key) are NEVER committed — they are gitignored and must be
+# regenerated locally by running this script (use --force to overwrite).
 # They are NOT production-grade secrets:
 #   - 10-year CA, 2-year leaf certs (documented below)
 #   - single internal CA, no HSM, no rotation automation

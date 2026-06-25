@@ -74,11 +74,20 @@ Expiry (documented; configured via env at generation time):
 | Client cert (`client.crt`) | 2 years (730 d) | `LEAF_DAYS` |
 
 **!!! POC / TEST-ENVIRONMENT DEV CERTS !!!**
-The generated certs are committed to the repo so the test topology is
-reproducible. They are NOT production-grade secrets (single internal CA,
-no HSM, no automated rotation). Production MUST provision via
-cert-manager (K8s `Certificate` CRD) or Vault PKI secrets engine before
-pilot — see ADR-048 §6 for the Vault secret-injection pattern.
+Only the **public** material is committed to the repo (CA cert, leaf
+`.crt` certs, and openssl `.cnf` configs) so the test topology is
+reproducible. **Private keys (`*.key`) are NEVER committed** — they are
+gitignored and must be regenerated locally before first deploy:
+
+```bash
+# First-time setup — regenerate private keys locally (idempotent with --force)
+infrastructure/scripts/gen-ch-mtls-certs.sh --force
+```
+
+These are NOT production-grade secrets (single internal CA, no HSM, no
+automated rotation). Production MUST provision via cert-manager (K8s
+`Certificate` CRD) or Vault PKI secrets engine before pilot — see
+ADR-048 §6 for the Vault secret-injection pattern.
 
 ### 3.2 Rotation procedure (test env)
 
