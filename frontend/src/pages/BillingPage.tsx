@@ -147,8 +147,8 @@ export default function BillingPage() {
             </Box>
           )}
 
-      {!isLoading && usage && (
-        <>
+          {!isLoading && usage && (
+            <>
           {/* Summary Cards */}
           <Grid container spacing={2} mb={4}>
             <Grid item xs={12} sm={6} md={3}>
@@ -257,6 +257,8 @@ export default function BillingPage() {
               <li>Usage tracked per building for cost attribution</li>
             </Typography>
           </Alert>
+            </>
+          )}
         </>
       )}
 
