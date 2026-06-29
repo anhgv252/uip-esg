@@ -29,6 +29,7 @@ import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import BoltIcon from '@mui/icons-material/Bolt';
 import DesignServicesIcon from '@mui/icons-material/DesignServices';
 import ViewModuleIcon from '@mui/icons-material/ViewModule';
+import RateReviewIcon from '@mui/icons-material/RateReview';
 import {
   useProcessDefinitions,
   useProcessInstances,
@@ -49,6 +50,7 @@ const BpmnViewer = lazy(() => import('@/components/workflow/BpmnViewer'));
 // Lazy load heavy tab content to reduce initial bundle
 const LazyDesignerTab = lazy(() => import('@/pages/workflow-tabs/DesignerTab'));
 const LazyLiveDemoTab = lazy(() => import('@/pages/workflow-tabs/LiveDemoTab'));
+const LazyOperatorReviewTab = lazy(() => import('@/pages/workflow-tabs/OperatorReviewTab'));
 
 // ── Definitions tab ─────────────────────────────────────────────────────────
 
@@ -361,6 +363,18 @@ export default function AiWorkflowPage() {
           aria-label="View process definitions"
         />
         <Tab
+          label={
+            <Box display="flex" alignItems="center" gap={0.5}>
+              Operator Review
+              <Chip label="2" size="small" color="warning" sx={{ height: 18, fontSize: '0.7rem' }} />
+            </Box>
+          }
+          icon={<RateReviewIcon />}
+          iconPosition="start"
+          sx={{ minHeight: 48 }}
+          aria-label="Review AI-generated workflows (BR-010)"
+        />
+        <Tab
           label="Templates"
           icon={<ViewModuleIcon />}
           iconPosition="start"
@@ -386,6 +400,11 @@ export default function AiWorkflowPage() {
       {tab === 0 && <InstancesTab />}
       {tab === 1 && <DefinitionsTab onStartProcess={handleStartProcess} />}
       {tab === 2 && (
+        <Suspense fallback={<CircularProgress sx={{ display: 'block', mx: 'auto', mt: 4 }} />}>
+          <LazyOperatorReviewTab />
+        </Suspense>
+      )}
+      {tab === 3 && (
         <Box>
           <Box display="flex" justifyContent="flex-end" mt={1} mb={0}>
             <Button
@@ -400,12 +419,12 @@ export default function AiWorkflowPage() {
           <TemplateGallery onSelectTemplate={handleSelectTemplate} />
         </Box>
       )}
-      {tab === 3 && (
+      {tab === 4 && (
         <Suspense fallback={<Skeleton variant="rectangular" height={520} sx={{ mt: 2 }} />}>
           <LazyDesignerTab />
         </Suspense>
       )}
-      {tab === 4 && (
+      {tab === 5 && (
         <Suspense fallback={<CircularProgress sx={{ display: 'block', mx: 'auto', mt: 4 }} />}>
           <LazyLiveDemoTab />
         </Suspense>

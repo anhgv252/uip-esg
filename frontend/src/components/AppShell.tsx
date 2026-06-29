@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import {
   Box,
@@ -38,6 +38,7 @@ import {
 import LocationCityIcon from '@mui/icons-material/LocationCity'
 import BusinessIcon from '@mui/icons-material/Business'
 import DeviceHubIcon from '@mui/icons-material/DeviceHub'
+import AttachMoneyIcon from '@mui/icons-material/AttachMoney'
 import { useAuth } from '@/hooks/useAuth'
 import { useTenantConfig } from '@/contexts/TenantConfigContext'
 
@@ -59,9 +60,17 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Buildings', path: '/buildings', icon: <BusinessIcon /> },
   { label: 'Environment', path: '/environment', icon: <EnvironmentIcon /> },
   { label: 'ESG Metrics', path: '/esg', icon: <EsgIcon /> },
+  { label: 'LOTUS VN', path: '/lotus', icon: <EsgIcon /> },
+  { label: 'ISO 37120', path: '/iso37120', icon: <EsgIcon /> },
   { label: 'Traffic', path: '/traffic', icon: <TrafficIcon /> },
   { label: 'Alerts', path: '/alerts', icon: <AlertsIcon /> },
   { label: 'BMS Devices', path: '/bms/devices', icon: <DeviceHubIcon /> },
+  {
+    label: 'Billing',
+    path: '/billing',
+    icon: <AttachMoneyIcon />,
+    roles: ['ROLE_ADMIN', 'ROLE_TENANT_ADMIN'],
+  },
   { label: 'Citizens', path: '/citizen', icon: <CitizenIcon /> },
   {
     label: 'AI Workflows',
@@ -101,6 +110,11 @@ export default function AppShell() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [desktopCollapsed, setDesktopCollapsed] = useState(false)
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
+
+  // Close mobile drawer on route change (handles navigation from any source)
+  useEffect(() => {
+    setMobileOpen(false)
+  }, [location.pathname])
 
   const drawerWidth = desktopCollapsed && !isMobile ? DRAWER_COLLAPSED : DRAWER_WIDTH
 
@@ -347,12 +361,17 @@ export default function AppShell() {
         variant="temporary"
         open={mobileOpen}
         onClose={() => setMobileOpen(false)}
-        ModalProps={{ keepMounted: true }}
+        ModalProps={{ keepMounted: false }}
         sx={{
           display: { xs: 'block', md: 'none' },
+          // Prevent drawer subtree from blocking pointer events when closed/closing
+          pointerEvents: mobileOpen ? undefined : 'none',
           '& .MuiDrawer-paper': {
             boxSizing: 'border-box',
             width: DRAWER_WIDTH,
+          },
+          '& .MuiBackdrop-root': {
+            pointerEvents: mobileOpen ? undefined : 'none',
           },
         }}
       >

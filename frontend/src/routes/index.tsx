@@ -25,6 +25,9 @@ const UsageReportPage = lazy(() => import('@/pages/tenant-admin/UsageReportPage'
 const TenantSettingsPage = lazy(() => import('@/pages/tenant-admin/TenantSettingsPage'))
 const NotificationSettingsPage = lazy(() => import('@/pages/settings/NotificationSettingsPage'))
 const BmsDevicesPage = lazy(() => import('@/pages/BmsDevicesPage'))
+const BillingPage = lazy(() => import('@/pages/BillingPage'))
+const LotusVnPage = lazy(() => import('@/pages/LotusVnPage'))
+const Iso37120Page = lazy(() => import('@/pages/Iso37120Page'))
 const MobileBillsPage = lazy(() => import('@/pages/citizen/MobileBillsPage'))
 const MobileBillDetailPage = lazy(() => import('@/pages/citizen/MobileBillDetailPage'))
 const MobileAQIPage = lazy(() => import('@/pages/citizen/MobileAQIPage'))
@@ -69,6 +72,9 @@ export const routes: RouteObject[] = [
       { path: '/traffic', element: <TrafficPage /> },
       { path: '/alerts', element: <AlertsPage /> },
       { path: '/bms/devices', element: <BmsDevicesPage /> },
+      { path: '/billing', element: <BillingPage /> },
+      { path: '/lotus', element: <LotusVnPage /> },
+      { path: '/iso37120', element: <Iso37120Page /> },
       { path: '/settings/notifications', element: <NotificationSettingsPage /> },
       { path: '/city-ops', element: <CityOpsPage /> },
       // Cross-Building Analytics (MVP3-Sprint1)
