@@ -21,18 +21,6 @@ import {
 import { useIso37120Report } from '@/hooks/useIso37120';
 import type { Iso37120Category } from '@/types/iso37120';
 
-const _CATEGORY_LABELS: Record<Iso37120Category, string> = {
-  ECONOMY: 'Economy',
-  EDUCATION: 'Education',
-  ENERGY: 'Energy',
-  ENVIRONMENT: 'Environment',
-  FINANCE: 'Finance',
-  GOVERNANCE: 'Governance',
-  HEALTH: 'Health',
-  SAFETY: 'Safety',
-  SHELTER: 'Shelter',
-};
-
 const CATEGORY_COLORS: Record<Iso37120Category, string> = {
   ECONOMY: 'primary.main',
   EDUCATION: 'secondary.main',

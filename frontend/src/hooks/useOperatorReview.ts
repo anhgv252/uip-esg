@@ -10,7 +10,7 @@ export function useWorkflowDrafts(statusFilter?: string) {
     queryFn: async () => {
       const url = `${DRAFTS_URL}${statusFilter ? `?status=${statusFilter}` : ''}`;
       const response = await apiClient.get<WorkflowDraft[]>(url);
-      return response;
+      return response.data;
     },
     refetchInterval: 30_000, // poll every 30s for new pending reviews
   });
@@ -46,7 +46,8 @@ export function useSimulateDraft() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      return await apiClient.post<SimulationResult>(`${DRAFTS_URL}/${id}/simulate`, {});
+      const sim = await apiClient.post<SimulationResult>(`${DRAFTS_URL}/${id}/simulate`, {});
+      return sim.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['workflow-drafts'] });

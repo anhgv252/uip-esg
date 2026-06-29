@@ -47,7 +47,7 @@ const STATUS_LABELS: Record<InvoiceStatus, string> = {
 
 export default function InvoiceListTab() {
   const { user } = useAuth();
-  const isAdmin = user?.roles?.includes('ROLE_ADMIN') || user?.roles?.includes('ROLE_TENANT_ADMIN');
+  const isAdmin = user?.role === 'ROLE_ADMIN' || user?.role === 'ROLE_TENANT_ADMIN';
 
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState<InvoiceStatus | ''>('');

@@ -60,12 +60,6 @@ const STEP_STATUS_ICONS = {
   ERROR: <ErrorIcon color="error" fontSize="small" />,
 } as const;
 
-function _getConfidenceColor(confidence: number): 'success' | 'warning' | 'error' {
-  if (confidence >= 0.9) return 'success';
-  if (confidence >= 0.7) return 'warning';
-  return 'error';
-}
-
 export default function BpmnPreviewPane({
   review,
   simulationResult,
