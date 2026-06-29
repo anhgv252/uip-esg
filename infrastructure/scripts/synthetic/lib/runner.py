@@ -18,6 +18,11 @@ must hold at any scale (R16 = "build-for-50 chưa exercise scale"):
                               (uip.tenant.dropped_no_tenant metric increments).
                               This runner CANNOT assert this without Prometheus
                               access — left as an M5-2 hook (see report §4).
+    INV-4 (no-partition-hotspot) ClickHouse partition balance: no tenant
+                              receives >20% more rows than average. Validates
+                              time-based partitioning (toYYYYMM) under 50-tenant
+                              load (R16 mitigation). Optional check controlled
+                              by ch_partition_check.enabled in profile YAML.
 
 The runner can drive TWO transport modes (select per profile):
     transport: kafka   Publish NGSI-LD events to `ngsi_ld_environment`
@@ -77,6 +82,7 @@ except ImportError:  # pragma: no cover
 # Use the sibling generator
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 from lib import generate as gen  # noqa: E402
+from lib import ch_partition_check  # noqa: E402
 
 
 # ─── Per-tenant metrics container ────────────────────────────────────────────
@@ -389,13 +395,31 @@ def run(cfg: dict) -> dict:
     err_threshold = float(cfg.get("error_rate_threshold_pct", 1.0))
     slo_ok = err_rate <= err_threshold
 
+    # INV-4: ClickHouse partition balance check (optional, per profile)
+    inv4_ok = True  # default PASS if not enabled
+    ch_cfg = cfg.get("ch_partition_check", {})
+    if ch_cfg.get("enabled", False):
+        try:
+            inv4_result = ch_partition_check.check_partition_skew(
+                ch_cfg.get("host", "localhost"),
+                int(ch_cfg.get("port", 8123)),
+                cfg.get("_all_tenant_ids", []),
+                float(ch_cfg.get("skew_threshold", 0.20)),
+            )
+            inv4_ok = not inv4_result.get("hotspot", False)
+            summary["ch_partition_check"] = inv4_result
+        except Exception as e:
+            inv4_ok = False
+            summary["ch_partition_check"] = {"error": str(e)}
+
     summary["invariants"] = {
         "INV1_events_reachable": "PASS" if inv1_ok else "FAIL",
         "INV2_no_cross_tenant_leak": "PASS" if inv2_ok else "FAIL",
         "SLO_error_rate_pct_le_" + str(err_threshold): (
             "PASS" if slo_ok else "FAIL"),
+        "INV4_ch_partition_skew": "PASS" if inv4_ok else "FAIL",
     }
-    summary["verdict"] = "PASS" if (inv1_ok and inv2_ok and slo_ok) else "FAIL"
+    summary["verdict"] = "PASS" if (inv1_ok and inv2_ok and slo_ok and inv4_ok) else "FAIL"
     return summary
 
 

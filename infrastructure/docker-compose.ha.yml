@@ -227,6 +227,7 @@ services:
   # M5-2-D2: secrets (SPRING_DATASOURCE_PASSWORD, SPRING_DATA_REDIS_PASSWORD,
   # JWT_SECRET, CLAUDE_API_KEY, OPERATOR/ADMIN/CITIZEN_PASSWORD) come from
   # Vault via the entrypoint wrapper. Only non-secret wiring stays here.
+  # M5-3-T10: OTel agent auto-instrumentation for distributed tracing.
   backend:
     entrypoint: ["/run/secrets/vault-env-wrapper.sh"]
     command: ["java", "-XX:+UseContainerSupport", "-XX:MaxRAMPercentage=75.0",
@@ -234,11 +235,26 @@ services:
     environment:
       CLICKHOUSE_URL: jdbc:clickhouse://clickhouse-01:8123,clickhouse-02:8123/${CLICKHOUSE_DB:-analytics}
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092,kafka-2:9092,kafka-3:9092
+      # OTel Java agent — auto-instrumentation (download via `make otel-agent`)
+      # Volume mount required: ./agents/opentelemetry-javaagent.jar → /opt/otel/agent.jar
+      JAVA_TOOL_OPTIONS: >-
+        -javaagent:/opt/otel/opentelemetry-javaagent.jar
+        -Dotel.service.name=uip-backend
+        -Dotel.traces.exporter=otlp
+        -Dotel.exporter.otlp.endpoint=http://uip-otel-collector:4317
+        -Dotel.exporter.otlp.protocol=grpc
+        -Dotel.traces.sampler=parentbased_traceidratio
+        -Dotel.traces.sampler.arg=0.1
+        -Dotel.resource.attributes=deployment.environment=ha,service.namespace=uip-smart-city
     volumes:
       - vault-secrets:/run/secrets:ro
+      # TODO (M5-3-T10): Uncomment after running `make otel-agent`
+      # - ./agents/opentelemetry-javaagent.jar:/opt/otel/opentelemetry-javaagent.jar:ro
     depends_on:
       vault-agent:
         condition: service_healthy
+      otel-collector:
+        condition: service_started
 
   # ─── Override: Flink submitters → HA cluster ─────────────────────────────
   flink-esg-job-submitter:
@@ -622,6 +638,71 @@ services:
     networks:
       - uip-network
 
+  # ═══════════════════════════════════════════════════════════════════════════
+  # OpenTelemetry Collector — M5-3 T10
+  # ═══════════════════════════════════════════════════════════════════════════
+  # Receives traces from all Spring Boot services via OTLP (gRPC + HTTP).
+  # Tail sampling at 10% for normal traffic, 100% for errors.
+  # Exports to Grafana Tempo for distributed tracing across 25 bounded contexts.
+  # ═══════════════════════════════════════════════════════════════════════════
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.100.0
+    container_name: uip-otel-collector
+    restart: unless-stopped
+    command: ["--config=/etc/otel-collector-config.yml"]
+    volumes:
+      - ./otel/otel-collector-config.yml:/etc/otel-collector-config.yml:ro
+    ports:
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP HTTP
+    environment:
+      DEPLOYMENT_ENV: ${DEPLOYMENT_ENV:-local}
+    depends_on:
+      - tempo
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+          cpus: '0.5'
+        reservations:
+          memory: 128m
+    networks:
+      - uip-network
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # Grafana Tempo — M5-3 T10
+  # ═══════════════════════════════════════════════════════════════════════════
+  # Distributed tracing backend. Stores traces with 48h retention.
+  # Service map + trace search via Grafana UI.
+  # ═══════════════════════════════════════════════════════════════════════════
+
+  tempo:
+    image: grafana/tempo:2.4.0
+    container_name: uip-tempo
+    restart: unless-stopped
+    command: ["-config.file=/etc/tempo.yaml"]
+    volumes:
+      - ./tempo/tempo.yaml:/etc/tempo.yaml:ro
+      - tempo-data:/var/tempo
+    ports:
+      - "3200:3200"   # HTTP API + UI
+      - "4319:4317"   # OTLP gRPC (exposed for direct access)
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3200/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+          cpus: '0.75'
+        reservations:
+          memory: 256m
+    networks:
+      - uip-network
+
 volumes:
   clickhouse-keeper-data:
     name: uip-clickhouse-keeper-data
@@ -652,3 +733,7 @@ volumes:
   # PID file dir for vault-agent (kept off the secrets volume for atomicity).
   vault-agent-pid:
     name: uip-vault-agent-pid
+  # ─── Tempo trace storage (M5-3-T10) ────────────────────────────────────────
+  # Local backend for distributed tracing. 48h retention for dev/POC.
+  tempo-data:
+    name: uip-tempo-data

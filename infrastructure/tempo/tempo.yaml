@@ -1,0 +1,71 @@
+# Grafana Tempo Config — UIP Smart City
+# ADR-049: NL Model Residency + Trace Lineage
+#
+# Single-node Tempo for dev/POC. Stores traces locally with 48h retention.
+# Service map + trace search available via Grafana UI.
+
+server:
+  http_listen_port: 3200
+  log_level: info
+
+distributor:
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: 0.0.0.0:4317
+        http:
+          endpoint: 0.0.0.0:4318
+
+ingester:
+  # How long to wait before flushing trace to storage
+  trace_idle_period: 10s
+  max_block_bytes: 1_000_000
+  max_block_duration: 5m
+
+compactor:
+  compaction:
+    # Compact blocks every 1h
+    compaction_window: 1h
+    # Retention: 48h for dev/POC (production should be 7d+)
+    block_retention: 48h
+
+storage:
+  trace:
+    backend: local
+    local:
+      path: /var/tempo/blocks
+    wal:
+      path: /var/tempo/wal
+    # Block configuration
+    block:
+      # v2 encoding (default, efficient for queries)
+      version: vParquet4
+
+# Query frontend (caching)
+query_frontend:
+  search:
+    # Max time range for trace search (48h)
+    max_duration: 48h
+
+# Metrics generator (optional — generates RED metrics from traces)
+metrics_generator:
+  registry:
+    external_labels:
+      source: tempo
+      cluster: uip-local
+  storage:
+    path: /var/tempo/generator/wal
+  processor:
+    # Service graphs for Grafana UI
+    service_graphs:
+      histogram_buckets: [0.1, 0.2, 0.4, 0.8, 1.6, 3.2, 6.4, 12.8]
+    # Span metrics (RED)
+    span_metrics:
+      histogram_buckets: [0.002, 0.004, 0.008, 0.016, 0.032, 0.064, 0.128, 0.256, 0.512, 1.024, 2.048, 4.096, 8.192, 16.384]
+
+# Overrides (per-tenant config — single tenant for POC)
+overrides:
+  defaults:
+    metrics_generator:
+      processors: [service-graphs, span-metrics]

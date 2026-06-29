@@ -36,12 +36,17 @@ LEAF_DAYS="${LEAF_DAYS:-730}"     # 2 years — server + client certs
 mkdir -p "${CERT_DIR}"
 cd "${CERT_DIR}"
 
-# Idempotency: refuse to overwrite unless --force
+# Idempotency: skip only when ALL required files are present (certs + keys).
+# If certs exist but keys are missing (gitignored, fresh clone), fall through
+# and generate the missing keys without regenerating the CA.
 FORCE="${1:-}"
-if [ -z "${FORCE}" ] && [ -f "ca.crt" ]; then
-  echo "[gen-ch-mtls] ca.crt already exists in ${CERT_DIR}. Pass --force to regenerate."
-  echo "[gen-ch-mtls] Exiting without changes (cert rotation is manual — see runbook §3)."
+if [ -z "${FORCE}" ] && [ -f "ca.crt" ] && [ -f "server.key" ] && [ -f "client.key" ]; then
+  echo "[gen-ch-mtls] All certs + keys already present in ${CERT_DIR}."
+  echo "[gen-ch-mtls] Pass --force to rotate (regenerates CA + all certs + keys)."
   exit 0
+elif [ -z "${FORCE}" ] && [ -f "ca.crt" ] && { [ ! -f "server.key" ] || [ ! -f "client.key" ]; }; then
+  echo "[gen-ch-mtls] WARNING: certs present but private keys missing (gitignored)."
+  echo "[gen-ch-mtls] Generating missing keys using existing CA..."
 fi
 
 echo "[gen-ch-mtls] Generating internal CA + server + client certs in ${CERT_DIR}"

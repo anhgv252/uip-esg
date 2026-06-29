@@ -1,0 +1,78 @@
+# Production environment overrides for uip-backend chart
+# M5-2 T14 — Kubernetes readiness (ADR-050)
+# Usage: helm install uip-backend infra/helm/uip-backend/ -f infra/helm/uip-backend/values-prod.yaml
+
+replicaCount: 5
+slot: blue
+
+image:
+  repository: ghcr.io/uip/uip-backend
+  pullPolicy: IfNotPresent
+  tag: "1.0.0"  # Production uses semantic versioned tags, not "latest"
+
+service:
+  type: ClusterIP
+  port: 8080
+
+ingress:
+  enabled: true
+  className: "nginx"
+  host: "api.uip.vn"
+  tls: true
+
+resources:
+  requests:
+    cpu: 1000m
+    memory: 1536Mi
+  limits:
+    cpu: 3000m
+    memory: 3072Mi
+
+javaOpts: "-Xms1024m -Xmx2560m -XX:+UseG1GC -XX:MaxGCPauseMillis=200 -XX:+UseContainerSupport -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/tmp"
+
+autoscaling:
+  enabled: true
+  minReplicas: 5
+  maxReplicas: 20
+  targetCPUUtilizationPercentage: 60
+
+livenessProbe:
+  httpGet:
+    path: /actuator/health/liveness
+    port: 8080
+  initialDelaySeconds: 90
+  periodSeconds: 10
+  failureThreshold: 5
+
+readinessProbe:
+  httpGet:
+    path: /actuator/health/readiness
+    port: 8080
+  initialDelaySeconds: 45
+  periodSeconds: 5
+  failureThreshold: 3
+
+postgresql:
+  host: "uip-postgresql-prod.postgres.svc.cluster.local"
+  port: 5432
+  database: "uip_prod"
+  pvcSize: "200Gi"
+
+redis:
+  host: "uip-redis-prod.redis.svc.cluster.local"
+  port: 6379
+
+kafka:
+  bootstrapServers: "uip-kafka-prod.kafka.svc.cluster.local:9092"
+  saslEnabled: true
+
+# Production-specific environment variables
+extraEnv:
+  - name: SPRING_PROFILES_ACTIVE
+    value: "prod"
+  - name: LOGGING_LEVEL_ROOT
+    value: "WARN"
+  - name: LOGGING_LEVEL_COM_UIP
+    value: "INFO"
+  - name: MANAGEMENT_METRICS_EXPORT_PROMETHEUS_ENABLED
+    value: "true"

@@ -59,3 +59,84 @@ jobs:
             AGAINST=".git#ref=HEAD~1,subdir=shared/proto"
           fi
           buf breaking --against "$AGAINST"
+
+  # ---------------------------------------------------------------------------
+  # Avro schema compatibility check (M5-3 T09 — ADR-051)
+  # ---------------------------------------------------------------------------
+  # Checks Avro schemas in shared/avro/ against Confluent Schema Registry using
+  # the /compatibility REST endpoint. Compatibility level: BACKWARD_TRANSITIVE.
+  #
+  # ROLLOUT STATUS (M5-3): NON-BLOCKING (exit 0 on failure).
+  # Flag day: M5-5 — once schema-registry service container is added to this job,
+  # the step will exit 1 on INCOMPATIBLE and block PRs.
+  #
+  # See ADR-051 for full governance decisions and open items.
+  avro-compat:
+    name: avro schema compatibility
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    # Only run when shared/avro/ files change (or this workflow file itself)
+    if: |
+      contains(toJSON(github.event.head_commit.modified), 'shared/avro') ||
+      contains(toJSON(github.event.pull_request.changed_files), 'shared/avro') ||
+      contains(github.event.head_commit.message, '[avro-check]')
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # TODO (M5-5): Add schema-registry service container once Confluent SR is
+      # reachable from GitHub Actions environment. Until then, the check is
+      # informational only.
+      #
+      # services:
+      #   schema-registry:
+      #     image: confluentinc/cp-schema-registry:7.6.0
+      #     ports: ["8081:8081"]
+      #     env:
+      #       SCHEMA_REGISTRY_HOST_NAME: schema-registry
+      #       SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: ...
+
+      - name: Check Avro schema compatibility (BACKWARD_TRANSITIVE)
+        env:
+          SCHEMA_REGISTRY_URL: ${{ vars.SCHEMA_REGISTRY_URL }}
+        run: |
+          if [ -z "$SCHEMA_REGISTRY_URL" ]; then
+            echo "WARN: SCHEMA_REGISTRY_URL not set — skipping Avro compatibility check."
+            echo "      Set vars.SCHEMA_REGISTRY_URL in repository settings to enable."
+            echo "      (ADR-051 §5.1 OPEN-1 — blocking mode pending M5-5)"
+            exit 0
+          fi
+
+          AVRO_DIR="shared/avro"
+          if [ ! -d "$AVRO_DIR" ]; then
+            echo "INFO: $AVRO_DIR does not exist — no Avro schemas to check."
+            exit 0
+          fi
+
+          FAIL=0
+          for schema_file in "$AVRO_DIR"/*.avsc; do
+            [ -f "$schema_file" ] || continue
+            subject=$(basename "$schema_file" .avsc)
+            echo "Checking compatibility for subject: $subject"
+            response=$(curl --silent --fail-with-body \
+              -X POST \
+              -H "Content-Type: application/vnd.schemaregistry.v1+json" \
+              --data "{\"schema\": $(cat "$schema_file" | python3 -c 'import sys,json; print(json.dumps(sys.stdin.read()))')}" \
+              "$SCHEMA_REGISTRY_URL/compatibility/subjects/${subject}/versions/latest")
+            if echo "$response" | grep -q '"is_compatible":false'; then
+              echo "FAIL: Schema $schema_file is NOT backward-transitive compatible with registered version."
+              echo "      Registry response: $response"
+              FAIL=1
+            else
+              echo "OK: $subject is compatible."
+            fi
+          done
+
+          if [ "$FAIL" -eq 1 ]; then
+            echo ""
+            echo "One or more Avro schemas failed BACKWARD_TRANSITIVE compatibility check."
+            echo "See ADR-051 §4.3 for allowed vs blocked change types."
+            # TODO (M5-5): change to `exit 1` to make this a blocking gate
+            echo "WARN: Non-blocking mode active (M5-3). This will block PRs after M5-5 flag day."
+            exit 0
+          fi

@@ -74,8 +74,9 @@ create_topic "UIP.analytics.hourly.rollup.v2" 3    # Avro HourlyRollupEvent
 # (KAFKA_AUTO_CREATE_TOPICS_ENABLE=false). Added 2026-06-18.
 create_topic "ai.district.aggregations" 3            # Flink DistrictAggregationJob → DistrictAggregationConsumer (G1 AI pipeline)
 create_topic "correlated.incidents" 3                # Flink IncidentCorrelationJob → CorrelationService (G2 correlation)
-create_topic "correlated.incidents-retry-1" 1 2592000000  # CorrelationService retry (M4-COR @RetryableTopic)
-create_topic "correlated.incidents-dlt" 1 2592000000      # CorrelationService dead-letter (30 days)
+create_topic "correlated.incidents-retry-0" 1 2592000000  # @RetryableTopic(attempts=3) 1st retry  (BUG-003 fix: retry-0 was missing)
+create_topic "correlated.incidents-retry-1" 1 2592000000  # @RetryableTopic(attempts=3) 2nd retry
+create_topic "correlated.incidents-dlt" 1 2592000000      # CorrelationService dead-letter after 3 attempts (30 days)
 create_topic "bms.feedback.dlq" 1 2592000000             # BMS feedback retry dead-letter (M4-COR-04)
 create_topic "uip.esg.metrics.v1" 3                  # ESG metrics → forecast cache eviction
 create_topic "UIP.esg.telemetry.error.v1" 3          # ESG telemetry error consumer

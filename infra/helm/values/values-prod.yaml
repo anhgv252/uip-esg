@@ -1,0 +1,192 @@
+# Production environment — Full UIP Smart City platform
+# Deploy: helm upgrade --install uip-stack ./infra/helm -f values-prod.yaml
+#
+# Production configuration:
+#   - All services enabled (monolith + analytics + iot-ingestion)
+#   - Higher replica counts and resource limits
+#   - Production-grade persistence (200Gi+)
+#   - HA for stateful services (Kafka 3+, TimescaleDB Patroni)
+#   - Monitoring and alerting enabled
+#   - TLS/SSL enforced
+
+# ── Monolith (uip-backend) ───────────────────────────────────────────────────
+replicaCount: 5
+slot: blue
+
+image:
+  repository: ghcr.io/uip/uip-backend
+  tag: "1.0.0"
+  pullPolicy: IfNotPresent
+
+autoscaling:
+  enabled: true
+  minReplicas: 5
+  maxReplicas: 20
+  targetCPUUtilizationPercentage: 60
+
+resources:
+  requests:
+    cpu: 1000m
+    memory: 1536Mi
+  limits:
+    cpu: 3000m
+    memory: 3072Mi
+
+javaOpts: "-Xms1024m -Xmx2560m -XX:+UseG1GC -XX:MaxGCPauseMillis=200 -XX:+UseContainerSupport -XX:+HeapDumpOnOutOfMemoryError"
+
+extraEnv:
+  - name: SPRING_PROFILES_ACTIVE
+    value: "prod"
+  - name: LOGGING_LEVEL_ROOT
+    value: "WARN"
+  - name: LOGGING_LEVEL_COM_UIP
+    value: "INFO"
+  - name: ANALYTICS_SERVICE_URL
+    value: "http://uip-analytics-service/api/v1/analytics"
+  - name: IOT_SERVICE_URL
+    value: "http://uip-iot-service/api/v1/iot"
+
+postgresql:
+  host: "uip-postgresql-prod.postgres.svc.cluster.local"
+  port: 5432
+  database: "uip_prod"
+  pvcSize: "200Gi"
+
+redis:
+  host: "uip-redis-prod.redis.svc.cluster.local"
+  port: 6379
+
+kafka:
+  bootstrapServers: "uip-kafka-prod.kafka.svc.cluster.local:9092"
+  saslEnabled: true
+
+# ── analytics-service (ClickHouse owner) ────────────────────────────────────
+analyticsService:
+  enabled: true
+  image:
+    repository: ghcr.io/uip/uip-analytics-service
+    tag: "1.0.0"
+    pullPolicy: IfNotPresent
+  replicaCount: 4
+  autoscaling:
+    enabled: true
+    minReplicas: 4
+    maxReplicas: 12
+    targetCPUUtilizationPercentage: 65
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1024Mi
+    limits:
+      cpu: 2000m
+      memory: 2048Mi
+  env:
+    - name: SPRING_PROFILES_ACTIVE
+      value: "prod"
+    - name: CLICKHOUSE_HOST
+      value: "uip-clickhouse-prod.clickhouse.svc.cluster.local"
+    - name: CLICKHOUSE_PORT
+      value: "8123"
+    - name: CLICKHOUSE_DATABASE
+      value: "analytics"
+    - name: CLICKHOUSE_CONNECTION_POOL_SIZE
+      value: "20"
+
+# ── iot-ingestion-service (BMS + MQTT owner) ─────────────────────────────────
+iotIngestionService:
+  enabled: true
+  image:
+    repository: ghcr.io/uip/uip-iot-service
+    tag: "1.0.0"
+    pullPolicy: IfNotPresent
+  replicaCount: 4
+  autoscaling:
+    enabled: true
+    minReplicas: 4
+    maxReplicas: 15
+    targetCPUUtilizationPercentage: 60
+  resources:
+    requests:
+      cpu: 500m
+      memory: 512Mi
+    limits:
+      cpu: 2000m
+      memory: 1024Mi
+  env:
+    - name: KAFKA_BOOTSTRAP_SERVERS
+      value: "uip-kafka-prod.kafka.svc.cluster.local:9092"
+    - name: EMQX_HOST
+      value: "uip-emqx-prod.mqtt.svc.cluster.local"
+    - name: EMQX_PORT
+      value: "1883"
+
+# ── ClickHouse ────────────────────────────────────────────────────────────────
+clickhouse:
+  enabled: true
+  replicaCount: 3
+  pvcSize: "500Gi"
+  resources:
+    requests:
+      cpu: 2000m
+      memory: 4096Mi
+    limits:
+      cpu: 4000m
+      memory: 8192Mi
+
+# ── Kafka ─────────────────────────────────────────────────────────────────────
+kafka:
+  replicaCount: 5
+  partitions: 20
+  pvcSize: "200Gi"
+  resources:
+    requests:
+      cpu: 1000m
+      memory: 2048Mi
+    limits:
+      cpu: 2000m
+      memory: 4096Mi
+
+# ── TimescaleDB ───────────────────────────────────────────────────────────────
+timescaledb:
+  pvcSize: "200Gi"
+  patroni:
+    enabled: true
+    replicas: 3  # 1 primary + 2 standby
+  resources:
+    requests:
+      cpu: 1000m
+      memory: 2048Mi
+    limits:
+      cpu: 2000m
+      memory: 4096Mi
+
+# ── Redis ─────────────────────────────────────────────────────────────────────
+redis:
+  replicaCount: 3  # Redis Sentinel with 1 master + 2 replicas
+  pvcSize: "50Gi"
+
+# ── EMQX (MQTT Broker) ────────────────────────────────────────────────────────
+emqx:
+  replicaCount: 3
+  pvcSize: "20Gi"
+
+# ── Ingress ───────────────────────────────────────────────────────────────────
+ingress:
+  enabled: true
+  className: "nginx"
+  host: "api.uip.vn"
+  tls: true
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+
+# ── Monitoring ────────────────────────────────────────────────────────────────
+monitoring:
+  enabled: true
+  prometheus:
+    retention: "30d"
+    pvcSize: "100Gi"
+  grafana:
+    enabled: true
+  alertmanager:
+    enabled: true

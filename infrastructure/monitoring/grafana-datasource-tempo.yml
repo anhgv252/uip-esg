@@ -1,0 +1,36 @@
+# Grafana Tempo Datasource — UIP Smart City
+# ADR-049: NL Model Residency + Trace Lineage
+#
+# Grafana provisioning: place this in provisioning/datasources/ when deploying Grafana.
+# Trace search + service map available at http://localhost:3000/explore
+
+apiVersion: 1
+
+datasources:
+  - name: Tempo
+    type: tempo
+    access: proxy
+    url: http://uip-tempo:3200
+    isDefault: false
+    uid: tempo-uip
+    jsonData:
+      # Enable trace-to-logs correlation (requires Loki datasource)
+      tracesToLogsV2:
+        datasourceUid: loki
+        spanStartTimeShift: '-1m'
+        spanEndTimeShift: '1m'
+        tags: ['trace_id', 'span_id']
+        filterByTraceID: true
+        filterBySpanID: false
+      # Service map data source (requires Prometheus)
+      serviceMap:
+        datasourceUid: prometheus
+      # Node graph visualization
+      nodeGraph:
+        enabled: true
+      # Search preferences
+      search:
+        hide: false
+      # Enable streaming (recommended for large traces)
+      streaming:
+        enabled: true

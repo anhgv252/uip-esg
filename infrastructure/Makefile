@@ -7,7 +7,7 @@ COMPOSE_FILE        = -f docker-compose.yml
 COMPOSE_UAT_FILE    = -f docker-compose.yml -f docker-compose.uat.yml
 COMPOSE_STAGING_FILE = -f docker-compose.yml -f docker-compose.uat.yml -f docker-compose.staging.yml
 
-.PHONY: help up up-ha ha-health-check vault-init vault-status vault-verify down logs ps migrate test-mqtt test-pipeline check-contract-drift \
+.PHONY: help up up-ha ha-health-check ch-ha-restart vault-init vault-status vault-verify down logs ps migrate test-mqtt test-pipeline check-contract-drift \
         uat-up uat-down uat-logs uat-ps uat-test uat-clean seed-uat clean \
         staging-up staging-down staging-logs staging-ps staging-smoke-test \
         regression-test regression-test-group \
@@ -15,7 +15,8 @@ COMPOSE_STAGING_FILE = -f docker-compose.yml -f docker-compose.uat.yml -f docker
         kong-test-jwks \
         avro-register ch-migrate \
         security-scan security-report security-open \
-        spotbugs-scan spotbugs-report spotbugs-open security-full
+        spotbugs-scan spotbugs-report spotbugs-open security-full \
+        owasp-scan owasp-scan-ci
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | \
@@ -31,12 +32,24 @@ up: ## Start full dev stack (standalone — recommended for local dev, low resou
 
 up-ha: ## Start HA stack (ClickHouse 2-node + Kafka 3-broker — staging/pilot only, high resource usage)
 	@cp -n .env.example .env 2>/dev/null || true
+	@echo "[up-ha] Checking mTLS certs for ClickHouse HA nodes..."
+	@cd $(CURDIR) && bash scripts/gen-ch-mtls-certs.sh
 	$(COMPOSE) -f docker-compose.yml -f docker-compose.ha.yml up -d
 	@echo ""
 	@echo "=== HA Stack starting ==="
-	@echo "  ClickHouse: clickhouse-01 (:8123) + clickhouse-02 (:8124) + keeper (:9181)"
+	@echo "  ClickHouse: clickhouse-01 (:8125) + clickhouse-02 (:8124) + keeper (:9181)"
+	@echo "  mTLS:       :8126 (node-01) / :8443 (node-02) — certs in clickhouse/tls/"
 	@echo ""
+	@echo "NOTE: If certs were just generated (first run / fresh clone), restart CH nodes"
+	@echo "      to load the new keys: make ch-ha-restart"
 	@echo "Run 'make ch-migrate' after stack is healthy."
+
+ch-ha-restart: ## Restart ClickHouse HA nodes (required after first cert generation or cert rotation)
+	$(COMPOSE) -f docker-compose.yml -f docker-compose.ha.yml restart clickhouse-01 clickhouse-02
+	@echo "[ch-ha-restart] Waiting for nodes to be healthy..."
+	@sleep 15
+	@curl -sf http://localhost:8125/ping && echo "  clickhouse-01 (:8125): Ok." || echo "  clickhouse-01: FAIL"
+	@curl -sf http://localhost:8124/ping && echo "  clickhouse-02 (:8124): Ok." || echo "  clickhouse-02: FAIL"
 
 ha-health-check: ## Check health of all HA environment containers (use --wait to retry for 5min)
 	@./scripts/ha-health-check.sh $(ARGS)
@@ -73,6 +86,32 @@ vault-verify: ## Verify rendered secrets file exists, is fresh (<6m), and contai
 		grep -qE "^CLAUDE_API_KEY="     /vault/secrets/uip.env || { echo "FAIL: CLAUDE_API_KEY missing"; exit 1; }; \
 		echo "OK: uip.env rendered, fresh (<6m), all critical keys present."'
 
+vault-rotate: ## Rotate a Vault secret: make vault-rotate secret=redis (M5-2-T09)
+	@test -n "$(secret)" || { echo "ERROR: secret parameter required. Usage: make vault-rotate secret=redis"; exit 1; }
+	@echo "[vault-rotate] Rotating secret/uip/$(secret)..."
+	@case "$(secret)" in \
+		postgres|clickhouse|redis|kafka|keycloak|kong|minio|emqx|jwt|ai-claude) \
+			NEW_VALUE=$$(openssl rand -base64 32); \
+			$(COMPOSE) -f docker-compose.yml -f docker-compose.ha.yml exec -T vault vault kv put secret/uip/$(secret) password="$$NEW_VALUE"; \
+			echo "[vault-rotate] ✅ Rotated secret/uip/$(secret) (new version created)"; \
+			echo "[vault-rotate] Vault agent will refresh within 5 minutes (TTL-based)."; \
+			echo "[vault-rotate] Verify with: make vault-verify"; \
+			;; \
+		*) \
+			echo "ERROR: Unknown secret '$(secret)'. Valid: postgres, clickhouse, redis, kafka, keycloak, kong, minio, emqx, jwt, ai-claude"; \
+			exit 1; \
+			;; \
+	esac
+
+vault-rotation-status: ## Show rotation status for all 10 Vault secrets (M5-2-T09)
+	@echo "=== Vault Secret Rotation Status ==="
+	@echo ""
+	@for secret in postgres clickhouse redis kafka keycloak kong minio emqx jwt ai-claude; do \
+		echo "Path: secret/uip/$$secret"; \
+		$(COMPOSE) -f docker-compose.yml -f docker-compose.ha.yml exec -T vault vault kv metadata get secret/uip/$$secret 2>/dev/null | grep -E "(current_version|created_time|updated_time)" || echo "  [NOT FOUND]"; \
+		echo ""; \
+	done
+
 down: ## Stop dev stack
 	$(COMPOSE) $(COMPOSE_FILE) down
 
@@ -100,6 +139,27 @@ test-pipeline: ## Run integration test suite
 
 smoke-test: ## Run config smoke tests (Keycloak + ClickHouse + Kafka)
 	@bash scripts/smoke-test-config.sh
+
+# ─── OpenTelemetry / Observability (M5-3 T10) ────────────────────────────────
+
+otel-agent: ## Download OpenTelemetry Java agent JAR (v2.3.0) to ./agents/
+	@mkdir -p agents
+	@test -f agents/opentelemetry-javaagent.jar || { \
+		echo "Downloading OTel Java agent v2.3.0..."; \
+		curl -L -o agents/opentelemetry-javaagent.jar \
+			https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/download/v2.3.0/opentelemetry-javaagent.jar; \
+		echo "✅ Downloaded to infrastructure/agents/opentelemetry-javaagent.jar"; \
+		echo ""; \
+		echo "Next: Uncomment volume mount in docker-compose.ha.yml (backend service):"; \
+		echo "  - ./agents/opentelemetry-javaagent.jar:/opt/otel/opentelemetry-javaagent.jar:ro"; \
+	} || echo "✅ OTel agent already exists."
+
+tempo-check: ## Check Tempo health + verify trace ingestion endpoint
+	@echo "=== Tempo Health Check ==="
+	@curl -sf http://localhost:3200/ready && echo "✅ Tempo ready" || echo "❌ Tempo not ready"
+	@echo ""
+	@echo "Trace search: http://localhost:3200/api/search?tags={service.name=\"uip-backend\"}&limit=10"
+	@echo "Grafana explore: http://localhost:3000/explore?orgId=1&left={\"datasource\":\"tempo-uip\",\"queries\":[...]}"
 
 # ─── API Contract ─────────────────────────────────────────────────────────────
 
@@ -337,6 +397,34 @@ spotbugs-open: spotbugs-report ## Alias của spotbugs-report
 security-full: ## Chạy toàn bộ security check: SpotBugs + OWASP (cần NVD_API_KEY)
 	@$(MAKE) spotbugs-scan
 	@$(MAKE) security-scan
+
+# ─── OWASP Dependency-Check (M5-4-T13) ───────────────────────────────────────
+
+owasp-scan: ## Run OWASP dependency check locally (does not fail build — for review only)
+	@echo "Running OWASP dependency check..."
+	@cd ../backend && ./gradlew dependencyCheckAnalyze --no-daemon
+	@echo ""
+	@echo "=== Scan complete ==="
+	@echo "  HTML: backend/build/reports/dependency-check/dependency-check-report.html"
+	@echo "  JSON: backend/build/reports/dependency-check/dependency-check-report.json"
+	@echo ""
+	@echo "📊 Vulnerability summary:"
+	@cd ../backend && jq -r '.dependencies[]?.vulnerabilities[]? | .cvssv3.baseSeverity // .cvssv2.severity' \
+		build/reports/dependency-check/dependency-check-report.json 2>/dev/null | \
+		sort | uniq -c | sort -rn || echo "  (no vulnerabilities or report not found)"
+
+owasp-scan-ci: ## Run OWASP scan in CI mode (fails on CRITICAL/HIGH CVEs, CVSS >= 7.0)
+	@echo "Running OWASP dependency check (CI mode)..."
+	@cd ../backend && ./gradlew dependencyCheckAnalyze --no-daemon
+	@echo ""
+	@cd ../backend && python3 -c "import json, sys; \
+		report = json.load(open('build/reports/dependency-check/dependency-check-report.json')); \
+		critical_high = [v for dep in report.get('dependencies', []) \
+			for v in dep.get('vulnerabilities', []) \
+			if (v.get('cvssv3', {}).get('baseScore', 0) >= 7.0)]; \
+		print(f'Found {len(critical_high)} CRITICAL/HIGH CVEs (CVSS >= 7.0)'); \
+		[print(f'  - {v[\"name\"]} (CVSS {v.get(\"cvssv3\", {}).get(\"baseScore\", \"N/A\")}): {v.get(\"description\", \"\")[:80]}...') for v in critical_high[:5]]; \
+		sys.exit(1 if critical_high else 0)"
 
 # ─── Cleanup ──────────────────────────────────────────────────────────────────
 

@@ -1,0 +1,72 @@
+# Production environment overrides for uip-analytics-service chart
+# M5-2 T14 — Kubernetes readiness (ADR-050)
+# Usage: helm install uip-analytics-service infra/helm/uip-analytics-service/ -f infra/helm/uip-analytics-service/values-prod.yaml
+
+replicaCount: 4
+
+image:
+  repository: ghcr.io/uip/uip-analytics-service
+  tag: "1.0.0"  # Production uses semantic versioned tags
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8081
+
+resources:
+  requests:
+    cpu: 500m
+    memory: 1024Mi
+  limits:
+    cpu: 2000m
+    memory: 2048Mi
+
+autoscaling:
+  enabled: true
+  minReplicas: 4
+  maxReplicas: 12
+  targetCPUUtilizationPercentage: 65
+
+# ClickHouse connection — production cluster
+clickhouse:
+  url: "jdbc:clickhouse://uip-clickhouse-prod.clickhouse.svc.cluster.local:8123"
+  user: "default"
+  database: "analytics"
+  # password injected from Secret: uip-analytics-secrets
+
+# JWT secret shared with monolith — injected from Secret
+jwt:
+  secretKey: ""   # mounted from uip-analytics-secrets
+
+ingress:
+  enabled: false   # Kong handles ingress at cluster level
+
+livenessProbe:
+  httpGet:
+    path: /actuator/health/liveness
+    port: 8081
+  initialDelaySeconds: 60
+  periodSeconds: 15
+  failureThreshold: 5
+
+readinessProbe:
+  httpGet:
+    path: /actuator/health/readiness
+    port: 8081
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  failureThreshold: 3
+
+# Production-specific environment variables
+extraEnv:
+  - name: SPRING_PROFILES_ACTIVE
+    value: "prod"
+  - name: LOGGING_LEVEL_ROOT
+    value: "WARN"
+  - name: LOGGING_LEVEL_COM_UIP
+    value: "INFO"
+  - name: CLICKHOUSE_CONNECTION_POOL_SIZE
+    value: "20"
+  - name: CLICKHOUSE_QUERY_TIMEOUT_SECONDS
+    value: "30"

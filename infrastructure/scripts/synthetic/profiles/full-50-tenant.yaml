@@ -21,3 +21,12 @@ error_rate_threshold_pct: 1.0    # production-grade threshold
 transport: kafka                 # full pipeline exercise (Simulator→Kafka→Flink→DB)
 kafka_bootstrap: localhost:29092
 kafka_topic: ngsi_ld_environment
+
+# INV-4: ClickHouse partition hotspot check (M5-2-T06 / R16)
+ch_partition_check:
+  enabled: true
+  host: "localhost"
+  port: 8123
+  skew_threshold: 0.20  # 20% max deviation from avg
+  run_after_load: true
+

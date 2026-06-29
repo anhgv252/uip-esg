@@ -1,0 +1,74 @@
+# OpenTelemetry Collector Config — UIP Smart City
+# ADR-049: NL Model Residency + Trace Lineage
+#
+# Receives traces from all Spring Boot services via OTLP (gRPC + HTTP).
+# Tail sampling at 10% to reduce storage cost while keeping error traces.
+# Exports to Grafana Tempo for distributed tracing across 25 bounded contexts.
+
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  batch:
+    timeout: 5s
+    send_batch_size: 1024
+    send_batch_max_size: 2048
+
+  tail_sampling:
+    decision_wait: 5s
+    num_traces: 50000
+    expected_new_traces_per_sec: 10
+    policies:
+      # Policy 1: Sample 10% of normal traffic (production target)
+      - name: sample-10-percent
+        type: probabilistic
+        probabilistic:
+          sampling_percentage: 10
+
+      # Policy 2: Always keep error traces (4xx/5xx responses)
+      - name: always-sample-errors
+        type: status_code
+        status_code:
+          status_codes: [ERROR]
+
+      # Policy 3: Keep slow traces (> 500ms end-to-end)
+      - name: always-sample-slow-traces
+        type: latency
+        latency:
+          threshold_ms: 500
+
+  # Add resource attributes for all traces
+  resource:
+    attributes:
+      - key: deployment.environment
+        value: ${DEPLOYMENT_ENV:-local}
+        action: upsert
+      - key: service.namespace
+        value: uip-smart-city
+        action: upsert
+
+exporters:
+  # Primary: Grafana Tempo
+  otlp:
+    endpoint: "uip-tempo:4317"
+    tls:
+      insecure: true
+
+  # Debug: logs to stdout (warn level to avoid flooding)
+  logging:
+    loglevel: warn
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch, tail_sampling, resource]
+      exporters: [otlp, logging]
+
+  # Health check endpoint for Docker healthcheck
+  extensions: []
