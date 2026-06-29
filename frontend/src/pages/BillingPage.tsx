@@ -145,14 +145,7 @@ export default function BillingPage() {
             <Box display="flex" justifyContent="center" py={6}>
               <CircularProgress />
             </Box>
-            </Alert>
-      )}
-
-      {isLoading && (
-        <Box display="flex" justifyContent="center" py={6}>
-          <CircularProgress />
-        </Box>
-      )}
+          )}
 
       {!isLoading && usage && (
         <>

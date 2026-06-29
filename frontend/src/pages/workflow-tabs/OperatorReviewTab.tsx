@@ -140,22 +140,3 @@ export default function OperatorReviewTab() {
     </Box>
   );
 }
-                />
-              ))
-            )}
-          </Box>
-        </Grid>
-
-        {/* Right: Preview Pane (70%) */}
-        <Grid item xs={12} md={8}>
-          <BpmnPreviewPane
-            review={selectedReview}
-            onApprove={() => selectedReview && handleApprove(selectedReview.id)}
-            onReject={(reason) => selectedReview && handleReject(selectedReview.id, reason)}
-            isPending={approve.isPending || reject.isPending}
-          />
-        </Grid>
-      </Grid>
-    </Box>
-  );
-}
