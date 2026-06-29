@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  UIP Smart City Platform — BPMN Subset Validation Schema
+  ==========================================================
+  Enforces structural constraints on AI-generated BPMN:
+  - Exactly 1 bpmn:process under bpmn:definitions
+  - Only allowed flow elements (scriptTask excluded — security risk)
+  - Non-empty name attribute on task elements (no anonymous tasks)
+
+  Constraints delegated to BpmnCustomValidator (Java):
+  - startEvent/endEvent presence (XSD cannot enforce minOccurs per element in xs:choice)
+  - Max 20 flow nodes (XSD cannot count across element types in xs:choice)
+  - No external URLs in href (XSD cannot restrict attribute *values* via anyAttribute)
+
+  BPMN 2.0 namespace: http://www.omg.org/spec/BPMN/20100524/MODEL
+  M5-2 T10 | M5-3 T02 will add semantic safety rules (sprinkler/flood)
+-->
+<xs:schema
+    xmlns:xs="http://www.w3.org/2001/XMLSchema"
+    xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+    targetNamespace="http://www.omg.org/spec/BPMN/20100524/MODEL"
+    elementFormDefault="qualified">
+
+  <!-- ============================================================ -->
+  <!-- Root element: bpmn:definitions                               -->
+  <!-- ============================================================ -->
+  <xs:element name="definitions" type="bpmn:TDefinitions"/>
+
+  <xs:complexType name="TDefinitions">
+    <xs:sequence>
+      <!-- CONSTRAINT: exactly 1 process -->
+      <xs:element name="process" type="bpmn:TProcess" minOccurs="1" maxOccurs="1"/>
+      <!-- Allow diagram elements from other namespaces (bpmndi, dc, di) -->
+      <xs:any namespace="##other" minOccurs="0" maxOccurs="unbounded" processContents="lax"/>
+    </xs:sequence>
+    <xs:attribute name="id"              type="xs:string"/>
+    <xs:attribute name="targetNamespace" type="xs:anyURI"/>
+    <xs:anyAttribute namespace="##other" processContents="lax"/>
+  </xs:complexType>
+
+  <!-- ============================================================ -->
+  <!-- bpmn:process — allowed flow elements whitelist               -->
+  <!-- scriptTask is intentionally EXCLUDED (no code execution)     -->
+  <!-- ============================================================ -->
+  <xs:complexType name="TProcess">
+    <xs:choice minOccurs="0" maxOccurs="unbounded">
+      <xs:element name="startEvent"        type="bpmn:TFlowNode"/>
+      <xs:element name="endEvent"          type="bpmn:TFlowNode"/>
+      <xs:element name="task"              type="bpmn:TNamedTask"/>
+      <xs:element name="serviceTask"       type="bpmn:TNamedTask"/>
+      <xs:element name="userTask"          type="bpmn:TNamedTask"/>
+      <xs:element name="manualTask"        type="bpmn:TNamedTask"/>
+      <xs:element name="businessRuleTask"  type="bpmn:TNamedTask"/>
+      <xs:element name="sendTask"          type="bpmn:TNamedTask"/>
+      <xs:element name="receiveTask"       type="bpmn:TNamedTask"/>
+      <xs:element name="exclusiveGateway"  type="bpmn:TGateway"/>
+      <xs:element name="parallelGateway"   type="bpmn:TGateway"/>
+      <xs:element name="inclusiveGateway"  type="bpmn:TGateway"/>
+      <xs:element name="eventBasedGateway" type="bpmn:TGateway"/>
+      <xs:element name="sequenceFlow"      type="bpmn:TSequenceFlow"/>
+      <xs:element name="subProcess"        type="bpmn:TSubProcess"/>
+      <!--
+        scriptTask: INTENTIONALLY NOT LISTED
+        XSD will reject any bpmn:scriptTask with:
+          cvc-complex-type.2.4.a: Invalid content was found starting with element 'scriptTask'
+      -->
+    </xs:choice>
+    <xs:attribute name="id"           type="xs:string"/>
+    <xs:attribute name="name"         type="xs:string"/>
+    <xs:attribute name="isExecutable" type="xs:boolean"/>
+    <xs:anyAttribute namespace="##other" processContents="lax"/>
+  </xs:complexType>
+
+  <!-- ============================================================ -->
+  <!-- Task types: name is REQUIRED and non-empty                   -->
+  <!-- ============================================================ -->
+  <xs:complexType name="TNamedTask">
+    <xs:sequence>
+      <xs:any namespace="##any" minOccurs="0" maxOccurs="unbounded" processContents="lax"/>
+    </xs:sequence>
+    <xs:attribute name="id" type="xs:string"/>
+    <xs:attribute name="name" use="required">
+      <xs:simpleType>
+        <xs:restriction base="xs:string">
+          <xs:minLength value="1"/>
+        </xs:restriction>
+      </xs:simpleType>
+    </xs:attribute>
+    <xs:anyAttribute namespace="##other" processContents="lax"/>
+  </xs:complexType>
+
+  <!-- ============================================================ -->
+  <!-- startEvent / endEvent                                        -->
+  <!-- ============================================================ -->
+  <xs:complexType name="TFlowNode">
+    <xs:sequence>
+      <xs:any namespace="##any" minOccurs="0" maxOccurs="unbounded" processContents="lax"/>
+    </xs:sequence>
+    <xs:attribute name="id"   type="xs:string"/>
+    <xs:attribute name="name" type="xs:string"/>
+    <xs:anyAttribute namespace="##other" processContents="lax"/>
+  </xs:complexType>
+
+  <!-- ============================================================ -->
+  <!-- Gateway types                                                -->
+  <!-- ============================================================ -->
+  <xs:complexType name="TGateway">
+    <xs:sequence>
+      <xs:any namespace="##any" minOccurs="0" maxOccurs="unbounded" processContents="lax"/>
+    </xs:sequence>
+    <xs:attribute name="id"   type="xs:string"/>
+    <xs:attribute name="name" type="xs:string"/>
+    <xs:anyAttribute namespace="##other" processContents="lax"/>
+  </xs:complexType>
+
+  <!-- ============================================================ -->
+  <!-- sequenceFlow                                                 -->
+  <!-- ============================================================ -->
+  <xs:complexType name="TSequenceFlow">
+    <xs:sequence>
+      <xs:any namespace="##any" minOccurs="0" maxOccurs="unbounded" processContents="lax"/>
+    </xs:sequence>
+    <xs:attribute name="id"        type="xs:string"/>
+    <xs:attribute name="name"      type="xs:string"/>
+    <xs:attribute name="sourceRef" type="xs:string"/>
+    <xs:attribute name="targetRef" type="xs:string"/>
+    <xs:anyAttribute namespace="##other" processContents="lax"/>
+  </xs:complexType>
+
+  <!-- ============================================================ -->
+  <!-- subProcess (nested, children validated as xs:any)            -->
+  <!-- ============================================================ -->
+  <xs:complexType name="TSubProcess">
+    <xs:sequence>
+      <xs:any namespace="##any" minOccurs="0" maxOccurs="unbounded" processContents="lax"/>
+    </xs:sequence>
+    <xs:attribute name="id"   type="xs:string"/>
+    <xs:attribute name="name" type="xs:string"/>
+    <xs:anyAttribute namespace="##other" processContents="lax"/>
+  </xs:complexType>
+
+</xs:schema>

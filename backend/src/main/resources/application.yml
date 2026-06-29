@@ -158,11 +158,28 @@ claude:
     url: https://api.anthropic.com/v1/messages
     timeout-seconds: 10
 
-# M4-AI-04: AI response caching (Redis DB 2, TTL 300s)
 ai:
+  # M4-AI-04: AI response caching (Redis DB 2, TTL 300s)
   cache:
     ttl-seconds: 300
     redis-database: 2   # dedicated DB — separate from sessions/rate-limiter on DB 0
+  nl:
+    # Feature flag — set AI_NL_ENABLED=false to disable entirely (e.g., CI without Claude key)
+    enabled: ${AI_NL_ENABLED:true}
+    # Fallback keyword parser — always active, used when LOCAL route selected or CLOUD fails
+    local-parser:
+      enabled: ${AI_NL_LOCAL_PARSER_ENABLED:true}
+    claude:
+      api-key: ${CLAUDE_API_KEY:}
+      api-url: ${CLAUDE_API_URL:https://api.anthropic.com/v1/messages}
+      model: ${CLAUDE_MODEL:claude-3-5-sonnet-20241022}
+      timeout-seconds: ${CLAUDE_TIMEOUT_SECONDS:6}
+    # BPMN template configuration
+    template:
+      # Check DB for operator-customised templates before falling back to classpath
+      db-override-enabled: ${AI_NL_TEMPLATE_DB_OVERRIDE:true}
+      # Default gdpr_mode sent from operator UI — true = always route PII to on-prem
+      default-gdpr-mode: ${AI_NL_DEFAULT_GDPR_MODE:true}
 
 app:
   invite:
@@ -307,6 +324,16 @@ logging:
     com.uip.backend.ai.flink.DistrictAggregationConsumer: DEBUG
     org.springframework.security: WARN
     org.hibernate.SQL: WARN
+
+# M5-3 T06: ROI Dashboard configuration
+roi:
+  manual-ops-baseline-vnd: ${ROI_MANUAL_OPS_BASELINE_VND:8500000}
+  base-fee-vnd: ${ROI_BASE_FEE_VND:2000000}
+  token-rate-vnd-per-thousand: ${ROI_TOKEN_RATE_VND_PER_THOUSAND:50}
+  token-base-allocation: ${ROI_TOKEN_BASE_ALLOCATION:100000}
+  co2-kg-per-kwh-saved: ${ROI_CO2_KG_PER_KWH_SAVED:0.5}
+  energy-savings-factor: ${ROI_ENERGY_SAVINGS_FACTOR:0.15}
+  avg-energy-consumption-kwh: ${ROI_AVG_ENERGY_CONSUMPTION_KWH:15000}
 
 # gRPC client — ADR-012 (only active when analytics-transport=grpc)
 grpc:

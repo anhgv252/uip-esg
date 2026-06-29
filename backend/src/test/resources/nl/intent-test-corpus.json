@@ -1,0 +1,66 @@
+{
+  "testCases": [
+    {"text": "Kích hoạt bơm xử lý ngập lụt ở khu vực Bình Thạnh ngay lập tức", "expectedIntent": "flood_response"},
+    {"text": "Cảnh báo ngập lụt ở quận 7 mực nước đang dâng cao", "expectedIntent": "flood_response"},
+    {"text": "Phản ứng khẩn cấp với lũ lụt tại phường Tân Hưng Thuận", "expectedIntent": "flood_response"},
+    {"text": "Ngập nước ở khu dân cư Bình Hưng cần xử lý gấp", "expectedIntent": "flood_response"},
+    {"text": "Mở hệ thống xử lý lũ tự động cho khu vực Gò Vấp", "expectedIntent": "flood_response"},
+    
+    {"text": "Chỉ số AQI vượt 150 ở quận 1 cần gửi cảnh báo cho dân", "expectedIntent": "aqi_alert"},
+    {"text": "Không khí độc hại ở Tân Bình AQI 180 cảnh báo khẩn", "expectedIntent": "aqi_alert"},
+    {"text": "Phát cảnh báo chất lượng không khí xấu ở khu Thủ Đức", "expectedIntent": "aqi_alert"},
+    {"text": "Mức độ ô nhiễm không khí cao tại Phú Nhuận cần thông báo", "expectedIntent": "aqi_alert"},
+    {"text": "Gửi cảnh báo AQI nguy hiểm cho người dân quận 3", "expectedIntent": "aqi_alert"},
+    
+    {"text": "Điều chỉnh đèn tín hiệu giao thông ở ngã tư Hàng Xanh", "expectedIntent": "traffic_signal"},
+    {"text": "Tắc đường ở cầu Sài Gòn cần thay đổi thời gian đèn giao thông", "expectedIntent": "traffic_signal"},
+    {"text": "Cài đặt lại đèn giao thông tại ngã ba Lê Văn Việt", "expectedIntent": "traffic_signal"},
+    {"text": "Tăng thời gian đèn xanh cho đường Võ Văn Ngân giờ cao điểm", "expectedIntent": "traffic_signal"},
+    {"text": "Điều khiển tín hiệu đèn ở giao lộ Nguyễn Văn Linh", "expectedIntent": "traffic_signal"},
+    
+    {"text": "Giảm nhiệt độ điều hòa xuống 24 độ cho tòa nhà B01", "expectedIntent": "building_hvac"},
+    {"text": "Bật hệ thống HVAC tại tầng 5 tòa nhà A15", "expectedIntent": "building_hvac"},
+    {"text": "Điều chỉnh máy lạnh văn phòng tòa C22 tiết kiệm năng lượng", "expectedIntent": "building_hvac"},
+    {"text": "Tắt điều hòa không khí ở tòa nhà D08 sau 6 giờ chiều", "expectedIntent": "building_hvac"},
+    {"text": "Cài đặt nhiệt độ tự động cho hệ thống HVAC tòa E12", "expectedIntent": "building_hvac"},
+    
+    {"text": "Cảm biến nhiệt độ SEN-1234 bị lỗi cần bảo trì", "expectedIntent": "sensor_maintenance"},
+    {"text": "Kiểm tra cảm biến chất lượng không khí AQ-5678 hư hỏng", "expectedIntent": "sensor_maintenance"},
+    {"text": "Lập kế hoạch sửa chữa cảm biến nước WL-9012", "expectedIntent": "sensor_maintenance"},
+    {"text": "Thiết bị cảm biến TF-3456 mất kết nối cần thay thế", "expectedIntent": "sensor_maintenance"},
+    {"text": "Đặt lịch bảo dưỡng sensor năng lượng EN-7890", "expectedIntent": "sensor_maintenance"},
+    
+    {"text": "Gửi tin nhắn cảnh báo mưa lớn cho cư dân quận 2", "expectedIntent": "citizen_notification"},
+    {"text": "Phát thông tin khẩn cấp cho cư dân khu Bình Chánh", "expectedIntent": "citizen_notification"},
+    {"text": "Notification cúp điện tạm thời ở phường Tân Phú", "expectedIntent": "citizen_notification"},
+    {"text": "Cảnh báo dịch bệnh cho cư dân khu vực quận 12", "expectedIntent": "citizen_notification"},
+    {"text": "Gửi tin nhắn khẩn cho cư dân về ngập nước ở Nhà Bè", "expectedIntent": "citizen_notification"},
+    
+    {"text": "Tối ưu hóa năng lượng cho tòa nhà văn phòng B05", "expectedIntent": "energy_optimization"},
+    {"text": "Giảm tiêu thụ điện năng ở tòa chung cư C18", "expectedIntent": "energy_optimization"},
+    {"text": "Phân tích mức sử dụng energy tại tòa A22", "expectedIntent": "energy_optimization"},
+    {"text": "Áp dụng chế độ optimization tiết kiệm điện cho tòa nhà D11", "expectedIntent": "energy_optimization"},
+    {"text": "Lập kế hoạch giảm chi phí energy cho tòa E09", "expectedIntent": "energy_optimization"},
+    
+    {"text": "Phát hiện rò rỉ đường ống khu Tân Sơn Nhất", "expectedIntent": "water_leak_response"},
+    {"text": "Khóa van leak khẩn cấp ở phường 15 quận 10", "expectedIntent": "water_leak_response"},
+    {"text": "Cô lập đường ống bị vỡ tại đường Lý Thường Kiệt", "expectedIntent": "water_leak_response"},
+    {"text": "Xử lý sự cố rò rỉ ở khu dân cư Bình Trị Đông", "expectedIntent": "water_leak_response"},
+    {"text": "Gửi nhóm sửa chữa leak tới hiện trường ở Phú Lâm", "expectedIntent": "water_leak_response"},
+    
+    {"text": "Sơ tán khẩn cấp khu vực quận 4 có cháy lớn", "expectedIntent": "emergency_evacuation"},
+    {"text": "Kích hoạt còi báo động evacuation ở phường Tân Định ngay lập tức", "expectedIntent": "emergency_evacuation"},
+    {"text": "Phát lệnh sơ tán khỏi khu vực nguy hiểm ở Bình Tân", "expectedIntent": "emergency_evacuation"},
+    {"text": "Kêu gọi evacuation khu vực có rò rỉ khí độc ở quận 6", "expectedIntent": "emergency_evacuation"},
+    {"text": "Emergency sơ tán người dân phường 8 quận 3", "expectedIntent": "emergency_evacuation"},
+    
+    {"text": "Tạo báo cáo ESG cho tòa nhà B10 tháng 5", "expectedIntent": "esg_report"},
+    {"text": "Lập report môi trường cho tòa A03 tháng 6", "expectedIntent": "esg_report"},
+    {"text": "Xuất báo cáo chỉ số ESG tòa nhà C21 quý 2", "expectedIntent": "esg_report"},
+    {"text": "Tổng hợp dữ liệu report bền vững tòa D07 tháng 4", "expectedIntent": "esg_report"},
+    {"text": "Phân tích chỉ tiêu ESG cho tòa E06 tháng 3", "expectedIntent": "esg_report"}
+  ]
+}
+    {"text": "In báo cáo phát thải carbon tòa E14 tháng 3", "expectedIntent": "esg_report"}
+  ]
+}

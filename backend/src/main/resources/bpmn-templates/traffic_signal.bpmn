@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+                  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+                  xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+                  targetNamespace="http://uip.smartcity/workflows"
+                  id="traffic_signal_workflow">
+
+  <bpmn:process id="Process_traffic_signal" isExecutable="true">
+    <bpmn:startEvent id="Start" name="Traffic Signal&#10;{{location}}"><bpmn:outgoing>F1</bpmn:outgoing></bpmn:startEvent>
+    <bpmn:serviceTask id="T1" name="Assess Traffic&#10;Conditions"><bpmn:incoming>F1</bpmn:incoming><bpmn:outgoing>F2</bpmn:outgoing></bpmn:serviceTask>
+    <bpmn:userTask id="T2" name="Operator Review&#10;(BR-010)"><bpmn:incoming>F2</bpmn:incoming><bpmn:outgoing>F3</bpmn:outgoing></bpmn:userTask>
+    <bpmn:serviceTask id="T3" name="Adjust Signal&#10;Timing"><bpmn:incoming>F3</bpmn:incoming><bpmn:outgoing>F4</bpmn:outgoing></bpmn:serviceTask>
+    <bpmn:endEvent id="End" name="Signal Updated"><bpmn:incoming>F4</bpmn:incoming></bpmn:endEvent>
+    <bpmn:sequenceFlow id="F1" sourceRef="Start" targetRef="T1"/>
+    <bpmn:sequenceFlow id="F2" sourceRef="T1" targetRef="T2"/>
+    <bpmn:sequenceFlow id="F3" sourceRef="T2" targetRef="T3"/>
+    <bpmn:sequenceFlow id="F4" sourceRef="T3" targetRef="End"/>
+  </bpmn:process>
+
+  <bpmndi:BPMNDiagram id="D1">
+    <bpmndi:BPMNPlane id="P1" bpmnElement="Process_traffic_signal">
+      <bpmndi:BPMNShape id="Ss" bpmnElement="Start"><dc:Bounds x="172" y="82" width="36" height="36"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="St1" bpmnElement="T1"><dc:Bounds x="270" y="60" width="100" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="St2" bpmnElement="T2"><dc:Bounds x="430" y="60" width="100" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="St3" bpmnElement="T3"><dc:Bounds x="590" y="60" width="100" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Se" bpmnElement="End"><dc:Bounds x="752" y="82" width="36" height="36"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="E1" bpmnElement="F1"><di:waypoint x="208" y="100"/><di:waypoint x="270" y="100"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="E2" bpmnElement="F2"><di:waypoint x="370" y="100"/><di:waypoint x="430" y="100"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="E3" bpmnElement="F3"><di:waypoint x="530" y="100"/><di:waypoint x="590" y="100"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="E4" bpmnElement="F4"><di:waypoint x="690" y="100"/><di:waypoint x="752" y="100"/></bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+
+</bpmn:definitions>
+  
+  <bpmn:process id="Process_traffic_signal" isExecutable="true">
+    
+    <bpmn:startEvent id="StartEvent_traffic_control_request" name="Traffic Signal Control: {{location}}">
+      <bpmn:outgoing>Flow_1</bpmn:outgoing>
+    </bpmn:startEvent>
+    
+    <bpmn:serviceTask id="Task_assess_traffic" name="Assess Traffic Flow">
+      <bpmn:incoming>Flow_1</bpmn:incoming>
+      <bpmn:outgoing>Flow_2</bpmn:outgoing>
+    </bpmn:serviceTask>
+    
+    <bpmn:serviceTask id="Task_adjust_signal_timing" name="Adjust Signal Timing at {{location}}">
+      <bpmn:incoming>Flow_2</bpmn:incoming>
+      <bpmn:outgoing>Flow_3</bpmn:outgoing>
+    </bpmn:serviceTask>
+    
+    <bpmn:serviceTask id="Task_log_change" name="Log Signal Change">
+      <bpmn:incoming>Flow_3</bpmn:incoming>
+      <bpmn:outgoing>Flow_4</bpmn:outgoing>
+    </bpmn:serviceTask>
+    
+    <bpmn:endEvent id="EndEvent_signal_adjusted" name="Signal Adjusted">
+      <bpmn:incoming>Flow_4</bpmn:incoming>
+    </bpmn:endEvent>
+    
+    <bpmn:sequenceFlow id="Flow_1" sourceRef="StartEvent_traffic_control_request" targetRef="Task_assess_traffic" />
+    <bpmn:sequenceFlow id="Flow_2" sourceRef="Task_assess_traffic" targetRef="Task_adjust_signal_timing" />
+    <bpmn:sequenceFlow id="Flow_3" sourceRef="Task_adjust_signal_timing" targetRef="Task_log_change" />
+    <bpmn:sequenceFlow id="Flow_4" sourceRef="Task_log_change" targetRef="EndEvent_signal_adjusted" />
+    
+  </bpmn:process>
+  
+</bpmn:definitions>
