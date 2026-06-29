@@ -60,7 +60,7 @@ const STEP_STATUS_ICONS = {
   ERROR: <ErrorIcon color="error" fontSize="small" />,
 } as const;
 
-function getConfidenceColor(confidence: number): 'success' | 'warning' | 'error' {
+function _getConfidenceColor(confidence: number): 'success' | 'warning' | 'error' {
   if (confidence >= 0.9) return 'success';
   if (confidence >= 0.7) return 'warning';
   return 'error';
@@ -77,7 +77,7 @@ export default function BpmnPreviewPane({
 }: BpmnPreviewPaneProps) {
   const [rejectReason, setRejectReason] = useState('');
   const [showRejectForm, setShowRejectForm] = useState(false);
-  const [showSimulation, setShowSimulation] = useState(true);
+  const [showSimulation] = useState(true);
 
   if (!review) {
     return (
@@ -125,7 +125,7 @@ export default function BpmnPreviewPane({
           Extracted Entities
         </Typography>
         <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-          {Object.entries(review.entities).map(([key, value]) => (
+          {Object.entries(review.extractedEntities || {}).map(([key, value]) => (
             <Chip
               key={key}
               label={`${key}: ${String(value)}`}
@@ -290,7 +290,7 @@ export default function BpmnPreviewPane({
         </>
       )}
 
-      {review.status !== 'PENDING' && (
+      {review.status !== 'PENDING_REVIEW' && (
         <Alert severity={review.status === 'APPROVED' ? 'success' : 'error'}>
           Workflow {review.status.toLowerCase()}
         </Alert>

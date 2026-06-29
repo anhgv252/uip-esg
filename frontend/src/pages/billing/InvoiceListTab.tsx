@@ -27,7 +27,7 @@ import {
   CheckCircle as CheckIcon,
   Add as AddIcon,
 } from '@mui/icons-material';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/hooks/useAuth';
 import { useInvoices, useGenerateInvoice, useMarkInvoicePaid } from '@/hooks/useBillingUsage';
 import type { InvoiceStatus } from '@/types/billing';
 

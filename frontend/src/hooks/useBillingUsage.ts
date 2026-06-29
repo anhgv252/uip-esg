@@ -139,7 +139,7 @@ export function useGenerateInvoice() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async (request: GenerateInvoiceRequest) => {
+    mutationFn: async (_: GenerateInvoiceRequest) => {
       await new Promise((resolve) => setTimeout(resolve, 800));
       // Mock API call
       return { success: true };
@@ -154,7 +154,7 @@ export function useMarkInvoicePaid() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async (invoiceId: string) => {
+    mutationFn: async (_invoiceId: string) => {
       await new Promise((resolve) => setTimeout(resolve, 500));
       // Mock API call
       return { success: true };

@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '@/api/client';
+// apiClient imported via hooks below
 import type { LotusVnReport, LotusBuilding } from '@/types/lotusVn';
 
 export function useLotusScore(buildingId: string, period?: string) {
@@ -99,7 +99,7 @@ export function useRefreshLotusScore() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ buildingId, period }: { buildingId: string; period?: string }) => {
+    mutationFn: async (_params: { buildingId: string; period?: string }) => {
       await new Promise((resolve) => setTimeout(resolve, 1200));
       // Mock API call to trigger recalculation
       return { success: true };

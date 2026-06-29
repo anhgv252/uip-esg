@@ -15,7 +15,7 @@ import {
 } from '@mui/material';
 import {
   TrendingUp as SavingsIcon,
-  EcoOutlined as Co2Icon,
+  Co2Outlined as Co2Icon,
   Schedule as PaybackIcon,
 } from '@mui/icons-material';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';

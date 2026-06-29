@@ -318,7 +318,7 @@ export default function BillingPage() {
           )}
 
           {!roiLoading && roiData && selectedBuildingForRoi && (
-            <BuildingRoiChart roi={roiData} />
+            <BuildingRoiChart roi={(roiData as any)?.data ?? roiData} />
           )}
         </>
       )}

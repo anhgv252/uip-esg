@@ -23,10 +23,12 @@ const INTENT_LABELS: Record<string, string> = {
   esg_report: 'ESG Report',
 };
 
-const STATUS_COLORS = {
+const STATUS_COLORS: Record<string, 'warning' | 'success' | 'error' | 'info' | 'default'> = {
+  PENDING_REVIEW: 'warning',
   PENDING: 'warning',
   APPROVED: 'success',
   REJECTED: 'error',
+  SIMULATED: 'info',
   EXECUTED: 'info',
 } as const;
 
@@ -78,13 +80,13 @@ export default function WorkflowReviewCard({
         </Box>
 
         <Typography variant="body2" fontWeight={600} gutterBottom>
-          {review.zone}
+          {review.extractedEntities?.zone}
         </Typography>
 
         <Box display="flex" alignItems="center" gap={0.5} mb={1}>
           <TimeIcon fontSize="small" sx={{ color: 'text.secondary', fontSize: 16 }} />
           <Typography variant="caption" color="text.secondary">
-            {timeAgo} • by {review.submittedBy}
+            {timeAgo} • by {review.requestedBy}
           </Typography>
         </Box>
 
@@ -100,7 +102,7 @@ export default function WorkflowReviewCard({
           />
         </Box>
 
-        {review.status === 'PENDING' && (
+        {review.status === 'PENDING_REVIEW' && (
           <Stack direction="row" spacing={1}>
             <Button
               size="small"

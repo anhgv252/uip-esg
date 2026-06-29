@@ -21,7 +21,7 @@ import {
 import { useIso37120Report } from '@/hooks/useIso37120';
 import type { Iso37120Category } from '@/types/iso37120';
 
-const CATEGORY_LABELS: Record<Iso37120Category, string> = {
+const _CATEGORY_LABELS: Record<Iso37120Category, string> = {
   ECONOMY: 'Economy',
   EDUCATION: 'Education',
   ENERGY: 'Energy',

@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { apiClient } from '@/api/client';
+// apiClient imported via hook below
 import type { Iso37120Report, Iso37120Indicator } from '@/types/iso37120';
 
 export function useIso37120Report(year?: number) {

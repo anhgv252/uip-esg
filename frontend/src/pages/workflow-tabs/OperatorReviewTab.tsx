@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Box, TextField, MenuItem, Typography, Grid, CircularProgress, Alert, Tabs, Tab } from '@mui/material';
+import { Box, Typography, Grid, CircularProgress, Alert, Tabs, Tab } from '@mui/material';
 import { useWorkflowDrafts, useApproveDraft, useRejectDraft, useSimulateDraft } from '@/hooks/useOperatorReview';
 import type { WorkflowDraft, SimulationResult } from '@/types/nlWorkflow';
 import WorkflowReviewCard from './components/WorkflowReviewCard';
@@ -48,7 +48,7 @@ export default function OperatorReviewTab() {
     });
   };
 
-  const pendingCount = drafts.filter((d) => d.status === 'PENDING_REVIEW').length;
+  const pendingCount = drafts.filter((d: WorkflowDraft) => d.status === 'PENDING_REVIEW').length;
 
   if (error) {
     return (
@@ -105,7 +105,7 @@ export default function OperatorReviewTab() {
                     </Typography>
                   </Box>
                 ) : (
-                  drafts.map((draft) => (
+                  drafts.map((draft: WorkflowDraft) => (
                     <WorkflowReviewCard
                       key={draft.id}
                       review={draft as any} // compatibility adapter
