@@ -100,3 +100,4 @@ infrastructure/docker-compose.override.yml
 target/
 *.jtl
 g5-rerun-ha-smoke.json
+BOOT-INF/

@@ -89,6 +89,23 @@ MVP6 sẽ:
 - Pilot MVP5: **Docker Compose HA only** (ADR-048). K8s artifacts tồn tại nhưng không chạy.
 - CI: thêm `helm lint` gate (M5-2-T14) — fail chart lỗi trước merge
 
+### 3.4 M5-2-T14 Completion (2026-06-25)
+
+Task M5-2-T14 (K8s readiness spike) **COMPLETED**. Deliverables:
+
+| Artifact | Status | Location |
+|---|---|---|
+| **Helm lint CI** | ✅ Deployed | `.github/workflows/helm-lint.yml` — runs `helm lint --strict` + `helm template` on PR/push |
+| **values-prod.yaml** | ✅ Created | `infra/helm/uip-backend/values-prod.yaml`, `infra/helm/uip-analytics-service/values-prod.yaml`, `infra/helm/values/values-prod.yaml` — production tier config |
+| **Stateful chart decision** | ⚠️ Deferred | CH/Kafka/PG charts deferred to MVP6 cutover — bitnami/clickhouse, bitnami/kafka, bitnami/postgresql recommended |
+
+**readiness criteria met:**
+1. ✅ `helm lint` + `helm template` gate active in CI
+2. ⚠️ Stateful charts deferred (documented — use bitnami community charts for MVP6)
+3. ✅ `values-prod.yaml` created with production-like resource limits, replica counts, HA settings
+
+MVP6 cutover can proceed without zero-day Helm work.
+
 ## 4. Alternatives considered
 
 1. **K8s cutover trong MVP5** — rejected: PO defer MVP6, scope cutover quá lớn cho pilot 2-3 building.

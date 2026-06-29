@@ -115,7 +115,7 @@ cd backend && ./gradlew integrationTest
 docker logs uip-analytics-service 2>&1 | grep -i "8443\|ssl" | tail
 
 # Keeper quorum kill test
-docker stop uip-clickhouse-keeper && sleep 5 && curl -s localhost:8080/actuator/health
+docker stop uip-clickhouse-keeper && sleep 5 && curl -s localhost:8080/api/v1/environment/sensors -H "Authorization: Bearer ${JWT}" | python3 -c "import sys,json; print(len(json.load(sys.stdin)), 'sensors (expect 8)')"
 docker start uip-clickhouse-keeper
 ```
 
