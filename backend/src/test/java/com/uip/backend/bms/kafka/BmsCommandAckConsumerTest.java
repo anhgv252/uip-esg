@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.uip.backend.bms.domain.BmsDevice;
 import com.uip.backend.bms.domain.BmsProtocol;
 import com.uip.backend.bms.repository.BmsDeviceRepository;
-import com.uip.backend.notification.service.SseEmitterRegistry;
+import com.uip.backend.common.spi.SseBroadcastPort;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -29,7 +29,7 @@ import static org.mockito.Mockito.*;
 @DisplayName("BmsCommandAckConsumer — ACK processing + device status update")
 class BmsCommandAckConsumerTest {
 
-    @Mock private SseEmitterRegistry sseEmitterRegistry;
+    @Mock private SseBroadcastPort sseBroadcastPort;
     @Mock private BmsDeviceRepository bmsDeviceRepository;
 
     private BmsCommandAckConsumer consumer;
@@ -39,7 +39,7 @@ class BmsCommandAckConsumerTest {
 
     @BeforeEach
     void setUp() {
-        consumer = new BmsCommandAckConsumer(sseEmitterRegistry, bmsDeviceRepository, objectMapper);
+        consumer = new BmsCommandAckConsumer(sseBroadcastPort, bmsDeviceRepository, objectMapper);
     }
 
     // ─── Status mapping ──────────────────────────────────────────────────────
@@ -100,7 +100,7 @@ class BmsCommandAckConsumerTest {
 
         consumer.onCommandAck(buildPayload(DEVICE_UUID.toString(), "ACKNOWLEDGED", "hcm"));
 
-        verify(sseEmitterRegistry).broadcast(eq("bms-command-ack"), anyMap());
+        verify(sseBroadcastPort).broadcast(eq("bms-command-ack"), anyMap());
     }
 
     // ─── Edge cases ──────────────────────────────────────────────────────────
@@ -113,7 +113,7 @@ class BmsCommandAckConsumerTest {
         consumer.onCommandAck(buildPayload(DEVICE_UUID.toString(), "ACKNOWLEDGED", "hcm"));
 
         verify(bmsDeviceRepository, never()).save(any());
-        verify(sseEmitterRegistry).broadcast(eq("bms-command-ack"), anyMap());
+        verify(sseBroadcastPort).broadcast(eq("bms-command-ack"), anyMap());
     }
 
     @Test
@@ -125,7 +125,7 @@ class BmsCommandAckConsumerTest {
         consumer.onCommandAck(payload);
 
         verifyNoInteractions(bmsDeviceRepository);
-        verify(sseEmitterRegistry).broadcast(any(), any());
+        verify(sseBroadcastPort).broadcast(any(), any());
     }
 
     @Test
@@ -144,7 +144,7 @@ class BmsCommandAckConsumerTest {
         consumer.onCommandAck("{invalid json}");
 
         verifyNoInteractions(bmsDeviceRepository);
-        verifyNoInteractions(sseEmitterRegistry);
+        verifyNoInteractions(sseBroadcastPort);
     }
 
     // ─── Helpers ─────────────────────────────────────────────────────────────

@@ -3,10 +3,12 @@ package com.uip.backend.audit.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.uip.backend.audit.domain.AuditEvent;
 import com.uip.backend.audit.repository.AuditEventRepository;
+import com.uip.backend.billing.event.BillingInvoiceGeneratedEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.event.TransactionalEventListener;
 
 import java.util.Map;
 
@@ -67,8 +69,28 @@ public class AuditLogService {
      * Convenience method for SYSTEM-triggered events.
      */
     @Transactional
-    public void logSystemEvent(String tenantId, String eventType, String entityId, 
+    public void logSystemEvent(String tenantId, String eventType, String entityId,
                                 String entityType, Map<String, Object> metadata) {
         logEvent(tenantId, eventType, "SYSTEM", entityId, entityType, metadata);
+    }
+
+    /**
+     * Audit subscriber for billing invoice generation (ADR-052 migration C4).
+     *
+     * <p>Decouples {@code billing} from {@code audit}: billing publishes
+     * {@link BillingInvoiceGeneratedEvent} and this listener logs the audit record.
+     * Runs after the billing transaction commits so audit only captures committed invoices.</p>
+     */
+    @TransactionalEventListener(phase = org.springframework.transaction.event.TransactionPhase.AFTER_COMMIT)
+    @Transactional
+    public void onBillingInvoiceGenerated(BillingInvoiceGeneratedEvent event) {
+        logEvent(
+                event.getTenantId(),
+                "BILLING_INVOICE_GENERATED",
+                "SYSTEM",
+                event.getInvoiceId(),
+                "INVOICE",
+                event.toAuditMetadata()
+        );
     }
 }

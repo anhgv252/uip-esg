@@ -3,7 +3,7 @@ package com.uip.backend.esg.iso37120.service;
 import com.uip.backend.esg.iso37120.domain.Iso37120Indicator;
 import com.uip.backend.esg.iso37120.domain.Iso37120Report;
 import com.uip.backend.esg.repository.EsgMetricRepository;
-import com.uip.backend.environment.repository.AirQualityReadingRepository;
+import com.uip.backend.common.spi.AirQualityPort;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -29,7 +29,7 @@ class Iso37120IndicatorEngineTest {
     private static final int YEAR = 2026;
 
     @Mock private EsgMetricRepository esgMetricRepository;
-    @Mock private AirQualityReadingRepository airQualityRepository;
+    @Mock private AirQualityPort airQualityPort;
 
     @InjectMocks private Iso37120IndicatorEngine indicatorEngine;
 
@@ -40,7 +40,7 @@ class Iso37120IndicatorEngineTest {
     void generate_allIndicatorsPresent() {
         when(esgMetricRepository.sumByTypeAndRange(any(), any(), any(), any()))
             .thenReturn(1_000_000.0);
-        when(airQualityRepository.findAveragePm25ByPeriod(any(), any(), any()))
+        when(airQualityPort.findAveragePm25ByPeriod(any(), any(), any()))
             .thenReturn(15.0);
 
         Iso37120Report report = indicatorEngine.generate(CITY_ID, TENANT_ID, YEAR);
@@ -62,7 +62,7 @@ class Iso37120IndicatorEngineTest {
     void generate_e2_renewableEnergyPercentage() {
         when(esgMetricRepository.sumByTypeAndRange(any(), any(), any(), any()))
             .thenReturn(1_000_000.0);
-        when(airQualityRepository.findAveragePm25ByPeriod(any(), any(), any()))
+        when(airQualityPort.findAveragePm25ByPeriod(any(), any(), any()))
             .thenReturn(null);
 
         Iso37120Report report = indicatorEngine.generate(CITY_ID, TENANT_ID, YEAR);
@@ -86,7 +86,7 @@ class Iso37120IndicatorEngineTest {
     void generate_env1_pm25FromAqi() {
         when(esgMetricRepository.sumByTypeAndRange(any(), any(), any(), any()))
             .thenReturn(null);
-        when(airQualityRepository.findAveragePm25ByPeriod(eq(TENANT_ID), any(Instant.class), any(Instant.class)))
+        when(airQualityPort.findAveragePm25ByPeriod(eq(TENANT_ID), any(Instant.class), any(Instant.class)))
             .thenReturn(22.5);
 
         Iso37120Report report = indicatorEngine.generate(CITY_ID, TENANT_ID, YEAR);
@@ -111,7 +111,7 @@ class Iso37120IndicatorEngineTest {
     void generate_nullHandling_gracefulFallback() {
         when(esgMetricRepository.sumByTypeAndRange(any(), any(), any(), any()))
             .thenReturn(null);
-        when(airQualityRepository.findAveragePm25ByPeriod(any(), any(), any()))
+        when(airQualityPort.findAveragePm25ByPeriod(any(), any(), any()))
             .thenReturn(null);
 
         Iso37120Report report = indicatorEngine.generate(CITY_ID, TENANT_ID, YEAR);
@@ -138,7 +138,7 @@ class Iso37120IndicatorEngineTest {
     void generate_yearInReport() {
         when(esgMetricRepository.sumByTypeAndRange(any(), any(), any(), any()))
             .thenReturn(500_000.0);
-        when(airQualityRepository.findAveragePm25ByPeriod(any(), any(), any()))
+        when(airQualityPort.findAveragePm25ByPeriod(any(), any(), any()))
             .thenReturn(18.0);
 
         Iso37120Report report = indicatorEngine.generate(CITY_ID, TENANT_ID, YEAR);
@@ -153,7 +153,7 @@ class Iso37120IndicatorEngineTest {
     void generate_jsonStructure_groupedCategories() {
         when(esgMetricRepository.sumByTypeAndRange(any(), any(), any(), any()))
             .thenReturn(1_500_000.0);
-        when(airQualityRepository.findAveragePm25ByPeriod(any(), any(), any()))
+        when(airQualityPort.findAveragePm25ByPeriod(any(), any(), any()))
             .thenReturn(12.5);
 
         Iso37120Report report = indicatorEngine.generate(CITY_ID, TENANT_ID, YEAR);

@@ -1,7 +1,6 @@
 package com.uip.backend.safety.service;
 
-import com.uip.backend.alert.domain.AlertEvent;
-import com.uip.backend.alert.service.AlertService;
+import com.uip.backend.common.spi.AlertPort;
 import com.uip.backend.safety.dto.VibrationReadingResponse;
 import com.uip.backend.safety.model.SafetyScore;
 import lombok.RequiredArgsConstructor;
@@ -39,7 +38,7 @@ public class BuildingSafetyService {
     private static final int WARNING_PENALTY  = 10;
     private static final long LOOKBACK_HOURS  = 24;
 
-    private final AlertService alertService;
+    private final AlertPort alertPort;
 
     /**
      * Returns the current safety score for a building, using Redis cache (TTL 5 min).
@@ -51,7 +50,7 @@ public class BuildingSafetyService {
     )
     public SafetyScore getSafetyScore(String buildingId) {
         Instant since = Instant.now().minus(LOOKBACK_HOURS, ChronoUnit.HOURS);
-        List<AlertEvent> alerts = alertService.findOpenStructuralAlerts(buildingId, since);
+        List<AlertPort.StructuralAlertSnapshot> alerts = alertPort.findOpenStructuralAlerts(buildingId, since);
         return computeScore(buildingId, alerts);
     }
 
@@ -86,12 +85,12 @@ public class BuildingSafetyService {
 
     // ─── Score algorithm ─────────────────────────────────────────────────────
 
-    public static SafetyScore computeScore(String buildingId, List<AlertEvent> alerts) {
+    public static SafetyScore computeScore(String buildingId, List<AlertPort.StructuralAlertSnapshot> alerts) {
         long criticalCount = alerts.stream()
-                .filter(a -> "CRITICAL".equals(a.getSeverity()))
+                .filter(a -> "CRITICAL".equals(a.severity()))
                 .count();
         long warningCount = alerts.stream()
-                .filter(a -> "WARNING".equals(a.getSeverity()))
+                .filter(a -> "WARNING".equals(a.severity()))
                 .count();
 
         int score = (int) (SCORE_MAX - criticalCount * CRITICAL_PENALTY - warningCount * WARNING_PENALTY);
