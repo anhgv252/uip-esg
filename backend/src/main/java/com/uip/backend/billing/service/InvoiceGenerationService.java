@@ -1,15 +1,16 @@
 package com.uip.backend.billing.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.uip.backend.audit.service.AuditLogService;
 import com.uip.backend.billing.domain.Invoice;
 import com.uip.backend.billing.domain.InvoiceStatus;
 import com.uip.backend.billing.domain.MonthlyUsage;
+import com.uip.backend.billing.event.BillingInvoiceGeneratedEvent;
 import com.uip.backend.billing.repository.InvoiceRepository;
 import com.uip.backend.billing.repository.MonthlyUsageRepository;
 import com.uip.backend.kafka.KafkaProducerService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,7 +36,7 @@ public class InvoiceGenerationService {
     private final MonthlyUsageRepository monthlyUsageRepository;
     private final InvoiceRepository invoiceRepository;
     private final KafkaProducerService kafkaProducerService;
-    private final AuditLogService auditLogService;
+    private final ApplicationEventPublisher eventPublisher;
     private final ObjectMapper objectMapper;
 
     private static final String KAFKA_TOPIC = "UIP.billing.invoice.generated.v1";
@@ -101,22 +102,11 @@ public class InvoiceGenerationService {
         
         // Emit Kafka event
         emitInvoiceGeneratedEvent(invoice);
-        
-        // Log audit event
-        auditLogService.logEvent(
-                tenantId,
-                "BILLING_INVOICE_GENERATED",
-                "SYSTEM",
-                invoice.getId().toString(),
-                "INVOICE",
-                Map.of(
-                        "invoiceNumber", invoiceNumber,
-                        "billingPeriod", billingPeriod,
-                        "totalVnd", totalVnd,
-                        "buildingCount", usageRecords.size()
-                )
-        );
-        
+
+        // Publish domain event — audit module subscribes via @TransactionalEventListener
+        // (ADR-052 migration C4: billing no longer injects audit.service directly).
+        eventPublisher.publishEvent(new BillingInvoiceGeneratedEvent(invoice, usageRecords.size()));
+
         return invoice;
     }
 

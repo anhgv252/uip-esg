@@ -43,6 +43,20 @@ public interface EsgMetricRepository extends JpaRepository<EsgMetric, EsgMetricI
         SELECT SUM(m.value) FROM EsgMetric m
         WHERE m.tenantId = :tenantId
           AND m.metricType = :metricType
+          AND m.buildingId = :buildingId
+          AND m.id.timestamp BETWEEN :from AND :to
+        """)
+    Double sumByTypeAndBuilding(
+            @Param("tenantId") String tenantId,
+            @Param("metricType") String metricType,
+            @Param("buildingId") String buildingId,
+            @Param("from") Instant from,
+            @Param("to") Instant to);
+
+    @Query("""
+        SELECT SUM(m.value) FROM EsgMetric m
+        WHERE m.tenantId = :tenantId
+          AND m.metricType = :metricType
           AND m.id.timestamp BETWEEN :from AND :to
         """)
     Double sumByTypeAndRange(

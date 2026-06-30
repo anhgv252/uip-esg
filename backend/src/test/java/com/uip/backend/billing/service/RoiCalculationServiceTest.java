@@ -259,7 +259,7 @@ class RoiCalculationServiceTest {
         event.setTenantId(TENANT_ID);
         event.setBuildingId(buildingId);
         event.setEventType(type);
-        event.setTokenCount(tokenCount);
+        event.setTokenCount((long) tokenCount);
         event.setRecordedAt(Instant.now());
         return event;
     }

@@ -1,13 +1,13 @@
 package com.uip.backend.billing.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.uip.backend.audit.service.AuditLogService;
 import com.uip.backend.billing.domain.Invoice;
 import com.uip.backend.billing.domain.InvoiceStatus;
 import com.uip.backend.billing.domain.MonthlyUsage;
 import com.uip.backend.billing.repository.InvoiceRepository;
 import com.uip.backend.billing.repository.MonthlyUsageRepository;
 import com.uip.backend.kafka.KafkaProducerService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -46,7 +46,7 @@ class InvoiceGenerationServiceTest {
     private KafkaProducerService kafkaProducerService;
 
     @Mock
-    private AuditLogService auditLogService;
+    private org.springframework.context.ApplicationEventPublisher eventPublisher;
 
     @Mock
     private ObjectMapper objectMapper;
@@ -56,6 +56,20 @@ class InvoiceGenerationServiceTest {
 
     private static final String TENANT_ID = "test-tenant";
     private static final String BILLING_PERIOD = "2026-06";
+
+    @BeforeEach
+    void stubSaveReturnsFirstArg() {
+        // JPA save() runs @PrePersist (sets generatedAt/dueDate) and assigns the generated id.
+        // Default Mockito returns null and skips lifecycle callbacks, which previously caused
+        // NPE in emitInvoiceGeneratedEvent (BUG-M5-002). Mimic both here.
+        lenient().when(invoiceRepository.save(any(Invoice.class)))
+                .thenAnswer(invocation -> {
+                    Invoice saved = invocation.getArgument(0);
+                    saved.setId(java.util.UUID.randomUUID());
+                    saved.setGeneratedAt(java.time.Instant.now());
+                    return saved;
+                });
+    }
 
     @Test
     void testGenerateInvoice_calculatesSubtotalTaxTotal() throws Exception {
