@@ -219,7 +219,7 @@ public class RoiCalculationService {
 
         // CO2 savings from energy reduction
         // Assume UIP automation reduces energy consumption by 15% (configurable)
-        long energySavedKwh = roiConfig.getAvgEnergyConsumptionKwh()
+        long energySavedKwh = BigDecimal.valueOf(roiConfig.getAvgEnergyConsumptionKwh())
                 .multiply(roiConfig.getEnergySavingsFactor())
                 .longValue();
         

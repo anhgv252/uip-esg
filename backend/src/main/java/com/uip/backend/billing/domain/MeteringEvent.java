@@ -2,6 +2,8 @@ package com.uip.backend.billing.domain;
 
 import com.uip.backend.tenant.domain.TenantAware;
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -21,6 +23,8 @@ import java.time.Instant;
 @Getter
 @Setter
 @NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class MeteringEvent implements TenantAware {
 
     @Id
@@ -47,7 +51,7 @@ public class MeteringEvent implements TenantAware {
     private java.util.UUID alertId;
 
     @Column(name = "token_count")
-    private Integer tokenCount = 0;
+    private Long tokenCount = 0L;
 
     @Column(name = "workflow_run_id")
     private java.util.UUID workflowRunId;

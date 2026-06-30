@@ -1,6 +1,6 @@
 package com.uip.backend.safety;
 
-import com.uip.backend.alert.domain.AlertEvent;
+import com.uip.backend.common.spi.AlertPort.StructuralAlertSnapshot;
 import com.uip.backend.safety.model.SafetyScore;
 import com.uip.backend.safety.service.BuildingSafetyService;
 import org.junit.jupiter.api.DisplayName;
@@ -8,7 +8,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
-import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
 
@@ -43,7 +42,7 @@ class BuildingSafetyServiceTest {
     @Test
     @DisplayName("1 WARNING → score=90, status=WARNING")
     void oneWarning_score90() {
-        List<AlertEvent> alerts = List.of(alertEvent("WARNING"));
+        List<StructuralAlertSnapshot> alerts = List.of(alertEvent("WARNING"));
         SafetyScore score = BuildingSafetyService.computeScore(BUILDING_ID, alerts);
 
         assertThat(score.score()).isEqualTo(90);
@@ -54,7 +53,7 @@ class BuildingSafetyServiceTest {
     @Test
     @DisplayName("1 CRITICAL → score=70, status=CRITICAL")
     void oneCritical_score70() {
-        List<AlertEvent> alerts = List.of(alertEvent("CRITICAL"));
+        List<StructuralAlertSnapshot> alerts = List.of(alertEvent("CRITICAL"));
         SafetyScore score = BuildingSafetyService.computeScore(BUILDING_ID, alerts);
 
         assertThat(score.score()).isEqualTo(70);
@@ -78,7 +77,7 @@ class BuildingSafetyServiceTest {
     })
     @DisplayName("Score formula: 100 - CRITICAL×30 - WARNING×10, clamped [0,100]")
     void scoreFormula(int criticalCount, int warningCount, int expectedScore, String expectedStatus) {
-        List<AlertEvent> alerts = buildAlertList(criticalCount, warningCount);
+        List<StructuralAlertSnapshot> alerts = buildAlertList(criticalCount, warningCount);
         SafetyScore score = BuildingSafetyService.computeScore(BUILDING_ID, alerts);
 
         assertThat(score.score()).isEqualTo(expectedScore);
@@ -91,7 +90,7 @@ class BuildingSafetyServiceTest {
     @Test
     @DisplayName("Mixed CRITICAL + WARNING → status=CRITICAL (highest severity wins)")
     void mixed_criticalDominates() {
-        List<AlertEvent> alerts = List.of(alertEvent("WARNING"), alertEvent("CRITICAL"), alertEvent("WARNING"));
+        List<StructuralAlertSnapshot> alerts = List.of(alertEvent("WARNING"), alertEvent("CRITICAL"), alertEvent("WARNING"));
         SafetyScore score = BuildingSafetyService.computeScore(BUILDING_ID, alerts);
 
         assertThat(score.status()).isEqualTo("CRITICAL");
@@ -112,21 +111,12 @@ class BuildingSafetyServiceTest {
 
     // ─── Helpers ─────────────────────────────────────────────────────────────
 
-    private static AlertEvent alertEvent(String severity) {
-        AlertEvent e = new AlertEvent();
-        e.setSeverity(severity);
-        e.setModule("STRUCTURAL");
-        e.setStatus("OPEN");
-        e.setDetectedAt(Instant.now());
-        e.setSensorId("SENSOR-TEST");
-        e.setMeasureType("VIBRATION");
-        e.setValue(15.0);
-        e.setThreshold(10.0);
-        return e;
+    private static StructuralAlertSnapshot alertEvent(String severity) {
+        return new StructuralAlertSnapshot(severity);
     }
 
-    private static List<AlertEvent> buildAlertList(int criticalCount, int warningCount) {
-        List<AlertEvent> alerts = new java.util.ArrayList<>();
+    private static List<StructuralAlertSnapshot> buildAlertList(int criticalCount, int warningCount) {
+        List<StructuralAlertSnapshot> alerts = new java.util.ArrayList<>();
         for (int i = 0; i < criticalCount; i++) alerts.add(alertEvent("CRITICAL"));
         for (int i = 0; i < warningCount; i++)  alerts.add(alertEvent("WARNING"));
         return alerts;

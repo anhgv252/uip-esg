@@ -2,7 +2,7 @@ package com.uip.backend.bms.kafka;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.uip.backend.bms.repository.BmsDeviceRepository;
-import com.uip.backend.notification.service.SseEmitterRegistry;
+import com.uip.backend.common.spi.SseBroadcastPort;
 import com.uip.backend.tenant.context.TenantContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,7 +28,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class BmsCommandAckConsumer {
 
-    private final SseEmitterRegistry sseEmitterRegistry;
+    private final SseBroadcastPort sseBroadcastPort;
     private final BmsDeviceRepository bmsDeviceRepository;
     private final ObjectMapper objectMapper;
 
@@ -53,7 +53,7 @@ public class BmsCommandAckConsumer {
             }
 
             // Broadcast to frontend via SSE for real-time device status refresh
-            sseEmitterRegistry.broadcast("bms-command-ack", Map.of(
+            sseBroadcastPort.broadcast("bms-command-ack", Map.of(
                     "commandId",  commandId != null ? commandId : "",
                     "status",     ackStatus != null ? ackStatus : "UNKNOWN",
                     "deviceId",   deviceIdStr != null ? deviceIdStr : "",

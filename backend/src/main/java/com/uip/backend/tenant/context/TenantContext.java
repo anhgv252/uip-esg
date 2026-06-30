@@ -19,6 +19,11 @@ public final class TenantContext {
         return CURRENT_TENANT.get();
     }
 
+    /** Alias for getCurrentTenant() — used by controllers that follow the getId convention. */
+    public static String getCurrentTenantId() {
+        return getCurrentTenant();
+    }
+
     public static void setCurrentTenant(String tenantId) {
         if (tenantId == null || tenantId.isBlank()) {
             CURRENT_TENANT.set(DEFAULT_TENANT);

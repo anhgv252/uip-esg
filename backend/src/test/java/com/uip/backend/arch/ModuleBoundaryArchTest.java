@@ -31,12 +31,21 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
  *     {@code ..module.service..} khi module chỉ được giao tiếp qua event DTO —
  *     đây mới là coupling cấm.
  *
- * Khi test fail → có coupling ngầm. Hai lựa chọn:
- *   - Nếu là documented exception (ADR) → thêm exception package vào rule.
- *   - Nếu là coupling ngầm thật → defer rule, ghi vào audit report cho SA follow-up.
- *     Không sửa production code trong task này (ngoài scope T13).
+ * Khi test fail → có coupling ngầm. CÁCH XỬ LÝ (theo ADR-052, ưu tiên từ trên xuống):
+ *
+ *   1. [ƯU TIÊN] Extract Hexagonal Port (ADR-052): tạo Port interface ở
+ *      {@code common.spi.<Port>}, Adapter implement ở provider module
+ *      ({@code <provider>.adapter.<Adapter>}), consumer inject Port.
+ *      Đây là cách fix CHUẨN — KHÔNG relax rule.
+ *   2. Nếu là documented exception (ADR cũ) → thêm exception package vào rule.
+ *   3. Nếu là coupling ngầm thật chưa fix được → defer rule, ghi tech-debt register
+ *      cho SA follow-up (pattern D1/D2/D3 trong project_mvp5_archtest_deferred_coupling).
+ *
+ *   ⚠️ KHÔNG BAO GIỜ relax rule (thêm @ArchIgnore) chỉ để "fix nhanh" một vi phạm —
+ *   rule là contract kiến trúc. Relax = chấp nhận debt vĩnh viễn (bài học BUG-M5-009).
  *
  * Tham khảo:
+ *   - **ADR-052** (docs/mvp5/adr/): Hexagonal Port cho cross-module dependency — QUY CHUẨN
  *   - docs/architecture/modular-architecture-evaluation.md
  *   - docs/mvp5/reports/mvp5-sprint1-archtest-coverage.md
  */
@@ -800,6 +809,47 @@ class ModuleBoundaryArchTest {
                 .should().accessClassesThat().resideInAPackage(BASE + ".traffic.domain..")
                 .orShould().accessClassesThat().resideInAPackage(BASE + ".traffic.repository..")
                 .orShould().accessClassesThat().resideInAPackage(BASE + ".traffic.service..");
+        rule.check(classes);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // ADR-052 migration P1 — close ArchTest coverage gap (Nhóm C coupling).
+    // These rules lock the boundaries that were migrated to common.spi Ports in
+    // the post-BUG-M5-009 cleanup, so the coupling cannot silently regress.
+    // ─────────────────────────────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("safety must not depend on alert/notification service internals (use AlertPort / NotificationPort)")
+    void safety_mustNotDependOn_alertOrNotification_service() {
+        ArchRule rule = noClasses().that().resideInAPackage(BASE + ".safety..")
+                .should().accessClassesThat().resideInAPackage(BASE + ".alert.service..")
+                .orShould().accessClassesThat().resideInAPackage(BASE + ".alert.domain..")
+                .orShould().accessClassesThat().resideInAPackage(BASE + ".notification.service..");
+        rule.check(classes);
+    }
+
+    @Test
+    @DisplayName("billing must not depend on audit.service (use @EventListener, not direct inject)")
+    void billing_mustNotDependOn_audit_service() {
+        ArchRule rule = noClasses().that().resideInAPackage(BASE + ".billing..")
+                .should().accessClassesThat().resideInAPackage(BASE + ".audit.service..");
+        rule.check(classes);
+    }
+
+    @Test
+    @DisplayName("scheduler must not depend on environment/notification service (use broadcast Ports)")
+    void scheduler_mustNotDependOn_environmentOrNotification_service() {
+        ArchRule rule = noClasses().that().resideInAPackage(BASE + ".scheduler..")
+                .should().accessClassesThat().resideInAPackage(BASE + ".environment.service..")
+                .orShould().accessClassesThat().resideInAPackage(BASE + ".notification.service..");
+        rule.check(classes);
+    }
+
+    @Test
+    @DisplayName("bms must not depend on notification.service (use SseBroadcastPort; @KafkaListener is allowed)")
+    void bms_mustNotDependOn_notification_service() {
+        ArchRule rule = noClasses().that().resideInAPackage(BASE + ".bms..")
+                .should().accessClassesThat().resideInAPackage(BASE + ".notification.service..");
         rule.check(classes);
     }
 

@@ -1,9 +1,9 @@
 package com.uip.backend.esg.iso37120.service;
 
+import com.uip.backend.common.spi.AirQualityPort;
 import com.uip.backend.esg.iso37120.domain.Iso37120Indicator;
 import com.uip.backend.esg.iso37120.domain.Iso37120Report;
 import com.uip.backend.esg.repository.EsgMetricRepository;
-import com.uip.backend.environment.repository.AirQualityReadingRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -27,7 +27,7 @@ import java.util.List;
 public class Iso37120IndicatorEngine {
 
     private final EsgMetricRepository esgMetricRepository;
-    private final AirQualityReadingRepository airQualityRepository;
+    private final AirQualityPort airQualityPort;
 
     /**
      * Generate ISO 37120 report for a city and year.
@@ -109,7 +109,7 @@ public class Iso37120IndicatorEngine {
         List<Iso37120Indicator> indicators = new ArrayList<>();
 
         // Env1: Fine particulate matter (PM2.5) concentration (µg/m³)
-        Double avgPm25 = airQualityRepository.findAveragePm25ByPeriod(tenantId, start, end);
+        Double avgPm25 = airQualityPort.findAveragePm25ByPeriod(tenantId, start, end);
         if (avgPm25 != null) {
             indicators.add(new Iso37120Indicator(
                 "Env1",

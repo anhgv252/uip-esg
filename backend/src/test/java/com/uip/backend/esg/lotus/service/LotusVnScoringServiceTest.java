@@ -2,7 +2,7 @@ package com.uip.backend.esg.lotus.service;
 
 import com.uip.backend.esg.lotus.domain.*;
 import com.uip.backend.esg.repository.EsgMetricRepository;
-import com.uip.backend.environment.repository.AirQualityReadingRepository;
+import com.uip.backend.common.spi.AirQualityPort;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -29,7 +29,7 @@ class LotusVnScoringServiceTest {
     private static final YearMonth PERIOD = YearMonth.of(2026, 6);
 
     @Mock private EsgMetricRepository esgMetricRepository;
-    @Mock private AirQualityReadingRepository airQualityRepository;
+    @Mock private AirQualityPort airQualityPort;
 
     @InjectMocks private LotusVnScoringService scoringService;
 
@@ -47,7 +47,7 @@ class LotusVnScoringServiceTest {
             .thenReturn(180.0);  // 60 L × 100 people × 30 days / 1000
 
         // IEQ-2: 10 µg/m³ → 4 points (< 12 threshold)
-        when(airQualityRepository.findAveragePm25ByBuildingAndPeriod(eq(BUILDING_ID), any(), any()))
+        when(airQualityPort.findAveragePm25ByBuildingAndPeriod(eq(BUILDING_ID), any(), any()))
             .thenReturn(10.0);
 
         LotusVnReport report = scoringService.score(BUILDING_ID, TENANT_ID, PERIOD);
@@ -73,7 +73,7 @@ class LotusVnScoringServiceTest {
             .thenReturn(540.0);
 
         // IEQ-2: 40 µg/m³ → 1 point
-        when(airQualityRepository.findAveragePm25ByBuildingAndPeriod(eq(BUILDING_ID), any(), any()))
+        when(airQualityPort.findAveragePm25ByBuildingAndPeriod(eq(BUILDING_ID), any(), any()))
             .thenReturn(40.0);
 
         LotusVnReport report = scoringService.score(BUILDING_ID, TENANT_ID, PERIOD);
@@ -96,7 +96,7 @@ class LotusVnScoringServiceTest {
             .thenReturn(750.0);
 
         // IEQ-2: 60 µg/m³ → 0 points (>45 threshold)
-        when(airQualityRepository.findAveragePm25ByBuildingAndPeriod(eq(BUILDING_ID), any(), any()))
+        when(airQualityPort.findAveragePm25ByBuildingAndPeriod(eq(BUILDING_ID), any(), any()))
             .thenReturn(60.0);
 
         LotusVnReport report = scoringService.score(BUILDING_ID, TENANT_ID, PERIOD);
@@ -115,7 +115,7 @@ class LotusVnScoringServiceTest {
             .thenReturn(100_000.0);
         when(esgMetricRepository.sumByTypeAndBuilding(eq(TENANT_ID), eq("WATER"), eq(BUILDING_ID), any(), any()))
             .thenReturn(null);
-        when(airQualityRepository.findAveragePm25ByBuildingAndPeriod(any(), any(), any()))
+        when(airQualityPort.findAveragePm25ByBuildingAndPeriod(any(), any(), any()))
             .thenReturn(null);
 
         LotusVnReport report = scoringService.score(BUILDING_ID, TENANT_ID, PERIOD);
@@ -139,7 +139,7 @@ class LotusVnScoringServiceTest {
             .thenReturn(null);
         when(esgMetricRepository.sumByTypeAndBuilding(eq(TENANT_ID), eq("WATER"), eq(BUILDING_ID), any(), any()))
             .thenReturn(450.0);  // 150 L × 100 people × 30 days / 1000
-        when(airQualityRepository.findAveragePm25ByBuildingAndPeriod(any(), any(), any()))
+        when(airQualityPort.findAveragePm25ByBuildingAndPeriod(any(), any(), any()))
             .thenReturn(null);
 
         LotusVnReport report = scoringService.score(BUILDING_ID, TENANT_ID, PERIOD);
@@ -163,7 +163,7 @@ class LotusVnScoringServiceTest {
             .thenReturn(null);
         when(esgMetricRepository.sumByTypeAndBuilding(eq(TENANT_ID), eq("WATER"), eq(BUILDING_ID), any(), any()))
             .thenReturn(null);
-        when(airQualityRepository.findAveragePm25ByBuildingAndPeriod(eq(BUILDING_ID), any(), any()))
+        when(airQualityPort.findAveragePm25ByBuildingAndPeriod(eq(BUILDING_ID), any(), any()))
             .thenReturn(20.0);
 
         LotusVnReport report = scoringService.score(BUILDING_ID, TENANT_ID, PERIOD);
@@ -187,7 +187,7 @@ class LotusVnScoringServiceTest {
         // All data sources return null
         when(esgMetricRepository.sumByTypeAndBuilding(any(), any(), any(), any(), any()))
             .thenReturn(null);
-        when(airQualityRepository.findAveragePm25ByBuildingAndPeriod(any(), any(), any()))
+        when(airQualityPort.findAveragePm25ByBuildingAndPeriod(any(), any(), any()))
             .thenReturn(null);
 
         LotusVnReport report = scoringService.score(BUILDING_ID, TENANT_ID, PERIOD);
@@ -205,7 +205,7 @@ class LotusVnScoringServiceTest {
     void score_reportStructure_allCategoriesPresent() {
         when(esgMetricRepository.sumByTypeAndBuilding(any(), any(), any(), any(), any()))
             .thenReturn(100_000.0);
-        when(airQualityRepository.findAveragePm25ByBuildingAndPeriod(any(), any(), any()))
+        when(airQualityPort.findAveragePm25ByBuildingAndPeriod(any(), any(), any()))
             .thenReturn(15.0);
 
         LotusVnReport report = scoringService.score(BUILDING_ID, TENANT_ID, PERIOD);

@@ -1,8 +1,8 @@
 package com.uip.backend.esg.lotus.service;
 
+import com.uip.backend.common.spi.AirQualityPort;
 import com.uip.backend.esg.lotus.domain.*;
 import com.uip.backend.esg.repository.EsgMetricRepository;
-import com.uip.backend.environment.repository.AirQualityReadingRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -30,7 +30,7 @@ import java.util.List;
 public class LotusVnScoringService {
 
     private final EsgMetricRepository esgMetricRepository;
-    private final AirQualityReadingRepository airQualityRepository;
+    private final AirQualityPort airQualityPort;
 
     /**
      * Score a building for a given period.
@@ -170,7 +170,7 @@ public class LotusVnScoringService {
         List<LotusIndicatorResult> indicators = new ArrayList<>();
 
         // IEQ-2: PM2.5 concentration
-        Double avgPm25 = airQualityRepository.findAveragePm25ByBuildingAndPeriod(
+        Double avgPm25 = airQualityPort.findAveragePm25ByBuildingAndPeriod(
             buildingId, start, end);
         
         if (avgPm25 != null) {

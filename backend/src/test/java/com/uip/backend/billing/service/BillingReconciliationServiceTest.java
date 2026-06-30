@@ -127,9 +127,15 @@ class BillingReconciliationServiceTest {
     }
 
     private void mockRawEventCost(long cost) {
-        // Mock metering events with costUsdCents
+        // Build a single metering event whose costUsdCents sums to `cost`.
+        // (BUG-M5-003: previously returned List.of() and ignored `cost`, so rawEventCost was
+        //  always 0 → accuracy forced to 100% and discrepancy computed against 0.)
+        com.uip.backend.billing.domain.MeteringEvent event =
+                com.uip.backend.billing.domain.MeteringEvent.builder()
+                        .costUsdCents((int) cost)
+                        .build();
         when(meteringEventRepository.findByTenantAndTimeRange(eq(TENANT_ID), any(), any()))
-                .thenReturn(List.of());  // Simplified: actual implementation aggregates costUsdCents
+                .thenReturn(List.of(event));
     }
 
     private void mockAggregatedCost(long cost) {

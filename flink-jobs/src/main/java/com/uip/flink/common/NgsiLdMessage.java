@@ -50,6 +50,13 @@ public class NgsiLdMessage implements Serializable {
         return meta != null ? meta.getTenantId() : null;
     }
 
+    /** Convenience: returns the primary "value" measurement, or 0.0 if not present. */
+    public double getValue() {
+        Map<String, Double> m = getMeasurementValues();
+        if (m == null) return 0.0;
+        return m.getOrDefault("value", m.values().stream().findFirst().orElse(0.0));
+    }
+
     @Data
     @NoArgsConstructor
     @JsonIgnoreProperties(ignoreUnknown = true)

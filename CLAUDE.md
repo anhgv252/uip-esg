@@ -11,7 +11,21 @@ Sau khi Backend/Frontend agent hoàn thành implementation, **PHẢI chạy SA C
 3. DevOps build + deploy + smoke test
 ```
 
-### SA Review Checklist — Backend (10 items)
+### ⚠️ Cross-module dependency — BẮT BUỘC tuân ADR-052 (kiến trúc cốt lõi)
+
+Khi 1 module (bounded context) cần đọc data/logic của module KHÁC, **KHÔNG inject trực tiếp repository/service/domain** của module kia. Phải qua **Hexagonal Port**:
+
+```
+common.spi.<Entity>Port              ← Port interface (neutral package, consumer-agnostic)
+<provider-module>.adapter.<Adapter>  ← @Component implement Port, delegate repository nội bộ
+<consumer-module>.service.<Service>  ← inject Port (KHÔNG import provider.repository)
+```
+
+- **Port ở `common.spi.*`** (neutral) — KHÔNG ở consumer module, để provider không phải reference ngược (vi phạm chiều ngược).
+- **Trước mỗi PR có `import com.uip.backend.<moduleX>...` (X≠Y)** → chạy `./gradlew test --tests "com.uip.backend.arch.ModuleBoundaryArchTest"`. Vi phạm → extract Port, **KHÔNG relax rule / @ArchIgnore**.
+- Chi tiết + anti-pattern + migration plan: `docs/mvp5/adr/ADR-052-hexagonal-port-cross-module-dependency.md`.
+
+### SA Review Checklist — Backend (11 items)
 1. Unused imports / dead code
 2. Spring bean registration (`@Component`, auto-wire)
 3. Null safety (nullable fields, Optional)
@@ -22,6 +36,7 @@ Sau khi Backend/Frontend agent hoàn thành implementation, **PHẢI chạy SA C
 8. Config env vars có default (`@Value("${x:default}")`)
 9. Dependency license compatible (KHÔNG AGPL)
 10. API contract match frontend (path, method, DTO)
+11. **Cross-module boundary (ADR-052):** mọi `import com.uip.backend.<moduleX>...` ở module Y (X≠Y) phải qua `common.spi.Port` — KHÔNG reference trực tiếp `<moduleX>.repository`/`.domain`/`.service`. Verify `./gradlew test --tests "com.uip.backend.arch.ModuleBoundaryArchTest"` PASS. Nếu rule vi phạm → extract Port, **KHÔNG relax rule**. (Bài học BUG-M5-009: M5-4 inject `environment.repository` vào `esg` → vi phạm silent 5 ngày vì sprint-review không re-run ArchTest)
 
 ### SA Review Checklist — Frontend (10 items)
 1. `npx tsc --noEmit` → 0 errors

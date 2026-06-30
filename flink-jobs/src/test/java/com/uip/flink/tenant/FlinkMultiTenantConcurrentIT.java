@@ -98,7 +98,7 @@ class FlinkMultiTenantConcurrentIT {
             .fromCollection(allEvents)
             .assignTimestampsAndWatermarks(WatermarkStrategy
                 .<NgsiLdMessage>forMonotonousTimestamps()
-                .withTimestampAssigner((event, timestamp) -> event.getTimestamp()));
+                .withTimestampAssigner((event, timestamp) -> event.getObservedAtMillis()));
 
         // Apply TenantBindingProcessFunction
         DataStream<NgsiLdMessage> bounded = source
@@ -196,9 +196,9 @@ class FlinkMultiTenantConcurrentIT {
 
         // Key by (tenantId, district) composite → ensures tenant-alpha:district-7 ≠ tenant-beta:district-7
         bounded
-            .keyBy(msg -> msg.getTenantId() + ":" + msg.getDistrict())
+            .keyBy(msg -> msg.getTenantId() + ":" + (msg.getMeta() != null ? msg.getMeta().getDistrict() : "unknown"))
             .map(msg -> {
-                String key = msg.getTenantId() + ":" + msg.getDistrict();
+                String key = msg.getTenantId() + ":" + (msg.getMeta() != null ? msg.getMeta().getDistrict() : "unknown");
                 processedByTenant.computeIfAbsent(key, k -> Collections.synchronizedList(new ArrayList<>()))
                     .add(msg);
                 return msg;
@@ -274,12 +274,25 @@ class FlinkMultiTenantConcurrentIT {
 
     private NgsiLdMessage createSensorReading(String tenantId, String deviceId, String sensorType, double value, String district, long timestamp) {
         NgsiLdMessage msg = new NgsiLdMessage();
-        msg.setTenantId(tenantId);
-        msg.setDeviceId(deviceId);
-        msg.setSensorType(sensorType);
-        msg.setValue(value);
-        msg.setDistrict(district);
-        msg.setTimestamp(timestamp);
+
+        NgsiLdMessage.Meta meta = new NgsiLdMessage.Meta();
+        meta.setTenantId(tenantId);
+        meta.setSensorType(sensorType);
+        meta.setDistrict(district);
+        msg.setMeta(meta);
+
+        NgsiLdMessage.NgsiLdProperty<String> dev = new NgsiLdMessage.NgsiLdProperty<>();
+        dev.setValue(deviceId);
+        msg.setDeviceId(dev);
+
+        NgsiLdMessage.NgsiLdProperty<Map<String, Double>> meas = new NgsiLdMessage.NgsiLdProperty<>();
+        meas.setValue(java.util.Map.of("value", value));
+        msg.setMeasurements(meas);
+
+        NgsiLdMessage.NgsiLdProperty<Long> at = new NgsiLdMessage.NgsiLdProperty<>();
+        at.setValue(timestamp);
+        msg.setObservedAt(at);
+
         return msg;
     }
 }

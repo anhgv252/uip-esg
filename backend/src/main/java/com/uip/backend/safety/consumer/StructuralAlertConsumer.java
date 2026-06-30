@@ -2,10 +2,10 @@ package com.uip.backend.safety.consumer;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.uip.backend.alert.domain.AlertEvent;
-import com.uip.backend.alert.service.AlertService;
-import com.uip.backend.notification.service.AlertNotification;
-import com.uip.backend.notification.service.NotificationRouter;
+import com.uip.backend.common.spi.AlertPort;
+import com.uip.backend.common.spi.AlertPort.SavedAlertSnapshot;
+import com.uip.backend.common.spi.AlertPort.StructuralAlertInput;
+import com.uip.backend.common.spi.NotificationPort;
 import com.uip.backend.safety.service.BuildingSafetyService;
 import com.uip.backend.tenant.context.TenantContext;
 import lombok.RequiredArgsConstructor;
@@ -33,6 +33,10 @@ import java.util.Set;
  *
  * <p><strong>BR-010:</strong> ALL structural P0 alerts require operator review.
  * This consumer NEVER triggers auto-evacuation. Notifications are review prompts only.</p>
+ *
+ * <p>ADR-052 (migration C1+C2): interacts with {@code alert} and {@code notification} modules
+ * only through neutral {@link AlertPort} / {@link NotificationPort} ports — never imports
+ * {@code alert.domain} / {@code alert.service} / {@code notification.service}.</p>
  */
 @Component
 @RequiredArgsConstructor
@@ -48,12 +52,12 @@ public class StructuralAlertConsumer {
     @Value("${uip.tenant.allowed-ids:hcm,hanoi,danang}")
     private String allowedTenantsConfig;
 
-    private final AlertService             alertService;
-    private final BuildingSafetyService    buildingSafetyService;
-    private final NotificationRouter       notificationRouter;
-    private final StringRedisTemplate      redisTemplate;
+    private final AlertPort                 alertPort;
+    private final BuildingSafetyService     buildingSafetyService;
+    private final NotificationPort          notificationPort;
+    private final StringRedisTemplate       redisTemplate;
     private final KafkaTemplate<String, String> kafkaTemplate;
-    private final ObjectMapper             objectMapper;
+    private final ObjectMapper              objectMapper;
 
     @KafkaListener(
         topics = TOPIC,
@@ -66,11 +70,11 @@ public class StructuralAlertConsumer {
         try {
             @SuppressWarnings("unchecked")
             Map<String, Object> data = objectMapper.readValue(payload, Map.class);
-            AlertEvent event = mapToAlertEvent(data);
+            StructuralAlertInput input = mapToInput(data);
 
             Set<String> allowedTenants = Set.of(allowedTenantsConfig.split(","));
-            if (event.getTenantId() == null || !allowedTenants.contains(event.getTenantId())) {
-                log.warn("Structural alert rejected: unknown tenantId={}", event.getTenantId());
+            if (input.tenantId() == null || !allowedTenants.contains(input.tenantId())) {
+                log.warn("Structural alert rejected: unknown tenantId={}", input.tenantId());
                 kafkaTemplate.send(DLQ_TOPIC, payload);
                 ack.acknowledge();
                 return;
@@ -79,29 +83,29 @@ public class StructuralAlertConsumer {
             // Dedup: 1-min window per tenant+sensor+measureType+severity
             // (shorter than flood — structural alerts are acute; MVP5-S1-T06: tenant prefix)
             String dedupKey = "alert:dedup:structural:tenant:%s:%s:%s:%s".formatted(
-                    event.getTenantId(), event.getSensorId(), event.getMeasureType(), event.getSeverity());
+                    input.tenantId(), input.sensorId(), input.measureType(), input.severity());
             Boolean isNew = redisTemplate.opsForValue().setIfAbsent(dedupKey, "1", DEDUP_TTL);
 
             if (Boolean.FALSE.equals(isNew)) {
                 log.debug("Duplicate structural alert suppressed: sensor={} severity={}",
-                        event.getSensorId(), event.getSeverity());
+                        input.sensorId(), input.severity());
                 ack.acknowledge();
                 return;
             }
 
-            AlertEvent saved;
-            TenantContext.setCurrentTenant(event.getTenantId());
+            SavedAlertSnapshot saved;
+            TenantContext.setCurrentTenant(input.tenantId());
             try {
-                saved = alertService.saveAlert(event);
+                saved = alertPort.saveStructuralAlert(input);
             } finally {
                 TenantContext.clear();
             }
 
             // Evict safety score cache so next GET reflects the new alert
-            if (saved.getBuildingId() != null) {
-                TenantContext.setCurrentTenant(event.getTenantId());
+            if (saved.buildingId() != null) {
+                TenantContext.setCurrentTenant(input.tenantId());
                 try {
-                    buildingSafetyService.evictSafetyScore(saved.getBuildingId());
+                    buildingSafetyService.evictSafetyScore(saved.buildingId());
                 } finally {
                     TenantContext.clear();
                 }
@@ -109,20 +113,19 @@ public class StructuralAlertConsumer {
 
             // P0 escalation: route to all channels (FCM/APNs/Email) — BR-010 message
             // BR-010: notification is REVIEW PROMPT only, NOT an instruction to auto-evacuate
-            String notifMessage = buildNotificationMessage(event);
-            notificationRouter.route(new AlertNotification(
-                    saved.getSensorId(),
+            String notifMessage = buildNotificationMessage(input);
+            notificationPort.routeAlert(
+                    saved.sensorId(),
                     "STRUCTURAL",
-                    saved.getSeverity(),
+                    saved.severity(),
                     notifMessage,
-                    saved.getTenantId(),
-                    null
-            ));
+                    saved.tenantId()
+            );
 
-            publishToRedis(saved);
+            publishToRedis(saved, input);
 
             log.info("Structural alert persisted id={} sensor={} severity={} building={}",
-                    saved.getId(), saved.getSensorId(), saved.getSeverity(), saved.getBuildingId());
+                    saved.id(), saved.sensorId(), saved.severity(), saved.buildingId());
             ack.acknowledge();
 
         } catch (Exception e) {
@@ -141,20 +144,21 @@ public class StructuralAlertConsumer {
         }
     }
 
-    private AlertEvent mapToAlertEvent(Map<String, Object> data) {
-        AlertEvent event = new AlertEvent();
-        event.setSensorId(getString(data, "sensorId"));
-        event.setModule("STRUCTURAL");
-        event.setMeasureType(getString(data, "sensorType"));
-        event.setValue(getDouble(data, "measuredValue"));
-        event.setThreshold(getDouble(data, "thresholdValue"));
-        event.setSeverity(mapSeverity(getString(data, "severity")));
-        event.setTenantId(getString(data, "tenantId"));
-        event.setBuildingId(getString(data, "buildingId"));
-        event.setLocation(getString(data, "district"));
-        event.setDetectedAt(parseTimestamp(data));
-        event.setStatus("OPEN");
-        return event;
+    /** Map Flink payload to a neutral structural-alert input. */
+    private StructuralAlertInput mapToInput(Map<String, Object> data) {
+        return new StructuralAlertInput(
+                getString(data, "tenantId"),
+                getString(data, "sensorId"),
+                "STRUCTURAL",
+                getString(data, "sensorType"),
+                getDouble(data, "measuredValue"),
+                getDouble(data, "thresholdValue"),
+                mapSeverity(getString(data, "severity")),
+                getString(data, "buildingId"),
+                getString(data, "district"),
+                parseTimestamp(data),
+                "OPEN"
+        );
     }
 
     /** Map Flink structural severity to AlertEvent severity. CRITICAL stays CRITICAL. */
@@ -168,26 +172,26 @@ public class StructuralAlertConsumer {
     }
 
     // BR-010: message explicitly states operator review is required, NOT auto-evacuate
-    private static String buildNotificationMessage(AlertEvent event) {
-        String type = event.getMeasureType() != null ? event.getMeasureType() : "Structural";
-        String loc  = event.getLocation() != null ? " (" + event.getLocation() + ")" : "";
+    private static String buildNotificationMessage(StructuralAlertInput input) {
+        String type = input.measureType() != null ? input.measureType() : "Structural";
+        String loc  = input.location() != null ? " (" + input.location() + ")" : "";
         return "[BR-010] Phát hiện bất thường kết cấu%s — %s: %.2f. Yêu cầu operator xem xét. KHÔNG tự động sơ tán."
-                .formatted(loc, type, event.getValue());
+                .formatted(loc, type, input.value());
     }
 
-    private void publishToRedis(AlertEvent event) {
+    private void publishToRedis(SavedAlertSnapshot saved, StructuralAlertInput input) {
         try {
             String json = objectMapper.writeValueAsString(Map.of(
-                    "id",          event.getId().toString(),
-                    "sensorId",    event.getSensorId() != null ? event.getSensorId() : "",
+                    "id",          saved.id() != null ? saved.id().toString() : "",
+                    "sensorId",    saved.sensorId() != null ? saved.sensorId() : "",
                     "module",      "STRUCTURAL",
-                    "severity",    event.getSeverity(),
-                    "measureType", event.getMeasureType() != null ? event.getMeasureType() : "",
-                    "value",       event.getValue(),
-                    "status",      event.getStatus(),
-                    "buildingId",  event.getBuildingId() != null ? event.getBuildingId() : "",
-                    "location",    event.getLocation() != null ? event.getLocation() : "",
-                    "tenantId",    event.getTenantId() != null ? event.getTenantId() : ""
+                    "severity",    saved.severity(),
+                    "measureType", input.measureType() != null ? input.measureType() : "",
+                    "value",       input.value(),
+                    "status",      input.status(),
+                    "buildingId",  saved.buildingId() != null ? saved.buildingId() : "",
+                    "location",    input.location() != null ? input.location() : "",
+                    "tenantId",    saved.tenantId() != null ? saved.tenantId() : ""
             ));
             redisTemplate.convertAndSend(SSE_CHANNEL, json);
         } catch (JsonProcessingException e) {

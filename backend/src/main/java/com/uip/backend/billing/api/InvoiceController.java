@@ -27,7 +27,7 @@ import java.util.UUID;
  * 
  * Access: ADMIN, TENANT_ADMIN only
  */
-@RestController
+@RestController("billingInvoiceController")
 @RequestMapping("/api/v1/billing/invoices")
 @RequiredArgsConstructor
 @Slf4j
