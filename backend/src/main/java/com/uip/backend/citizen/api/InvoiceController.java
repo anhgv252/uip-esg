@@ -23,7 +23,7 @@ import java.util.UUID;
  * S3-05 — Citizen Utilities Module
  * Meter management, invoice billing, and consumption tracking
  */
-@RestController
+@RestController("citizenInvoiceController")
 @RequestMapping("/api/v1/citizen")
 @Tag(name = "Citizen Utilities", description = "Meter management, invoices, and consumption history")
 @RequiredArgsConstructor
